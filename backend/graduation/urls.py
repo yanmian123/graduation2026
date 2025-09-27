@@ -18,8 +18,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.urls import include 
-
+from rest_framework_simplejwt.views import TokenObtainPairView
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/", include("api.urls")),  # Include API app URLs
+    # path("api/", include("api.urls")),  # Include API app URLs
+    path('api/', include('register.urls')),  # 注册接口路径：/api/auth/register/
+    path('login/', TokenObtainPairView.as_view(), name='login'),# JWT登录接口
 ]

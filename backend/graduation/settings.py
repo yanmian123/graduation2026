@@ -40,7 +40,11 @@ INSTALLED_APPS = [
     "rest_framework", #DRF
     "corsheaders", #CORS
     "api", #我的应用
+    "register", #注册功能
+    'rest_framework_simplejwt',  # JWT认证
 ]
+
+AUTH_USER_MODEL = "register.User"
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware", #CORS
@@ -77,10 +81,23 @@ WSGI_APPLICATION = "graduation.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.sqlite3",
+#         "NAME": BASE_DIR / "db.sqlite3",
+#     }
+# }
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.mysql",  # 使用MySQL引擎
+        "NAME": "employment_platform",  # 数据库名称（需提前在MySQL中创建）
+        "USER": "root",  # 你的MySQL用户名
+        "PASSWORD": "123456",  # 你的MySQL密码
+        "HOST": "localhost",  # 数据库主机，本地默认localhost
+        "PORT": "3306",  # MySQL默认端口
+        "OPTIONS": {
+            "charset": "utf8mb4",  # 支持emoji等特殊字符
+        }
     }
 }
 
@@ -113,7 +130,7 @@ TIME_ZONE = "UTC"
 
 USE_I18N = True
 
-USE_TZ = True
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)
@@ -131,3 +148,17 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",#这是Vite默认的前端开发服务器地址
     "http://127.0.0.1:5173",
 ]
+
+# Django REST Framework 配置
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
+# Simple JWT 配置
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  # 访问令牌有效期
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # 刷新令牌有效期
+}

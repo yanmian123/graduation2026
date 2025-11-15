@@ -15,8 +15,8 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         # 包含需要的字段（内置字段+自定义字段）
-        fields = [
-            'username','email', 'password', 'password_confirm',  # 按需添加其他字段
+        fields = [ 
+            'username','email', 'password', 'password_confirm','is_enterprise'  # 按需添加其他字段
         ]
 
     def validate(self, attrs):

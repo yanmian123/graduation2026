@@ -42,6 +42,10 @@ INSTALLED_APPS = [
     "api", #我的应用
     "register", #注册功能
     'rest_framework_simplejwt',  # JWT认证
+    "user_info", #用户信息
+    "resume", #简历
+    "article_publish", #文章发布
+    "enterprise" #企业模块
 ]
 
 AUTH_USER_MODEL = "register.User"
@@ -132,6 +136,8 @@ USE_I18N = True
 
 USE_TZ = False
 
+MEDIA_URL = '/media/'  # 访问媒体文件的URL前缀
+MEDIA_ROOT = BASE_DIR / 'media'  # 本地保存路径（项目根目录/media）
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
@@ -149,16 +155,29 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
 ]
 
+CORS_ALLOW_METHODS = [
+    "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"  # 允许必要的请求方法
+]
+CORS_ALLOW_CREDENTIALS = True # 允许携带Cookie
+CORS_ALLOW_HEADERS = [
+    "content-type", "authorization"  # 允许表单类型和令牌头
+]
+
 # Django REST Framework 配置
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        
     ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ], 
 }
 
 # Simple JWT 配置
 from datetime import timedelta
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  # 访问令牌有效期
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=24),  # 访问令牌有效期
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # 刷新令牌有效期
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }

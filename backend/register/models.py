@@ -4,7 +4,7 @@ from django.contrib.auth.models import AbstractUser
 class User(AbstractUser):
     """自定义用户模型，继承自AbstractUser，可以根据需要添加额外的字段"""
     nickname = models.CharField(max_length=30, blank=True, null=True)  # 昵称
-    sex = models.CharField(max_length=10, blank=True, null=True)  # 性别
+    sex = models.CharField(max_length=10, blank=True, null=True)  # 性别 
     age = models.IntegerField(blank=True, null=True)  # 年龄
     graduation_school = models.CharField(max_length=100, blank=True, null=True)  # 毕业学校
     education_level = models.CharField(max_length=50, blank=True, null=True)  # 学历
@@ -17,6 +17,7 @@ class User(AbstractUser):
     address = models.CharField(max_length=255, blank=True, null=True)  # 地址
     intended_city = models.CharField(max_length=100, blank=True, null=True)  # 意向城市
     personal_profile = models.TextField(max_length=600,blank=True, null=True)  # 个人简介
+    is_enterprise = models.BooleanField(default=False, verbose_name="是否企业用户")
 # Create your models here.
     class Meta:
         verbose_name = "用户"  # 单数显示名称（在admin后台等地方显示）

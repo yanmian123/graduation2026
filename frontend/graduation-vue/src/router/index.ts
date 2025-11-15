@@ -1,12 +1,57 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Register from '../views/Register.vue'  // 假设新建了注册页面   // 假设新建了登录页面
-
+import Login from '../views/Login.vue'
+import UserInfo from '@/views/UserInfo.vue'
+// 新增：导入简历页面（后续需创建这些组件）
+import ResumeList from '@/views/ResumeList.vue'; // 简历列表
+import ResumeCreate from '@/views/ResumeCreate.vue'; // 创建简历
+import ResumeEdit from '@/views/ResumeEdit.vue'; // 编辑简历
+import Home from '@/views/Home.vue';
+import CommunityIndex from '@/views/CommunityIndex.vue';
+// import ResumeDetail from '@/views/ResumeDetail.vue'; // 查看简历
+import CommunityCreate from '@/views/CommunityCreate.vue'; // 创建帖子
+import articlesdetail from '@/views/articlesdetail.vue'; //帖子详情
+import EnterpriseRegister from '@/views/EnterpriseRegister.vue'; //企业注册
+import EnterpriseEdit from '@/views/EnterpriseEdit.vue'; //企业信息编辑
+import RecruitmentList from '@/views/RecruitmentList.vue'; //招聘信息列表
+import RecruitmentCreate from '@/views/RecruitmentCreate.vue'; //创建招聘信息
+// import RecruitmentEdit from '@/views/RecruitmentEdit.vue'; //编辑招聘信息
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/register', name: 'Register', component: Register },
-    // { path: '/login', name: 'Login', component: Login },
+    { path: '/login', name: 'Login', component: Login },  // 登录页面路由
+    { path:'/api/user/info',name:'UserInfo',component: UserInfo,meta: { requiresAuth: true }}, //用户信息页面路由(标记需要登录才能访问)
+    // 新增：简历路由
+    { path: '/resumes', name: 'ResumeList', component: ResumeList, meta: { requiresAuth: true } },
+    { path: '/resumes/create', name: 'ResumeCreate', component: ResumeCreate, meta: { requiresAuth: true } },
+    { path: '/resumes/:id/edit', name: 'ResumeEdit', component: ResumeEdit, meta: { requiresAuth: true } },
+    // { path: '/resumes/:id', name: 'ResumeDetail', component: ResumeDetail, meta: { requiresAuth: true } },
+    {path:'/home',name:'Home',component:Home, meta: { requiresAuth: true }},
+    {path:'/community',name:'CommunityIndex',component:CommunityIndex, meta: { requiresAuth: true }},
+    {path:'/community/articlescreate',name:'CommunityCreate',component:CommunityCreate, meta: { requiresAuth: true }},
+    {path:'/community/post/:id',name: 'ArticlesDetail',component: () => import('@/views/ArticlesDetail.vue'),meta: { requiresAuth: true }},
+    {path: '/enterprise/register', name: 'EnterpriseRegister', component:EnterpriseRegister},
+    {path: '/enterprise/edit', name: 'EnterpriseEdit', component: EnterpriseEdit,meta: { requiresAuth: true }},
+    {path: '/enterprise/recruitments', name: 'RecruitmentList', component:RecruitmentList,meta: { requiresAuth: true }},
+    {path: '/enterprise/recruitments/create', name: 'RecruitmentCreate', component:RecruitmentCreate,meta: { requiresAuth: true }},
+    // {path: '/enterprise/recruitments/:id/edit', name: 'RecruitmentEdit', component:RecruitmentEdit,meta: { requiresAuth: true }},
   ],
 })
+
+
+// 路由守卫：未登录用户访问需登录的页面时，跳转到登录页
+router.beforeEach((to, from, next) => {
+  if (to.meta.requiresAuth) {
+    const token = localStorage.getItem('accessToken');  // 假设 token 存在 localStorage 中
+    if (token) {
+      next();
+    } else {
+      next('/login');  // 未登录则跳转到登录页
+    }
+  } else {
+    next();
+  }
+});
 
 export default router

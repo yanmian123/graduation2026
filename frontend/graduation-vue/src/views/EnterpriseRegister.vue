@@ -117,7 +117,6 @@ import axios from '@/utils/axios'
 
 const formData = ref({
   username: '',
-  email: '',
   password: '',
   confirmPassword: '',
   enterpriseName: '',
@@ -185,7 +184,7 @@ const handleRegister = async () => {
     // 先注册用户
     const userResponse = await axios.post('/register/', {
       username: formData.value.username,
-      email: formData.value.email,
+      email: formData.value.contact_email,
       password: formData.value.password,
       password_confirm: formData.value.confirmPassword,
       is_enterprise: true  // 标记为企业用户
@@ -234,7 +233,7 @@ const handleRegister = async () => {
         }
       });
 
-      router.push('/home')
+      router.push('/enterprise/home')
     }
   } catch (error) {
     
@@ -246,7 +245,7 @@ const handleRegister = async () => {
 }
 
 const goToLogin = () => {
-  router.push('/login')
+  router.push('/enterprise/login')
 }
 </script>
 

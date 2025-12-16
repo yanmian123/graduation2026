@@ -1,0 +1,13 @@
+/* src/assets/styles/enterprise-theme.css */
+:root {
+  /* 企业主题色 */
+  --enterprise-primary: #1a237e;
+  --enterprise-primary-light: #283593;
+  --enterprise-secondary: #5c6bc0;
+  --enterprise-accent: #ffab00;
+}
+
+.enterprise-theme {
+  --primary-color: var(--enterprise-primary);
+  --primary-hover: var(--enterprise-primary-light);
+}

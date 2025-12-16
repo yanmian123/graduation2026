@@ -1,6 +1,6 @@
 <template>
   <div class="login-page">
-    <n-card class="login-card" title="用户登录">
+    <n-card class="login-card" title="企业端用户登录">
       <n-form 
         ref="formRef" 
         :model="formData" 
@@ -8,10 +8,10 @@
         label-placement="top"
       >
         <!-- 用户名 -->
-        <n-form-item path="username" label="用户名">
+        <n-form-item path="username" label="企业用户名">
           <n-input 
             v-model:value="formData.username" 
-            placeholder="请输入用户名"
+            placeholder="请输入企业用户名"
             :prefix="Person" 
           />
         </n-form-item>
@@ -45,16 +45,16 @@
       </n-form>
 
 
-      <!-- 企业端登录选项 -->
+      <!-- 用户端登录选项 -->
       <div style="text-align: center; margin: 16px 0;">
-        <n-text>企业端登录入口</n-text>
+        <n-text>用户端登录入口</n-text>
         <n-button 
           text 
           type="primary" 
           @click="goToEnterpriseLogin"
           style="padding: 0 8px;"
         >
-          企业端登录
+          用户端登录
         </n-button>
       </div>
 
@@ -121,7 +121,7 @@ const handleLogin = async () => {
     
     // 跳转到首页（根据你的需求修改路径）
     // router.push('/api/user/info')
-    router.push('/home')
+    router.push('/enterprise/home')
   } catch (error) {
     console.error('登录失败:', error.response?.data || error.message)
     // 显示错误提示（可根据需求添加UI提示）
@@ -132,14 +132,13 @@ const handleLogin = async () => {
 
 // 跳转到注册页面
 const goToRegister = () => {
-  router.push('/register')
+  router.push('/enterprise/register')
 }
 
-// 跳转到企业端登录页面
+// 跳转到用户端登录页面
 const goToEnterpriseLogin = () => {
-  router.push('/enterprise/login') // 假设企业端登录页面路由为/enterprise/login
+  router.push('/login') // 假设企业端登录页面路由为/enterprise/login
 }
-
 </script>
 
 <style scoped>

@@ -14,10 +14,18 @@
           />
         </n-form-item>
 
-        <n-form-item path="job" label="职位名称">
+        <n-form-item path="job" label="岗位名称">
           <n-input 
             v-model:value="formData.job" 
-            placeholder="请输入职位名称"
+            placeholder="请输入岗位名称，如“软件工程师”"
+          />
+        </n-form-item>
+
+        <n-form-item path="job_type" label="工作类型">
+          <n-select 
+            v-model:value="formData.job_type" 
+            :options="jobTypes"
+            placeholder="请选择工作类型"
           />
         </n-form-item>
 
@@ -36,16 +44,18 @@
         </n-form-item>
 
         <n-form-item path="experience" label="工作经验要求">
-          <n-input 
+          <n-select 
             v-model:value="formData.experience" 
-            placeholder="如：3-5年"
+            :options="experienceOptions"
+            placeholder="请选择工作经验要求"
           />
         </n-form-item>
 
         <n-form-item path="education" label="学历要求">
-          <n-input 
+          <n-select 
             v-model:value="formData.education" 
-            placeholder="如：本科及以上"
+            :options="educationOptions"
+            placeholder="请选择学历要求"
           />
         </n-form-item>
 
@@ -99,13 +109,43 @@ import { useRouter } from 'vue-router'
 import { NForm, NFormItem, NInput, NButton, NCard, NCheckbox } from 'naive-ui'
 import axios from '@/utils/axios'
 
+console.log('Naive UI检查:', {
+  naive: window.naive,
+  NTable: window.NTable
+})
+// 经验选项（与后端模型一致）
+const experienceOptions = [
+  { label: '应届毕业生', value: 'FRESH' },
+  { label: '1年以内', value: 'LESS_THAN_1' },
+  { label: '1-3年', value: '1_3' },
+  { label: '3-5年', value: '3_5' },
+  { label: '5-10年', value: '5_10' },
+  { label: '10年以上', value: 'MORE_THAN_10' }
+]
+
+// 学历选项（与后端模型一致）
+const educationOptions = [
+  { label: '高中及以下', value: 'HIGH_SCHOOL' },
+  { label: '专科', value: 'ASSOCIATE' },
+  { label: '本科', value: 'BACHELOR' },
+  { label: '硕士', value: 'MASTER' },
+  { label: '博士及以上', value: 'DOCTOR' }
+]
+
+const jobTypes = [
+  { label: '全职', value: 'FULL_TIME' },
+  { label: '兼职', value: 'PART_TIME' },
+  { label: '实习', value: 'INTERNSHIP' }
+]
+
 const formData = ref({
   title: '',
   job: '',
+  job_type: 'FULL_TIME',
   work_location: '',
   salary: '',
-  experience: '',
-  education: '',
+  experience: 'FRESH',
+  education: 'HIGH_SCHOOL',
   job_desc: '',
   job_require: '',
   is_published: true
@@ -120,7 +160,10 @@ const rules = {
     { required: true, message: '请输入招聘标题', trigger: 'blur' }
   ],
   job: [
-    { required: true, message: '请输入职位名称', trigger: 'blur' }
+    { required: true, message: '请输入岗位名称', trigger: 'blur' }
+  ],
+  job_type:[
+    { required: true, message: '请选择工作类型', trigger: 'blur' }
   ],
   work_location: [
     { required: true, message: '请输入工作地点', trigger: 'blur' }
@@ -150,7 +193,7 @@ const handleSubmit = async () => {
     loading.value = true
     
     // 创建招聘信息
-    await axios.post('/api/recruitments/', formData.value)
+    await axios.post('/recruitments/', formData.value)
     
     router.push('/enterprise/recruitments')
   } catch (error) {

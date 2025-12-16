@@ -188,26 +188,6 @@ const uploadHeaders = ref({
   Authorization: `Bearer ${localStorage.getItem('accessToken') || ''}`
 });
 
-// 修正简历pdf上传前验证函数
-// const handleBeforeUpload = (params) => {
-//   const file = params.file; 
-//   console.log('准备上传文件：', file);
-//   if (!file) {
-//     message.error('文件格式错误');
-//     return false;
-//   }
-
-//   // 验证文件MIME类型（主验证）
-//   const isPdfType = file.type === 'application/pdf';
-//   // 验证文件后缀（辅助验证，防止MIME类型被篡改）
-//   const isPdfSuffix = file.name.toLowerCase().endsWith('.pdf');
-
-//   if (!isPdfType || !isPdfSuffix) {
-//     message.error('请上传PDF格式的文件（.pdf）');
-//     return false; // 阻止文件被选中
-//   }
-//   return true; // 验证通过，允许文件被选中
-// };
 
 // 3. 简化文件选择逻辑
 const handleFileChange = (params) => {

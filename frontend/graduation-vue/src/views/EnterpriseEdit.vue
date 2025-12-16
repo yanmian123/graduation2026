@@ -18,6 +18,8 @@
           <n-upload
             :default-file-list="fileList"
             @change="handleFileChange"
+            :max-count="1" 
+            type="select" 
           >
             <n-button>选择图片</n-button>
           </n-upload>
@@ -82,7 +84,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { NForm, NFormItem, NInput, NButton, NCard, NUpload, NImage } from 'naive-ui'
+import { useMessage,NForm, NFormItem, NInput, NButton, NCard, NUpload, NImage } from 'naive-ui'
 import axios from '@/utils/axios'
 
 const formData = ref({
@@ -126,43 +128,40 @@ const rules = {
 // 获取企业信息
 const fetchEnterpriseInfo = async () => {
   try {
-    const response = await axios.get('/api/enterprises/')
-    if (response.data.length > 0) {
-      formData.value = response.data[0]
-      if (formData.value.logo) {
-        fileList.value = [{
-          id: 'logo',
-          name: 'logo.png',
-          url: formData.value.logo
-        }]
+    const response = await axios.get('/enterprises/')
+    // 确保获取到的是单个对象而非数组
+    if (Array.isArray(response.data) && response.data.length > 0) {
+      formData.value = response.data[0]  // 取数组第一个元素
+    } else if (typeof response.data === 'object') {
+      formData.value = response.data  // 直接使用对象
+    } else {
+      // 初始化空对象
+      formData.value = {
+        id: null,
+        name: '',
+        logo: '',
+        description: '',
+        contact_person: '',
+        contact_phone: '',
+        contact_email: '',
+        address: ''
       }
+    }
+    if (formData.value.logo) {
+      fileList.value = [{
+        id: 'logo',
+        name: 'logo.png',
+        url: formData.value.logo
+      }]
     }
   } catch (error) {
     console.error('获取企业信息失败:', error)
   }
 }
 
+const message = useMessage();
 // 处理文件上传
-const handleFileChange = async (fileList) => {
-  if (fileList && fileList.length > 0 && fileList[0].file) {
-    const file = fileList[0].file
-    const formData = new FormData()
-    formData.append('logo', file)
-    
-    try {
-      const response = await axios.post('/api/upload/logo/', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      })
-      formData.value.logo = response.data.logo_url
-    } catch (error) {
-      console.error('上传图片失败:', error)
-    }
-  }
-}
-
-// 提交表单
+// 提交表单 - 简化版
 const handleSubmit = async () => {
   if (!formRef.value) return
   
@@ -170,21 +169,49 @@ const handleSubmit = async () => {
     await formRef.value.validate()
     loading.value = true
     
-    if (formData.value.id) {
-      // 更新现有企业信息
-      await axios.put(`/api/enterprises/${formData.value.id}/`, formData.value)
+    // 1. 先保存基本信息
+    const submitData = { ...formData.value }
+    delete submitData.logo
+
+    let response;
+    if (submitData.id) {
+      response = await axios.put(`/enterprises/${submitData.id}/`, submitData)
     } else {
-      // 创建新的企业信息
-      await axios.post('/api/enterprises/', formData.value)
+      response = await axios.post('/enterprises/', submitData)
+      formData.value.id = response.data.id
     }
     
-    router.push('/enterprise/recruitments')
+    // 2. 如果有logo文件，上传logo
+    if (fileList.value.length > 0 && fileList.value[0].file) {
+      console.log('检测到logo文件，开始上传...');
+      const uploadFormData = new FormData();
+      uploadFormData.append('logo', fileList.value[0].file);
+      
+      const uploadResponse = await axios.post(
+        `/enterprises/${formData.value.id}/upload_logo/`, 
+        uploadFormData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+      
+      formData.value.logo = uploadResponse.data.logo_url;
+      console.log('Logo上传成功，URL:', uploadResponse.data.logo_url);
+    }
+    
+    message.success('企业信息保存成功！')
+    router.push('/enterprise/home')
+    
   } catch (error) {
-    console.error('保存企业信息失败:', error)
+    console.error('保存失败:', error)
+    message.error('保存失败，请检查信息')
   } finally {
     loading.value = false
   }
 }
+
+// 简化handleFileChange，只更新文件列表
+const handleFileChange = (data) => {
+  fileList.value = data.fileList;
+};
 
 onMounted(() => {
   fetchEnterpriseInfo()

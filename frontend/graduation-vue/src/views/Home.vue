@@ -1,59 +1,7 @@
 <template>
   <div class="home-container">
     <!-- 顶部导航栏 -->
-    <n-layout-header class="header">
-      <div class="header-content">
-        <div class="logo" @click="$router.push('/')">
-          <n-icon size="28" class="logo-icon">
-            <Briefcase />
-          </n-icon>
-          <span class="logo-text">职享圈</span>
-        </div>
-        
-        <n-menu 
-          mode="horizontal" 
-          :options="menuOptions" 
-          class="main-menu"
-          @select="handleMenuSelect"
-        />
-        
-        <div class="user-actions">
-          <n-input 
-            v-model:value="searchQuery" 
-            placeholder="搜索岗位/资源" 
-            class="search-input"
-            :prefix="Search"
-            @keyup.enter="handleSearch"
-          />
-          
-          <n-dropdown 
-            v-if="isLogin" 
-            trigger="hover" 
-            :options="userDropdownOptions"
-            @select="handleUserAction"
-          >
-            <n-avatar 
-              size="small" 
-              class="user-avatar"
-              :src="userAvatar"
-            >
-              <template #fallback>
-                <n-icon><Person /></n-icon>
-              </template>
-            </n-avatar>
-          </n-dropdown>
-          
-          <n-button 
-            v-else 
-            type="primary" 
-            size="small" 
-            @click="$router.push('/login')"
-          >
-            登录
-          </n-button>
-        </div>
-      </div>
-    </n-layout-header>
+
 
     <!-- 主体内容区 -->
     <main class="main-content">
@@ -235,44 +183,6 @@
         </div>
       </section>
     </main>
-
-    <!-- 底部信息栏 -->
-    <footer class="footer">
-      <div class="footer-content">
-        <div class="footer-logo">
-          <n-icon size="24" class="logo-icon">
-            <BriefcaseBusiness />
-          </n-icon>
-          <span class="logo-text"> - 大学生就业资源共享平台</span>
-        </div>
-        
-        <div class="footer-links">
-          <div class="link-group">
-            <h3>平台服务</h3>
-            <ul>
-              <li><a href="#">校招信息</a></li>
-              <li><a href="#">实习推荐</a></li>
-              <li><a href="#">简历服务</a></li>
-              <li><a href="#">就业指导</a></li>
-            </ul>
-          </div>
-          
-          <div class="link-group">
-            <h3>关于我们</h3>
-            <ul>
-              <li><a href="#">平台介绍</a></li>
-              <li><a href="#">联系我们</a></li>
-              <li><a href="#">合作招募</a></li>
-              <li><a href="#">隐私政策</a></li>
-            </ul>
-          </div>
-        </div>
-        
-        <div class="copyright">
-          <p>© 2025 lzp 版权所有 | 大学生就业信息资源共享平台</p>
-        </div>
-      </div>
-    </footer>
   </div>
 </template>
 
@@ -297,6 +207,11 @@ import {
 import { NLayoutHeader, NMenu, NInput, NDropdown, NButton, NCarousel, NCard, NTag, NIcon, NAvatar } from 'naive-ui';
 import axios from '@/utils/axios';
 
+
+console.log('Naive UI检查:', {
+  naive: window.naive,
+  NTable: window.NTable
+})
 // 路由与消息提示
 const router = useRouter();
 const message = useMessage();
@@ -305,23 +220,6 @@ const message = useMessage();
 const isLogin = ref(!!localStorage.getItem('accessToken'));
 const userAvatar = ref('');
 const searchQuery = ref('');
-
-// 导航菜单配置
-const menuOptions = [
-  { key: 'home', label: '首页', icon: Briefcase },
-  { key: 'jobs', label: '招聘信息' },
-  { key: 'resources', label: '就业资源' },
-  { key: 'community', label: '经验社区' },
-  { key: 'events', label: '宣讲会' }
-];
-
-// 用户下拉菜单
-const userDropdownOptions = [
-  { key: 'profile', label: '个人中心' },
-  { key: 'resumes', label: '我的简历' },
-  { key: 'collections', label: '我的收藏' },
-  { key: 'logout', label: '退出登录', type: 'warning' }
-];
 
 // 模拟数据 - Banner
 const banners = [
@@ -533,53 +431,6 @@ onMounted(async () => {
   }
 });
 
-// 事件处理
-const handleMenuSelect = (key) => {
-  switch (key) {
-    case 'home':
-      router.push('/home');
-      break;
-    case 'jobs':
-      router.push('/jobs');
-      break;
-    case 'resources':
-      router.push('/resources');
-      break;
-    case 'community':
-      router.push('/community');
-      break;
-    case 'events':
-      router.push('/events');
-      break;
-  }
-};
-
-const handleUserAction = (key) => {
-  switch (key) {
-    case 'profile':
-      router.push('/api/user/info');
-      break;
-    case 'resumes':
-      router.push('/resumes');
-      break;
-    case 'collections':
-      router.push('/collections');
-      break;
-    case 'logout':
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      isLogin.value = false;
-      message.success('已退出登录');
-      router.push('/login');
-      break;
-  }
-};
-
-const handleSearch = () => {
-  if (searchQuery.value.trim()) {
-    router.push(`/search?keyword=${encodeURIComponent(searchQuery.value)}`);
-  }
-};
 
 const handleBannerClick = (banner) => {
   router.push(banner.link);
@@ -643,24 +494,6 @@ const seeMore = (type) => {
 .section-header h2 {
   font-size: 20px;
   font-weight: 600;
-}
-
-/* 头部导航 */
-.header {
-  background-color: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 0;
-}
-
-.header-content {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 64px;
 }
 
 .logo {

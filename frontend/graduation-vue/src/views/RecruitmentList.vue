@@ -1,139 +1,156 @@
 <template>
   <div class="recruitment-list-page">
-    <div class="page-header">
-      <h2>我的招聘信息</h2>
-      <n-button 
-        type="primary" 
-        @click="router.push('/enterprise/recruitments/create')"
-      >
-        发布新招聘
-      </n-button>
-    </div>
-    
+    <!-- 使用修复后的手动表格组件 -->
     <n-card>
-      <n-table 
+      <manual-table 
         :data="recruitments" 
         :columns="columns"
-        row-key="id"
-      >
-        <template #status="{ row }">
-          <n-tag type="success" v-if="row.is_published">已发布</n-tag>
-          <n-tag type="default" v-else>未发布</n-tag>
-        </template>
-        
-        <template #actions="{ row }">
-          <n-button 
-            text 
-            size="small" 
-            @click="handleEdit(row.id)"
-          >
-            编辑
-          </n-button>
-          <n-button 
-            text 
-            size="small" 
-            @click="handleTogglePublish(row)"
-          >
-            {{ row.is_published ? '下架' : '发布' }}
-          </n-button>
-          <n-button 
-            text 
-            size="small" 
-            type="error"
-            @click="handleDelete(row.id)"
-          >
-            删除
-          </n-button>
-        </template>
-      </n-table>
+        :bordered="true"
+      />
     </n-card>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { h, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { NTable, NButton, NCard, NTag, useMessage } from 'naive-ui'
+import { 
+  NDataTable, NButton, NCard, NTag, NSpace, 
+  useMessage 
+} from 'naive-ui'
 import axios from '@/utils/axios'
 
-const recruitments = ref([])
+// ✅ 修复后的手动表格组件
+const ManualTable = (props) => {
+  console.log('🔧 ManualTable渲染，数据量:', props.data?.length)
+  return h(NDataTable, {
+    data: props.data,
+    columns: props.columns,
+    bordered: props.bordered,
+    style: { width: '100%' },
+    'row-key': (row) => row.id
+  })
+}
+
+// 验证组件导入
+console.log('🔍 组件导入检查:', {
+  NDataTable: NDataTable ? '✅ 已导入' : '❌ 未定义',
+  ManualTable: ManualTable ? '✅ 已定义' : '❌ 未定义'
+})
+
 const router = useRouter()
 const message = useMessage()
-
-const columns = [
+const recruitments = ref([])
+const loading = ref(false)
+console.log('Naive UI检查:', {
+  naive: window.naive,
+  NTable: window.NTable
+})
+// 列定义保持不变
+const columns = ref([
   {
     title: '标题',
     key: 'title',
-    width: 200
+    width: 200,
+    ellipsis: { tooltip: true }
   },
   {
-    title: '职位',
-    key: 'job'
+    title: '岗位名称',
+    key: 'job',
+    ellipsis: { tooltip: true }
   },
   {
     title: '工作地点',
-    key: 'work_location'
+    key: 'work_location',
+    ellipsis: { tooltip: true }
   },
   {
     title: '薪资',
-    key: 'salary'
+    key: 'salary',
+    width: 120
   },
   {
     title: '状态',
     key: 'status',
-    render: 'status'
+    width: 100,
+    render: (row) => {
+      return h(NTag, {
+        type: row.status === 'PUBLISHED' ? 'success' : 
+              row.status === 'DRAFT' ? 'warning' : 'default'
+      }, () => row.status === 'PUBLISHED' ? '已发布' : 
+               row.status === 'DRAFT' ? '草稿' : '其他')
+    }
   },
   {
     title: '发布时间',
     key: 'created_at',
-    width: 160
+    width: 180,
+    render: (row) => new Date(row.created_at).toLocaleDateString()
   },
   {
     title: '操作',
     key: 'actions',
-    render: 'actions',
-    width: 200
+    width: 200,
+    render: (row) => {
+      return h(NSpace, { size: 'small' }, () => [
+        h(NButton, {
+          text: true,
+          size: 'small',
+          onClick: () => handleEdit(row.id)
+        }, () => '编辑'),
+        h(NButton, {
+          text: true,
+          size: 'small',
+          onClick: () => handleTogglePublish(row)
+        }, () => row.status === 'PUBLISHED' ? '下架' : '发布'),
+        h(NButton, {
+          text: true,
+          size: 'small',
+          type: 'error',
+          onClick: () => handleDelete(row.id)
+        }, () => '删除')
+      ])
+    }
   }
-]
+])
 
-// 获取招聘信息列表
+// 数据获取和方法保持不变
 const fetchRecruitments = async () => {
   try {
-    const response = await axios.get('/api/recruitments/')
+    loading.value = true
+    const response = await axios.get('/recruitments/')
     recruitments.value = response.data
+    console.log('📊 数据加载完成，条数:', recruitments.value.length)
   } catch (error) {
-    console.error('获取招聘信息失败:', error)
+    console.error('❌ 数据加载失败:', error)
+    message.error('获取数据失败')
+  } finally {
+    loading.value = false
   }
 }
 
-// 编辑招聘信息
 const handleEdit = (id) => {
   router.push(`/enterprise/recruitments/${id}/edit`)
 }
 
-// 切换发布状态
 const handleTogglePublish = async (row) => {
   try {
-    await axios.patch(`/api/recruitments/${row.id}/`, {
-      is_published: !row.is_published
-    })
-    row.is_published = !row.is_published
-    message.success(`招聘信息已${row.is_published ? '发布' : '下架'}`)
+    const newStatus = row.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED'
+    await axios.patch(`/recruitments/${row.id}/`, { status: newStatus })
+    row.status = newStatus
+    message.success('状态更新成功')
   } catch (error) {
-    console.error('更新发布状态失败:', error)
     message.error('操作失败')
   }
 }
 
-// 删除招聘信息
 const handleDelete = async (id) => {
-  if (confirm('确定要删除这条招聘信息吗？')) {
+  if (confirm('确定删除吗？')) {
     try {
-      await axios.delete(`/api/recruitments/${id}/`)
+      await axios.delete(`/recruitments/${id}/`)
       recruitments.value = recruitments.value.filter(item => item.id !== id)
       message.success('删除成功')
     } catch (error) {
-      console.error('删除招聘信息失败:', error)
       message.error('删除失败')
     }
   }
@@ -143,16 +160,3 @@ onMounted(() => {
   fetchRecruitments()
 })
 </script>
-
-<style scoped>
-.recruitment-list-page {
-  padding: 20px;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-</style>

@@ -674,23 +674,32 @@ const loadMoreSearch = async () => {
   padding: 24px;
 }
 
-.content-grid {
-  max-width: 1440px;
-  margin: 0 auto;
+.community-layout.content-grid {
+  display: grid !important;
+  grid-template-columns: 20% 50% 30% !important;
+  gap: 24px !important;
+  width: 100% !important;
 }
 
-.sidebar {
-  padding: 16px;
+/* 确保网格项不被压缩 */
+.community-layout .n-grid-item {
+  min-width: 0 !important; /* 允许内容收缩 */
+  width: 100% !important;
+}
+
+/* 侧边栏最小宽度保护 */
+.community-layout .sidebar {
+  min-width: 250px !important;
+  max-width: 300px !important;
 }
 
 .filter-group {
   margin-bottom: 16px;
 }
 
-.post-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.community-layout .post-list {
+  min-width: 400px !important;
+  flex: 1 !important;
 }
 
 .post-card {
@@ -743,10 +752,9 @@ const loadMoreSearch = async () => {
   margin-top: 16px;
 }
 
-.right-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.community-layout .right-sidebar {
+  min-width: 250px !important;
+  max-width: 300px !important;
 }
 
 

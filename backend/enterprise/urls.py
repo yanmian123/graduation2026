@@ -10,4 +10,5 @@ router.register(r'recruitments', RecruitmentViewSet, basename='recruitment')  # 
 # 应用内路由
 urlpatterns = [
     path('', include(router.urls)),
+    
 ]

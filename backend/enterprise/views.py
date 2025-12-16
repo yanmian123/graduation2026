@@ -3,7 +3,18 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Enterprise, Recruitment
 from .serializers import EnterpriseSerializer, RecruitmentSerializer
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser # 支持文件上传
+from django.db.models import Count, Q
+from django.utils import timezone
 
+
+
+# 新增：企业联系信息序列化器
+class EnterpriseContactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Enterprise
+        fields = ["name", "contact_person", "contact_phone", "contact_email"]
+        
 # 自定义权限：仅企业主能操作自己的信息
 class IsEnterpriseOwner(permissions.BasePermission):
     """验证对象是否属于当前企业用户"""
@@ -26,7 +37,8 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
     """
     serializer_class = EnterpriseSerializer
     permission_classes = [permissions.IsAuthenticated, IsEnterpriseOwner]
-
+    parser_classes = [JSONParser,MultiPartParser, FormParser]  # 支持文件上传
+    
     def get_queryset(self):
         # 只能查询自己的企业信息
         return Enterprise.objects.filter(user=self.request.user)
@@ -34,6 +46,22 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # 创建时自动绑定当前登录用户
         serializer.save(user=self.request.user)
+        
+    # 新增：专门处理logo上传的方法
+    @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser])
+    def upload_logo(self, request, pk=None):
+        enterprise = self.get_object()# 获取当前操作的企业实例（通过 pk 主键）
+        if 'logo' in request.FILES:# 检查请求中是否包含 'logo' 文件
+            enterprise.logo = request.FILES['logo'] # 保存文件到企业的 logo 字段
+            enterprise.save()# 保存企业实例
+            return Response({
+                'status': 'success',
+                'logo_url': enterprise.logo.url # 返回上传后的 logo 访问路径
+            })
+        return Response(
+            {'error': '未提供logo文件'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 # 招聘信息视图集
 class RecruitmentViewSet(viewsets.ModelViewSet):
@@ -63,23 +91,55 @@ class RecruitmentViewSet(viewsets.ModelViewSet):
             return Recruitment.objects.filter(enterprise=user.enterprise_profile)
         else:
             # 普通用户（求职者）：仅查看已发布的
-            return Recruitment.objects.filter(is_published=True)
+            return Recruitment.objects.filter(status="PUBLISHED")
 
     def perform_create(self, serializer):
         """创建招聘信息时，自动关联当前企业"""
         # 确保用户已完善企业信息
         if not hasattr(self.request.user, "enterprise_profile"):
             raise serializers.ValidationError("请先完善企业信息才能发布招聘")
-        serializer.save(enterprise=self.request.user.enterprise_profile)
+        # 获取前端传递的 is_published 字段
+        is_published = self.request.data.get('is_published', True)
+        
+        serializer.save(
+            enterprise=self.request.user.enterprise_profile,
+            status="PUBLISHED" if is_published else "DRAFT"
+        )
 
     @action(detail=True, methods=["get"])
     def contact(self, request, pk=None):
-        """求职者获取企业联系方式（仅返回联系信息，隐藏敏感字段）"""
+        """求职者获取企业联系方式（使用序列化器）"""
         recruitment = self.get_object()
-        contact_data = {
-            "enterprise_name": recruitment.enterprise.name,
-            "contact_person": recruitment.enterprise.contact_person,
-            "contact_phone": recruitment.enterprise.contact_phone,
-            "contact_email": recruitment.enterprise.contact_email
+        serializer = EnterpriseContactSerializer(recruitment.enterprise)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """获取企业招聘统计信息"""
+        if not hasattr(request.user, "enterprise_profile"):
+            return Response({"error": "请先完善企业信息"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        enterprise = request.user.enterprise_profile
+        recruitments = Recruitment.objects.filter(enterprise=enterprise)
+        
+        # 统计活跃招聘（已发布且未过期）
+        active = recruitments.filter(
+            status="PUBLISHED", 
+            deadline__gte=timezone.now().date()
+        ).count()
+        
+        # 统计收到的简历（需要根据你的简历模型调整）
+        # 这里暂时返回0，你需要根据实际简历模型实现
+        resumes = 0
+        
+        # 统计待面试（需要根据你的面试模型调整）
+        # 这里暂时返回0，你需要根据实际面试模型实现
+        interviews = 0
+        
+        data = {
+            'active': active,
+            'resumes': resumes,
+            'interviews': interviews
         }
-        return Response(contact_data)
+        
+        return Response(data)

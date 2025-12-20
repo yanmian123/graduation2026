@@ -34,3 +34,4 @@ class ResumeSerializer(serializers.ModelSerializer):
         # 从上下文获取请求对象（需在视图中传递 context={'request': request}）
         user = self.context['request'].user
         return Resume.objects.create(user=user, **validated_data)
+    

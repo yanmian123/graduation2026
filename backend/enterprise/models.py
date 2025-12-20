@@ -222,9 +222,11 @@ class Recruitment(models.Model):
         return self.status == "PUBLISHED" and self.deadline < timezone.now().date()
     
 
+# 在文档1的JobApplication模型后添加新的申请状态和关联简历
 class JobApplication(models.Model):
     recruitment = models.ForeignKey(Recruitment, on_delete=models.CASCADE)
     applicant = models.ForeignKey(User, on_delete=models.CASCADE)
+    resume = models.ForeignKey('resume.Resume', on_delete=models.CASCADE, null=True, blank=True)  # 关联简历
     status = models.CharField(max_length=20, choices=[
         ("PENDING", "待处理"),
         ("VIEWED", "已查看"), 
@@ -233,3 +235,11 @@ class JobApplication(models.Model):
         ("HIRED", "已录用")
     ])
     applied_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['recruitment', 'applicant']  # 防止重复投递
+        verbose_name = "职位申请"
+        verbose_name_plural = "职位申请"
+
+    def __str__(self):
+        return f"{self.applicant.username}申请{self.recruitment.title}"

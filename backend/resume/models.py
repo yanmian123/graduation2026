@@ -38,3 +38,4 @@ class Resume(models.Model):
         verbose_name = '简历'
         verbose_name_plural = '简历'
         ordering = ['-updated_at']  # 按更新时间倒序
+        

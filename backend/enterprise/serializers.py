@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Enterprise, Recruitment
+from .models import Enterprise, Recruitment, JobApplication
 
 class EnterpriseSerializer(serializers.ModelSerializer):
     """企业信息序列化器"""
@@ -53,3 +53,20 @@ class RecruitmentSerializer(serializers.ModelSerializer):
             else:
                 validated_data['status'] = "DRAFT"
         return super().update(instance, validated_data)
+    
+    
+# 在文档2中添加
+class JobApplicationSerializer(serializers.ModelSerializer):
+    recruitment_title = serializers.CharField(source='recruitment.title', read_only=True)
+    enterprise_name = serializers.CharField(source='recruitment.enterprise.name', read_only=True)
+    applicant_name = serializers.CharField(source='applicant.username', read_only=True)
+    resume_name = serializers.CharField(source='resume.name', read_only=True)
+
+    class Meta:
+        model = JobApplication
+        fields = [
+            "id", "recruitment", "recruitment_title", "applicant", 
+            "applicant_name", "resume", "resume_name", "status", 
+            "applied_at", "enterprise_name"
+        ]
+        read_only_fields = ["applicant", "applied_at"]

@@ -1,8 +1,9 @@
 from django.shortcuts import render
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, status, serializers
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
+from rest_framework.decorators import action
 from .models import Resume
 from .serializers import ResumeSerializer
 import logging
@@ -115,3 +116,4 @@ class PdfUploadView(APIView):
             # 如果不需要关联简历，直接保存文件（可选）
             # 这里可根据需求处理，例如返回文件URL
             return Response({'error': '请指定简历ID'}, status=400)
+

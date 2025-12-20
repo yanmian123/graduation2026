@@ -1,8 +1,9 @@
 from rest_framework import viewsets, permissions, status, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Enterprise, Recruitment
-from .serializers import EnterpriseSerializer, RecruitmentSerializer
+from .models import Enterprise, Recruitment, JobApplication
+from resume.models import Resume
+from .serializers import EnterpriseSerializer, RecruitmentSerializer, JobApplicationSerializer
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser # 支持文件上传
 from django.db.models import Count, Q
 from django.utils import timezone
@@ -72,15 +73,20 @@ class RecruitmentViewSet(viewsets.ModelViewSet):
     """
     serializer_class = RecruitmentSerializer
 
+
     def get_permissions(self):
-        """动态权限：列表/详情允许所有登录用户；创建/修改仅企业主"""
-        if self.action in ["list", "retrieve", "contact"]:
-            # 求职者可查看
+        """动态权限控制"""
+        if self.action in ["list", "retrieve", "contact", "apply"]:
+            # 这些动作对所有认证用户开放
+            permission_classes = [permissions.IsAuthenticated]
+        elif self.action == "stats":
+            # 统计信息需要企业用户
             permission_classes = [permissions.IsAuthenticated]
         else:
-            # 企业主才能创建/修改
+            # 其他动作（CRUD）需要企业主权限
             permission_classes = [permissions.IsAuthenticated, IsEnterpriseOwner]
         return [permission() for permission in permission_classes]
+    
 
     def get_queryset(self):
         """动态查询集：企业查自己的，求职者查已发布的"""
@@ -143,3 +149,77 @@ class RecruitmentViewSet(viewsets.ModelViewSet):
         }
         
         return Response(data)
+    
+    
+    @action(detail=True, methods=['post'])
+    def apply(self, request, pk=None):
+        """申请职位"""
+        recruitment = self.get_object()
+        
+        # 获取前端传递的简历ID
+        resume_id = request.data.get('resume_id')
+        if not resume_id:
+            return Response(
+                {"error": "请选择要投递的简历"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 检查简历是否存在且属于当前用户
+        try:
+            resume = Resume.objects.get(id=resume_id, user=request.user)
+        except Resume.DoesNotExist:
+            return Response(
+                {"error": "简历不存在或不属于当前用户"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 检查是否已经申请过
+        if JobApplication.objects.filter(
+            recruitment=recruitment, 
+            applicant=request.user
+        ).exists():
+            return Response(
+                {"error": "您已经申请过该职位"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 创建申请记录
+        application = JobApplication.objects.create(
+            recruitment=recruitment,
+            applicant=request.user,
+            resume=resume,
+            status="PENDING"
+        )
+        
+        serializer = JobApplicationSerializer(application)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+# 在文档4的views.py中添加
+class JobApplicationViewSet(viewsets.ModelViewSet):
+    """职位申请管理"""
+    serializer_class = JobApplicationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # 用户只能查看自己的申请记录
+        return JobApplication.objects.filter(applicant=self.request.user)
+
+    def perform_create(self, serializer):
+        recruitment_id = self.request.data.get('recruitment')
+        resume_id = self.request.data.get('resume')
+        
+        # 检查是否已经申请过
+        if JobApplication.objects.filter(
+            recruitment_id=recruitment_id, 
+            applicant=self.request.user
+        ).exists():
+            raise serializers.ValidationError("您已经申请过该职位")
+        
+        # 检查简历是否存在且属于当前用户
+        try:
+            resume = Resume.objects.get(id=resume_id, user=self.request.user)
+        except Resume.DoesNotExist:
+            raise serializers.ValidationError("简历不存在或不属于当前用户")
+        
+        serializer.save(applicant=self.request.user, resume=resume)
+

@@ -50,7 +50,7 @@
           >
             <div class="action-icon">
               <n-icon size="32" color="#18a058">
-                <FileText />
+                <DocumentText />
               </n-icon>
             </div>
             <div class="action-info">
@@ -78,7 +78,7 @@
           <n-card 
             class="action-card" 
             hoverable
-            @click="$router.push('/enterprise/resumes')"
+            @click="$router.push('/enterprise/applications')"
           >
             <div class="action-icon">
               <n-icon size="32" color="#f59e0b">
@@ -117,37 +117,18 @@
         </div>
         
         <n-card>
-          <n-table 
+
+                <!-- 添加调试信息 -->
+      <div v-if="debug" style="background: #f0f0f0; padding: 10px; margin-bottom: 10px;">
+        数据调试: {{ recentRecruitments.length }} 条记录
+        <pre>{{ JSON.stringify(recentRecruitments, null, 2) }}</pre>
+      </div>
+          <n-data-table 
             :data="recentRecruitments" 
-            :columns="columns"
-            row-key="id"
-          >
-            <!-- 状态列插槽 -->
-            <template #cell(status)="{ row }">
-              <n-tag type="success" v-if="row.is_published">已发布</n-tag>
-              <n-tag type="default" v-else>未发布</n-tag>
-            </template>
-            
-            <!-- 操作列插槽 -->
-            <template #cell(actions)="{ row }">
-              <div class="table-actions">
-                <n-button 
-                  text 
-                  size="small" 
-                  @click="$router.push(`/enterprise/recruitments/edit/${row.id}`)"
-                >
-                  编辑
-                </n-button>
-                <n-button 
-                  text 
-                  size="small" 
-                  @click="handleViewApplications(row.id)"
-                >
-                  查看申请
-                </n-button>
-              </div>
-            </template>
-          </n-table>
+            :columns="recentColumns"
+            :bordered="true"
+            :row-key="rowKey"
+          />
         </n-card>
       </section>
     </main>
@@ -164,20 +145,35 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+  const debug = ref(true);
+  const tableLoading = ref(false);
+import { h, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
 import { 
-  // BriefcaseBusiness, 
-  // FileText, 
+  DocumentText,
   List, 
   Briefcase, 
   BarChart,
   LogOut,
   Settings
 } from '@vicons/ionicons5';
-import { NLayoutHeader, NMenu, NDropdown, NButton, NCard, NTag, NIcon, NAvatar, NTable } from 'naive-ui';
+import {  
+  NButton, 
+  NCard, 
+  NIcon, 
+  NAvatar, 
+  NDataTable, 
+  NSpace, 
+  NTag  // 添加 NTag 导入
+} from 'naive-ui';
 import axios from '@/utils/axios';
+
+// 修复1：定义 rowKey 函数
+const rowKey = (row) => row.id;
+
+// 修复2：定义 recentRecruitments 变量
+const recentRecruitments = ref([]);
 
 // 路由与消息提示
 const router = useRouter();
@@ -194,49 +190,91 @@ const activeRecruitments = ref(0);
 const receivedResumes = ref(0);
 const pendingInterviews = ref(0);
 
-// 导航菜单配置
-const menuOptions = [
-  { key: 'dashboard', label: '控制台' },
-  { key: 'recruitments', label: '招聘管理' },
-  { key: 'resumes', label: '简历管理' },
-  { key: 'statistics', label: '数据统计' }
-];
-
-// 用户下拉菜单
-const userDropdownOptions = [
-  { key: 'settings', label: '账号设置', icon: Settings },
-  { key: 'logout', label: '退出登录', type: 'warning', icon: LogOut }
-];
-
-// 表格列定义（移除了JSX的render函数）
-const columns = [
-  { title: '职位名称', key: 'title' },
-  { title: '工作地点', key: 'work_location' },
-  { title: '薪资范围', key: 'salary' },
-  { title: '发布时间', key: 'created_at' },
-  { title: '状态', key: 'status' },  // 改为通过模板插槽实现
-  { title: '操作', key: 'actions' }   // 改为通过模板插槽实现
-];
-
-// 最近招聘数据
-const recentRecruitments = ref([
+// 最近招聘的列定义
+const recentColumns = [
   {
-    id: 1,
-    title: '前端开发工程师',
-    work_location: '北京',
-    salary: '15k-25k',
-    created_at: '2024-09-10',
-    is_published: true
+    title: '标题',
+    key: 'title',
+    ellipsis: { tooltip: true },
   },
   {
-    id: 2,
-    title: '产品经理',
-    work_location: '上海',
-    salary: '20k-30k',
-    created_at: '2024-09-05',
-    is_published: true
+    title: '职位名称',
+    key: 'job',
+    width: 200,
+    ellipsis: { tooltip: true }
+  },
+  {
+    title: '薪资范围',
+    key: 'salary',
+    width: 120,
+    render: (row) => {
+      const salary = row.salary || '面议';
+      return salary;
+    }
+  },
+  {
+    title: '状态',
+    key: 'status',
+    width: 100,
+    render: (row) => {
+      // 兼容多种状态字段
+      const status = row.status || 
+                   (row.is_published ? 'PUBLISHED' : 'DRAFT') || 
+                   (row.published ? 'PUBLISHED' : 'DRAFT') || 
+                   'DRAFT';
+      
+      const type = status === 'PUBLISHED' ? 'success' : 
+                  status === 'DRAFT' ? 'warning' : 'default';
+      const text = status === 'PUBLISHED' ? '已发布' : 
+                  status === 'DRAFT' ? '草稿' : '其他';
+      
+      return h(NTag, { type }, { default: () => text });
+    }
+  },
+  {
+    title: '发布时间',
+    key: 'created_at',
+    width: 180,
+    render: (row) => {
+      // 处理多种日期字段
+      const dateStr = row.created_at || row.publish_time || row.create_time;
+      if (!dateStr) return '-';
+      try {
+        return new Date(dateStr).toLocaleDateString();
+      } catch {
+        return dateStr;
+      }
+    }
+  },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 200,
+    render: (row) => {
+      return h(NSpace, { size: 'small' }, {
+        default: () => [
+          h(NButton, {
+            text: true,
+            size: 'small',
+            onClick: () => handleEditRecent(row.id),
+            key: 'edit'
+          }, { default: () => '编辑' }),
+          h(NButton, {
+            text: true,
+            size: 'small',
+            onClick: () => handleViewApplications(row.id),
+            key: 'view'
+          }, { default: () => '查看申请' })
+        ]
+      });
+    }
   }
-]);
+];
+
+// 编辑最近招聘的函数
+const handleEditRecent = (id) => {
+  router.push(`/enterprise/recruitments/edit/${id}`);
+};
 
 // 生命周期
 onMounted(async () => {
@@ -247,168 +285,97 @@ onMounted(async () => {
       // 获取企业信息
       const enterpriseRes = await axios.get('/enterprises/');
       console.log('企业信息API完整响应:', enterpriseRes);
-      console.log('响应数据:', enterpriseRes.data);
       
       if (enterpriseRes.data) {
         let enterpriseData = enterpriseRes.data;
         
-        // 处理可能的数组响应
-        if (Array.isArray(enterpriseData)) {
-          if (enterpriseData.length > 0) {
-            enterpriseData = enterpriseData[0];
-            console.log('从数组中提取到企业数据:', enterpriseData);
-          } else {
-            console.log('企业信息数组为空');
-            enterpriseData = null;
-          }
+        if (Array.isArray(enterpriseData) && enterpriseData.length > 0) {
+          enterpriseData = enterpriseData[0];
         }
         
         if (enterpriseData && enterpriseData.name) {
           enterpriseLogo.value = enterpriseData.logo || '';
           enterpriseName.value = enterpriseData.name;
           enterpriseDesc.value = enterpriseData.description || '';
-          console.log('成功设置企业信息:', {
-            name: enterpriseName.value,
-            desc: enterpriseDesc.value
-          });
-        } else {
-          console.log('企业数据无效或为空');
-          enterpriseName.value = '';
-          enterpriseDesc.value = '';
         }
-      } else {
-        console.log('企业信息响应数据为空');
-        enterpriseName.value = '';
-        enterpriseDesc.value = '';
       }
       
-      // 临时处理统计数据（避免404错误）
-      activeRecruitments.value = 0;
-      receivedResumes.value = 0;
-      pendingInterviews.value = 0;
-      
-      // 获取最近招聘
-      try {
-        const jobsRes = await axios.get('/recruitments/?limit=5');
-        if (jobsRes.data && jobsRes.data.results) {
-          recentRecruitments.value = jobsRes.data.results;
-          activeRecruitments.value = recentRecruitments.value.length;
-        }
-      } catch (jobError) {
-        console.error('获取招聘信息失败:', jobError);
-      }
+      // 获取招聘信息
+      await fetchRecentRecruitments();
       
     } catch (error) {
       console.error('获取企业数据失败:', error);
-      // 设置默认值
-      enterpriseName.value = '';
-      enterpriseDesc.value = '';
-    }
-  } else {
-    router.push('/login');
-  }
-});onMounted(async () => {
-  if (isLogin.value) {
-    try {
-      console.log('开始获取企业信息...');
-      
-      // 获取企业信息
-      const enterpriseRes = await axios.get('/enterprises/');
-      console.log('企业信息API完整响应:', enterpriseRes);
-      console.log('响应数据:', enterpriseRes.data);
-      
-      if (enterpriseRes.data) {
-        let enterpriseData = enterpriseRes.data;
-        
-        // 处理可能的数组响应
-        if (Array.isArray(enterpriseData)) {
-          if (enterpriseData.length > 0) {
-            enterpriseData = enterpriseData[0];
-            console.log('从数组中提取到企业数据:', enterpriseData);
-          } else {
-            console.log('企业信息数组为空');
-            enterpriseData = null;
-          }
-        }
-        
-        if (enterpriseData && enterpriseData.name) {
-          enterpriseLogo.value = enterpriseData.logo || '';
-          enterpriseName.value = enterpriseData.name;
-          enterpriseDesc.value = enterpriseData.description || '';
-          console.log('成功设置企业信息:', {
-            name: enterpriseName.value,
-            desc: enterpriseDesc.value
-          });
-        } else {
-          console.log('企业数据无效或为空');
-          enterpriseName.value = '';
-          enterpriseDesc.value = '';
-        }
-      } else {
-        console.log('企业信息响应数据为空');
-        enterpriseName.value = '';
-        enterpriseDesc.value = '';
-      }
-      
-      // 临时处理统计数据（避免404错误）
-      activeRecruitments.value = 0;
-      receivedResumes.value = 0;
-      pendingInterviews.value = 0;
-      
-      // 获取最近招聘
-      try {
-        const jobsRes = await axios.get('/recruitments/?limit=5');
-        if (jobsRes.data && jobsRes.data.results) {
-          recentRecruitments.value = jobsRes.data.results;
-          activeRecruitments.value = recentRecruitments.value.length;
-        }
-      } catch (jobError) {
-        console.error('获取招聘信息失败:', jobError);
-      }
-      
-    } catch (error) {
-      console.error('获取企业数据失败:', error);
-      // 设置默认值
-      enterpriseName.value = '';
-      enterpriseDesc.value = '';
     }
   } else {
     router.push('/login');
   }
 });
 
+const fetchRecentRecruitments = async () => {
+  tableLoading.value = true;
+  try {
+    const jobsRes = await axios.get('/recruitments/?limit=5');
+    console.log('🔍 原始API响应:', jobsRes);
+    
+    if (jobsRes.data) {
+      // 处理不同的响应格式
+      let data = jobsRes.data;
+      
+      // 如果数据在 results 字段中
+      if (jobsRes.data.results) {
+        data = jobsRes.data.results;
+        console.log('📊 从results字段获取数据:', data);
+      }
+      
+      // 确保数据是数组
+      if (Array.isArray(data)) {
+        recentRecruitments.value = data;
+        console.log('✅ 成功设置招聘数据:', recentRecruitments.value);
+        
+        // 检查数据结构
+        if (recentRecruitments.value.length > 0) {
+          console.log('📋 第一条数据示例:', recentRecruitments.value[0]);
+        }
+      } else {
+        console.warn('⚠️ 数据不是数组格式:', data);
+        recentRecruitments.value = [];
+      }
+      
+      activeRecruitments.value = recentRecruitments.value.length;
+    }
+  } catch (jobError) {
+    console.error('❌ 获取招聘信息失败:', jobError);
+    // 设置默认数据
+    recentRecruitments.value = getDefaultData();
+  } finally {
+    tableLoading.value = false;
+    debug.value = false; // 调试完成后关闭
+  }
+};
+
+// 默认数据函数
+const getDefaultData = () => {
+  return [
+    {
+      id: 1,
+      title: '前端开发工程师',
+      work_location: '北京',
+      salary: '15k-25k',
+      created_at: '2024-09-10',
+      status: 'PUBLISHED'
+    },
+    {
+      id: 2,
+      title: '产品经理',
+      work_location: '上海',
+      salary: '20k-30k',
+      created_at: '2024-09-05',
+      status: 'PUBLISHED'
+    }
+  ];
+};
+
 // 事件处理
-const handleMenuSelect = (key) => {
-  switch (key) {
-    case 'dashboard':
-      router.push('/enterprise');
-      break;
-    case 'recruitments':
-      router.push('/enterprise/recruitments');
-      break;
-    case 'resumes':
-      router.push('/enterprise/resumes');
-      break;
-    case 'statistics':
-      router.push('/enterprise/statistics');
-      break;
-  }
-};
-
-const handleUserAction = (key) => {
-  switch (key) {
-    case 'settings':
-      router.push('/enterprise/settings');
-      break;
-    case 'logout':
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      message.success('已退出登录');
-      router.push('/login');
-      break;
-  }
-};
-
 const handleViewApplications = (jobId) => {
   router.push(`/enterprise/recruitments/${jobId}/applications`);
 };

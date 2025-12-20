@@ -34,7 +34,13 @@ import {
   NResult,
   NSpace,
   NCollapse,
-  NCollapseItem
+  NCollapseItem,
+  NModal, 
+  NAlert, 
+  NRadio, 
+  NRadioGroup, 
+  NText,
+  NDataTable,
 } from 'naive-ui'
 
 // 创建Naive UI实例
@@ -64,7 +70,13 @@ const naive = create({
     NResult,
     NSpace,
     NCollapse,
-    NCollapseItem
+    NCollapseItem,
+    NModal, 
+    NAlert, 
+    NRadio, 
+    NRadioGroup, 
+    NText,
+    NDataTable,
   ]
 })
 const app = createApp(App)

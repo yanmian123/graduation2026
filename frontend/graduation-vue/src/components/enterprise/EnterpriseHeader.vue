@@ -5,7 +5,7 @@
       <!-- 企业品牌标识 -->
       <div class="enterprise-brand" @click="$router.push('/enterprise')">
         <n-icon size="32" class="brand-icon">
-          <Building />
+          <Business />
         </n-icon>
         <span class="brand-text">企业服务中心</span>
       </div>
@@ -15,7 +15,8 @@
         mode="horizontal" 
         :options="enterpriseMenuOptions" 
         class="enterprise-nav-menu"
-        @select="handleMenuSelect"
+        @update-value="handleMenuSelect"
+
       />
 
       <!-- 企业用户功能区 -->
@@ -60,7 +61,7 @@ import { useRouter } from 'vue-router'
 import { 
   NMenu, NButton, NIcon, NAvatar, NDropdown 
 } from 'naive-ui'
-import {  Add, PersonCircle, Settings, LogOut } from '@vicons/ionicons5'
+import {  Add, PersonCircle, Settings, LogOut,Business } from '@vicons/ionicons5'
 // Building,
 const router = useRouter()
 
@@ -71,7 +72,7 @@ const userName = ref('企业用户')
 // 企业专属菜单
 const enterpriseMenuOptions = ref([
   { key: 'recruitments', label: '招聘管理'},
-  { key: 'resumes', label: '简历库' },
+  { key: 'applications', label: '简历库' },
   { key: 'analytics', label: '数据统计' },
   { key: 'company', label: '企业信息' }
 ])

@@ -18,7 +18,7 @@
           mode="horizontal" 
           :options="menuOptions" 
           class="main-menu"
-          @select="handleMenuSelect"
+          @update:value="handleMenuSelect"
         />
         
         <div class="user-actions">
@@ -26,9 +26,13 @@
             v-model:value="searchQuery" 
             placeholder="搜索岗位/资源" 
             class="search-input"
-            :prefix="Search"
             @keyup.enter="handleSearch"
-          />
+          >
+            <template #prefix>
+              <n-icon :component="Search" />
+            </template>
+          </n-input>
+          
           
           <n-dropdown 
             v-if="isLogin" 

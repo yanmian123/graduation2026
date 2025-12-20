@@ -8,11 +8,19 @@
       :page-sizes="[12, 24, 36, 48]"
     />
   </div>
+    <div v-if="false" style="display: none;">
+      Debug Info: 
+      currentPage: {{ currentPage }}, 
+      pageSize: {{ pageSize }},
+      totalPages: {{ totalPages }}
+    </div>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
 import { NPagination } from 'naive-ui'
+
+
 
 // 定义 props
 const props = defineProps({
@@ -54,6 +62,9 @@ watch(() => props.currentPage, (newValue) => {
 watch(() => props.pageSize, (newValue) => {
   internalPageSize.value = newValue
 })
+
+
+
 </script>
 
 <style scoped>
@@ -62,4 +73,5 @@ watch(() => props.pageSize, (newValue) => {
   justify-content: center;
   margin-top: 40px;
 }
+
 </style>

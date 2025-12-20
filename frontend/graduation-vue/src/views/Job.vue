@@ -65,20 +65,13 @@
       </div>
     </section>
 
-    <!-- 分页 -->
-    <!-- <Pagination 
-      v-if="filteredJobs.length > 0"
-      :current-page="currentPage"
-      :total-pages="totalPages"
-      :page-size="pageSize"
-      @page-change="handlePageChange"
-      @page-size-change="handlePageSizeChange"
-    /> -->
-    <Pagination 
+  <Pagination 
     v-if="filteredJobs.length > 0"
-    v-model:current-page="currentPage"
-    v-model:page-size="pageSize"
+    :current-page="currentPage"
     :total-pages="totalPages"
+    :page-size="pageSize"
+    @update:current-page="handlePageChange"
+    @update:page-size="handlePageSizeChange"
   />
   </div>
 </template>
@@ -120,6 +113,15 @@ onMounted(() => {
   fetchJobs()
 })
 
+
+const filterLocation = ref(null)
+const locationOptions = ref([
+  // 添加你的地点选项
+  { label: '北京', value: '北京' },
+  { label: '上海', value: '上海' },
+  { label: '广州', value: '广州' },
+  { label: '深圳', value: '深圳' }
+])
 
 // 保留原有的filteredJobs和paginatedJobs计算属性
 const filteredJobs = computed(() => {

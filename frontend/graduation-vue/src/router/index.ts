@@ -19,7 +19,7 @@ import RecruitmentList from '@/views/RecruitmentList.vue'; //招聘信息列表
 import RecruitmentCreate from '@/views/RecruitmentCreate.vue'; //创建招聘信息
 import Enterprisehome from '@/views/Enterprise-home.vue'; //企业首页
 import Enterpriselogin from '@/views/Enterpriselogin.vue'; //企业登录
-
+import ApplicationList from '@/views/ApplicationList.vue';//应聘者简历接收列表
 // import RecruitmentEdit from '@/views/RecruitmentEdit.vue'; //编辑招聘信息
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -46,6 +46,8 @@ const router = createRouter({
     {path: '/enterprise/recruitments/create', name: 'RecruitmentCreate', component:RecruitmentCreate,meta: { layout: 'enterprise', requiresAuth: true}},
     {path: '/enterprise/home', name: 'Enterprise-home', component:Enterprisehome,meta: { requiresAuth: true ,layout: 'enterprise'}},
     {path: '/enterprise/login', name: 'Enterpriselogin', component:Enterpriselogin,meta: { requiresAuth: false, layout:'empty' }},
+    {path: '/enterprise/applications', name: 'ApplicationList', component:ApplicationList,meta: { layout: 'enterprise', requiresAuth: true }},
+    
     // {path: '/enterprise/recruitments/:id/edit', name: 'RecruitmentEdit', component:RecruitmentEdit,meta: { requiresAuth: true }},
   ],
 })

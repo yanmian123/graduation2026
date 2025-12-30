@@ -79,6 +79,16 @@ class ResumeViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
+        # 处理文件上传
+        pdf_file = request.FILES.get('pdf_file')
+        # 处理文件上传
+        if pdf_file:
+            # 删除旧文件
+            if instance.pdf_url:
+                instance.pdf_url.delete(save=False)
+            # 保存新文件到实例
+            instance.pdf_url = pdf_file
+            instance.save()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
@@ -89,6 +99,28 @@ class ResumeViewSet(viewsets.ModelViewSet):
                 "data": serializer.data
             }
         )
+    
+    @action(detail=True, methods=['post'], url_path='delete-pdf')
+    def delete_pdf(self, request, pk=None):
+        """删除简历的PDF文件"""
+        resume = self.get_object()
+        
+        if not resume.pdf_url:
+            return Response(
+                {"code": 400, "message": "该简历没有PDF文件"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 删除PDF文件
+        resume.pdf_url.delete(save=False)  # 删除文件
+        resume.pdf_url = None  # 清空字段
+        resume.save()
+        
+        return Response({
+            "code": 200,
+            "message": "PDF文件删除成功",
+            "data": ResumeSerializer(resume).data
+        })
     
 class PdfUploadView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsResumeOwner]  # 仅登录用户可上传

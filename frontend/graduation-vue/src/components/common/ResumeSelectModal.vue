@@ -303,6 +303,8 @@ const handleAfterLeave = () => {
 }
 
 // 处理投递
+// 处理投递
+// 处理投递
 const handleSubmit = async () => {
   if (!selectedResumeId.value) {
     message.warning('请选择要投递的简历')
@@ -311,16 +313,48 @@ const handleSubmit = async () => {
 
   submitting.value = true
   try {
-    await axios.post(`/recruitments/${props.jobId}/apply/`, {
-      resume_id: selectedResumeId.value
+    console.log('发送请求数据:', {
+      recruitment: props.jobId,
+      resume: selectedResumeId.value
+      // 不包含 status 字段，由后端自动设置
     })
     
+    const response = await axios.post('/applications/', {
+      recruitment: parseInt(props.jobId),
+      resume: parseInt(selectedResumeId.value)
+    })
+    
+    console.log('投递成功响应:', response.data)
     message.success('简历投递成功！')
     emit('success')
     closeModal()
   } catch (error) {
-    console.error('投递失败:', error)
-    const errorMsg = error.response?.data?.error || '投递失败，请重试'
+    console.error('投递失败详情:', error)
+    console.error('完整的错误响应:', JSON.stringify(error.response?.data, null, 2))
+    
+    let errorMsg = '投递失败，请重试'
+    if (error.response?.data) {
+      const errorData = error.response.data
+      
+      if (errorData.status && Array.isArray(errorData.status)) {
+        errorMsg = `申请失败: ${errorData.status[0]}`
+      } else if (errorData.detail) {
+        errorMsg = errorData.detail
+      } else if (errorData.message) {
+        errorMsg = errorData.message
+      } else if (errorData.error) {
+        errorMsg = errorData.error
+      } else if (typeof errorData === 'object') {
+        // 处理其他字段错误
+        const firstErrorKey = Object.keys(errorData)[0]
+        const firstError = errorData[firstErrorKey]
+        if (Array.isArray(firstError)) {
+          errorMsg = firstError[0]
+        } else {
+          errorMsg = firstError
+        }
+      }
+    }
     message.error(errorMsg)
   } finally {
     submitting.value = false

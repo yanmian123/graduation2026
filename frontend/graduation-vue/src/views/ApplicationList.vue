@@ -21,7 +21,7 @@
 <script setup>
 import { h, ref, onMounted } from 'vue'
 import { useMessage } from 'naive-ui'
-import { NDataTable, NCard, NTag } from 'naive-ui' // 确保导入所有使用的组件
+import { NDataTable, NCard, NTag,NButton } from 'naive-ui' // 确保导入所有使用的组件
 import axios from '@/utils/axios'
 
 // 调试模式
@@ -35,15 +35,28 @@ const message = useMessage()
 // 行键函数
 const rowKey = (row) => row.id
 
+
+
+// 学历映射
+const educationMap = {
+  'HIGH_SCHOOL': '高中及以下',
+  'ASSOCIATE': '专科',
+  'BACHELOR': '本科',
+  'MASTER': '硕士',
+  'DOCTOR': '博士及以上'
+}
+
 // 列定义
 const columns = [
   {
     title: '申请人',
     key: 'applicant_name',
     render: (row) => {
-      // 兼容不同字段名
-      const name = row.applicant_name || row.applicant?.name || row.user?.name || '未知'
-      return name
+        // 优先使用快照中的姓名
+        const resumeName = row.resume_snapshot?.name || 
+                          row.resume_name || 
+                          '未知申请人'
+        return resumeName
     }
   },
   {
@@ -56,14 +69,50 @@ const columns = [
     }
   },
   {
-    title: '简历',
-    key: 'resume_name',
+    title: '学历',
+    key: 'education',
     render: (row) => {
-      // 兼容不同字段名
-      const resume = row.resume_name || row.resume?.name || row.resume?.title || '未知'
-      return resume
+      // 直接使用后端返回的education字段
+      const education = row.education
+      // 映射为中文显示
+      return educationMap[education] || education || '未填写'
     }
   },
+  {
+    title: '联系方式',
+    key: 'contact',
+    render: (row) => {
+        // 从快照获取联系方式
+        const phone = row.resume_snapshot?.phone || row.phone || '未填写'
+        const email = row.resume_snapshot?.email || row.email || '未填写'
+        return `${phone} / ${email}`
+    }
+  },
+  {
+  title: '简历',
+  key: 'resume_action',
+  render: (row) => {
+      // 检查是否有PDF文件或原始简历ID
+      const hasPdf = row.pdf_file || row.resume_snapshot?.has_pdf
+      const originalResumeId = row.resume_snapshot?.original_resume_id
+      
+      if (hasPdf && row.pdf_file) {
+          return h(NButton, {
+              size: 'small',
+              type: 'primary',
+              onClick: () => window.open(row.pdf_file, '_blank')
+          }, { default: () => '查看PDF' })
+      } else if (originalResumeId) {
+          return h(NButton, {
+              size: 'small',
+              type: 'info',
+              onClick: () => window.open(`/resumes/preview/${originalResumeId}`, '_blank')
+          }, { default: () => '查看原简历' })
+      } else {
+          return h(NTag, { type: 'default' }, { default: () => '无附件' })
+      }
+  }
+},
   {
     title: '状态',
     key: 'status',

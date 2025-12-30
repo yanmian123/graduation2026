@@ -22,5 +22,10 @@ export const updateResume = (id: number | string, data: any) => {
 
 // 5. 删除简历
 export const deleteResume = (id: number | string) => {
-  return axios.delete(`/resumes/${id}/`);
+  return axios.delete(`/resumes/${id}/`, { data: { pdf_url: null } });
 };
+
+// 专门删除PDF文件的API
+export const deleteResumePdf = (id: number | string) => {
+  return axios.post(`/resumes/${id}/delete-pdf/`);
+}

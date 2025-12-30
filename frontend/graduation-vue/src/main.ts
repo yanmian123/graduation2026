@@ -41,6 +41,7 @@ import {
   NRadioGroup, 
   NText,
   NDataTable,
+  NUpload,
 } from 'naive-ui'
 
 // 创建Naive UI实例
@@ -77,6 +78,7 @@ const naive = create({
     NRadioGroup, 
     NText,
     NDataTable,
+    NUpload,
   ]
 })
 const app = createApp(App)

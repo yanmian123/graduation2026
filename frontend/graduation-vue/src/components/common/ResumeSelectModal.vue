@@ -92,7 +92,21 @@
                       <span>{{ resume.work_experience }}</span>
                     </div>
                   </div>
-                  
+                    <div class="resume-meta">
+                      <div class="meta-item">
+                        <n-icon size="14" color="#8c8c8c"><SchoolOutline /></n-icon>
+                        <span>{{ resume.education }}</span>
+                      </div>
+                      <div class="meta-item">
+                        <n-icon size="14" color="#8c8c8c"><BriefcaseOutline /></n-icon>
+                        <span>{{ resume.work_experience }}</span>
+                      </div>
+                      <!-- 添加PDF标识 -->
+                      <div class="meta-item" v-if="resume.pdf_url">
+                        <n-icon size="14" color="#ff4d4f"><DocumentTextOutline /></n-icon>
+                        <span>含PDF简历</span>
+                      </div>
+                    </div>
                   <p class="update-time">
                     <n-icon size="12" color="#bfbfbf"><TimeOutline /></n-icon>
                     最后更新: {{ formatDate(resume.updated_at) }}
@@ -168,7 +182,6 @@
               <template #icon>
                 <n-icon><PaperPlaneOutline /></n-icon>
               </template>
-              sadasdad
               {{ submitting ? '投递中...' : `确认投递${selectedResume ? ' - ' + getSelectedResumeName() : ''}` }}
             </n-button>
           </div>
@@ -207,7 +220,7 @@ import {
   SchoolOutline,
   BriefcaseOutline,
   TimeOutline,
-  AddOutline
+  AddOutline,
 } from '@vicons/ionicons5'
 import axios from '@/utils/axios'
 
@@ -373,6 +386,8 @@ watch(() => props.show, (newVal) => {
 watch(showModal, (newVal) => {
   emit('update:show', newVal)
 })
+
+
 </script>
 
 <style scoped>

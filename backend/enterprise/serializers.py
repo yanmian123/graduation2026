@@ -60,7 +60,7 @@ class JobApplicationSerializer(serializers.ModelSerializer):
     recruitment_title = serializers.CharField(source='recruitment.title', read_only=True)
     enterprise_name = serializers.CharField(source='recruitment.enterprise.name', read_only=True)
     applicant_name = serializers.CharField(source='applicant.username', read_only=True)
-    
+    pdf_file = serializers.FileField(read_only=True)
     # 显式声明字段
     recruitment = serializers.PrimaryKeyRelatedField(
         queryset=Recruitment.objects.all(),
@@ -83,7 +83,6 @@ class JobApplicationSerializer(serializers.ModelSerializer):
     education = serializers.SerializerMethodField()
     phone = serializers.SerializerMethodField()
     email = serializers.SerializerMethodField()
-    pdf_file = serializers.FileField(required=False, allow_null=True, read_only=True)
     class Meta:
         model = JobApplication
         fields = [

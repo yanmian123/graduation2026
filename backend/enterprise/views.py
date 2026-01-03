@@ -92,7 +92,7 @@ class RecruitmentViewSet(viewsets.ModelViewSet):
         """动态权限控制"""
         if self.action in ["list", "retrieve", "contact"]:
             # 这些动作对所有认证用户开放
-            permission_classes = [permissions.IsAuthenticated, IsJobSeeker]
+            permission_classes = [permissions.IsAuthenticated]
         elif self.action == "stats":
             # 统计信息需要企业用户
             permission_classes = [permissions.IsAuthenticated,IsEnterpriseUser]
@@ -105,14 +105,22 @@ class RecruitmentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """动态查询集：企业查自己的，求职者查已发布的"""
         user = self.request.user
+        print(f"🔍 当前用户: {user.username}, 企业信息: {hasattr(user, 'enterprise_profile')}")
         # 检查用户是否有企业信息（即是否为企业用户）
         if hasattr(user, "enterprise_profile"):
             # 企业用户：查看自己的所有招聘信息
-            return Recruitment.objects.filter(enterprise=user.enterprise_profile)
+            enterprise = user.enterprise_profile
+            print(f"🔍 企业ID: {enterprise.id}, 企业名称: {enterprise.name}")
+            
+            queryset = Recruitment.objects.filter(enterprise=enterprise)
+            print(f"🔍 查询到的招聘记录数量: {queryset.count()}")
+        
+            return queryset.order_by("-created_at")
         else:
             # 普通用户（求职者）：仅查看已发布的
-            return Recruitment.objects.filter(status="PUBLISHED")
-
+            print("🔍 用户无企业信息，返回已发布的招聘信息")
+            return Recruitment.objects.filter(status="PUBLISHED").order_by("-created_at")
+    
     def perform_create(self, serializer):
         """创建招聘信息时，自动关联当前企业"""
         # 确保用户已完善企业信息
@@ -246,18 +254,34 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         context['request'] = self.request
         return context
 
-    # 在 views.py 中修改 JobApplicationViewSet 的 perform_create
+    def _copy_pdf_file(self, resume):
+        """复制PDF文件到申请记录"""
+        if resume.pdf_url and hasattr(resume.pdf_url, 'file'):  # 检查是否有PDF文件
+            # 生成新的文件名，避免冲突
+            original_name = resume.pdf_url.name
+            import os
+            from django.core.files.base import ContentFile
+            
+            # 读取原文件内容
+            resume.pdf_url.open('rb')
+            file_content = resume.pdf_url.read()
+            resume.pdf_url.close()
+            
+            # 创建新文件（返回ContentFile对象，后续会保存到FileField）
+            from django.core.files.base import ContentFile
+            return ContentFile(file_content, name=original_name)
+        return None
+
     def perform_create(self, serializer):
         import logging
         logger = logging.getLogger(__name__)
         
-        # 从验证后的数据获取对象
         recruitment = serializer.validated_data.get('recruitment')
         resume = serializer.validated_data.get('resume')
         
         logger.info(f"开始创建申请记录，recruitment: {recruitment.id}, resume: {resume.id if resume else 'None'}")
         
-        # 检查是否已经申请过（双重验证）
+        # 检查是否已经申请过
         if JobApplication.objects.filter(
             recruitment=recruitment, 
             applicant=self.request.user
@@ -265,13 +289,11 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
             logger.warning("用户已申请过该职位")
             raise serializers.ValidationError("您已经申请过该职位")
         
-        # 获取原简历（用于创建快照）
         original_resume = resume
         if not original_resume:
             logger.error("未提供简历")
             raise serializers.ValidationError("必须提供简历")
         
-        # 验证简历属于当前用户
         if original_resume.user != self.request.user:
             logger.error("简历不属于当前用户")
             raise serializers.ValidationError("简历不属于当前用户")
@@ -282,26 +304,25 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         
         # 复制PDF文件
         pdf_file = self._copy_pdf_file(original_resume)
+        logger.info(f"PDF文件处理结果: {pdf_file is not None}")
         
         try:
-            # 保存申请记录（resume设为None，使用快照）
+            # 保存申请记录
             application = serializer.save(
                 applicant=self.request.user, 
-                resume=None,  # 关键：不关联原始简历
+                resume=None,
                 resume_snapshot=resume_snapshot,
-                pdf_file=pdf_file
+                pdf_file=pdf_file  # 使用复制的PDF文件
             )
             
-            logger.info(f"成功创建申请记录，ID: {application.id}")
+            logger.info(f"成功创建申请记录，ID: {application.id}, PDF文件: {application.pdf_file}")
             return application
             
         except Exception as e:
             logger.error(f"创建申请记录失败: {str(e)}")
             raise
 
-    def _copy_pdf_file(self, resume):
-        """简化PDF处理 - 直接返回None，不复制文件"""
-        return None
+
 
     def _create_resume_snapshot(self, resume):
         """创建简历快照"""
@@ -324,53 +345,6 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         }
         return snapshot
 
-    def perform_create(self, serializer):
-        import logging
-        logger = logging.getLogger(__name__)
-        
-        recruitment = serializer.validated_data.get('recruitment')
-        resume = serializer.validated_data.get('resume')
-        
-        logger.info(f"开始创建申请记录，recruitment: {recruitment.id}, resume: {resume.id if resume else 'None'}")
-        
-        # 检查是否已经申请过（双重验证）
-        if JobApplication.objects.filter(
-            recruitment=recruitment, 
-            applicant=self.request.user
-        ).exists():
-            logger.warning("用户已申请过该职位")
-            raise serializers.ValidationError("您已经申请过该职位")
-        
-        # 获取原简历（用于创建快照）
-        original_resume = resume
-        if not original_resume:
-            logger.error("未提供简历")
-            raise serializers.ValidationError("必须提供简历")
-        
-        # 验证简历属于当前用户
-        if original_resume.user != self.request.user:
-            logger.error("简历不属于当前用户")
-            raise serializers.ValidationError("简历不属于当前用户")
-        
-        # 创建简历快照
-        resume_snapshot = self._create_resume_snapshot(original_resume)
-        logger.info(f"创建的快照数据: {resume_snapshot}")
-        
-        try:
-            # 保存申请记录（不关联原始简历，使用快照）
-            application = serializer.save(
-                applicant=self.request.user, 
-                resume=None,  # 关键：不关联原始简历
-                resume_snapshot=resume_snapshot,
-                pdf_file=None  # 不复制PDF文件
-            )
-            
-            logger.info(f"成功创建申请记录，ID: {application.id}")
-            return application
-            
-        except Exception as e:
-            logger.error(f"创建申请记录失败: {str(e)}")
-            raise
 
     @action(detail=False, methods=['get'])
     def my_applications(self, request):

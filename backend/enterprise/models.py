@@ -223,15 +223,14 @@ class Recruitment(models.Model):
     
 
 # 在文档1的JobApplication模型后添加新的申请状态和关联简历
+# 在文档1的JobApplication模型后添加新的申请状态和关联简历
 class JobApplication(models.Model):
-    recruitment = models.ForeignKey(Recruitment, on_delete=models.CASCADE)
-    applicant = models.ForeignKey(User, on_delete=models.CASCADE)
-    resume = models.ForeignKey('resume.Resume', on_delete=models.CASCADE, null=True, blank=True)  # 关联简历
-    
-    # 新增字段：存储投递时的简历快照数据
+    recruitment = models.ForeignKey(Recruitment, on_delete=models.CASCADE,verbose_name="招聘信息")
+    applicant = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="申请用户的用户名")
+    resume = models.ForeignKey('resume.Resume', on_delete=models.CASCADE, null=True, blank=True, verbose_name="简历")  # 关联简历
+        # 新增字段：存储投递时的简历快照数据
     resume_snapshot = models.JSONField(default=dict, verbose_name="简历快照")
-    pdf_file = models.FileField(upload_to='applications/resumes/', null=True, blank=True)
-    
+    pdf_file = models.FileField(upload_to='applications/resumes/%Y/%m/%d/', null=True, blank=True, verbose_name="PDF简历")
     status = models.CharField(max_length=20, choices=[
         ("PENDING", "待处理"),
         ("VIEWED", "已查看"), 

@@ -108,7 +108,92 @@
           </n-card>
         </div>
       </section>
+      <section class="applications-section" >
+        <div class="section-header">
+          <h2>最近收到的简历申请</h2>
+          <n-button text @click="$router.push('/enterprise/applications')">查看全部</n-button>
+        </div>
+        
+        <n-card>
+          <n-list v-if="!applicationsLoading">
+<!-- 修改申请列表项的显示 -->
+              <n-list-item v-for="application in applications" :key="application.id">
+                <template #prefix>
+                  <n-avatar round :size="40" :src="application.job_seeker?.avatar">
+                    <!-- 显示求职者姓名的首字母 -->
+                    {{ (application.applicant_name || application.job_seeker?.nickname || application.job_seeker?.username || 'J').charAt(0) }}
+                  </n-avatar>
+                </template>
+                
+                <div class="application-content">
+                  <div class="application-header">
+                    <!-- 显示求职者姓名 -->
+                    <span class="applicant-name">
+                      {{ application.applicant_name || application.job_seeker?.nickname || application.job_seeker?.username }}
+                    </span>
+                    <span class="apply-time">{{ formatTime(application.created_at || application.applied_at) }}</span>
+                  </div>
+                  
+                  <div class="application-details">
+                    <!-- 显示职位名称 -->
+                    <span class="job-title">
+                      申请职位: {{ application.recruitment_title || application.recruitment?.title }}
+                    </span>
+                    <n-tag v-if="application.status" :type="getStatusType(application.status)" size="small">
+                      {{ getStatusText(application.status) }}
+                    </n-tag>
+                  </div>
+                </div>
+                
+                <template #suffix>
+                  <n-button type="primary" @click="startChat(application)">
+                    联系求职者
+                  </n-button>
+                </template>
+              </n-list-item>
+          </n-list>
+          
+          <div v-if="applicationsLoading" class="loading-container">
+            <n-spin size="small" />
+            <span>加载中...</span>
+          </div>
+        </n-card>
+      </section>
 
+
+      <section class="test-section">
+  <div class="section-header">
+    <h2>测试联系功能</h2>
+  </div>
+  
+  <n-card>
+    <n-list>
+      <n-list-item>
+        <template #prefix>
+          <n-avatar round :size="40">张</n-avatar>
+        </template>
+        
+        <div class="application-content">
+          <div class="application-header">
+            <span class="applicant-name">测试用户</span>
+            <span class="apply-time">刚刚</span>
+          </div>
+          
+          <div class="application-details">
+            <span class="job-title">申请职位: 前端开发工程师</span>
+            <n-tag type="warning" size="small">待处理</n-tag>
+          </div>
+        </div>
+        
+        <template #suffix>
+          <n-button type="primary" @click="testStartChat">
+            联系求职者（测试）
+          </n-button>
+        </template>
+      </n-list-item>
+    </n-list>
+  </n-card>
+</section>
       <!-- 最近招聘信息 -->
       <section class="recent-jobs-section">
         <div class="section-header">
@@ -147,9 +232,13 @@
 <script setup>
   const debug = ref(true);
   const tableLoading = ref(false);
-import { h, ref, onMounted } from 'vue';
+  const applicationsLoading = ref(false);
+import { h, ref, onMounted , computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
+
+import { useChatStore } from '@/stores/chatStore'
+import { api } from '@/services/api'
 import { 
   DocumentText,
   List, 
@@ -174,10 +263,12 @@ const rowKey = (row) => row.id;
 
 // 修复2：定义 recentRecruitments 变量
 const recentRecruitments = ref([]);
-
+const applications = ref([])
 // 路由与消息提示
 const router = useRouter();
 const message = useMessage();
+// 初始化 chatStore
+const chatStore = useChatStore()
 
 // 状态管理
 const isLogin = ref(!!localStorage.getItem('accessToken'));
@@ -190,6 +281,139 @@ const activeRecruitments = ref(0);
 const receivedResumes = ref(0);
 const pendingInterviews = ref(0);
 
+const currentUser = computed(() => chatStore.currentUser)
+
+const startChat = async (application) => {
+  try {
+    console.log('=== 开始聊天调试信息 ===');
+    console.log('完整的申请数据:', application);
+    
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      message.error('请先登录');
+      return;
+    }
+    
+    // 获取当前用户信息
+    let currentUser = null;
+    try {
+      const enterpriseRes = await axios.get('/enterprises/');
+      console.log('企业信息响应:', enterpriseRes);
+      
+      if (enterpriseRes.data && enterpriseRes.data.length > 0) {
+        const enterprise = enterpriseRes.data[0];
+        currentUser = {
+          id: enterprise.user, // 企业信息中的用户ID
+          username: enterprise.user_info?.username || '企业用户',
+          is_enterprise: true
+        };
+        console.log('从企业信息获取的用户:', currentUser);
+      }
+    } catch (error) {
+      console.error('获取企业信息失败:', error);
+      currentUser = chatStore.currentUser;
+    }
+
+    if (!currentUser || !currentUser.id) {
+      message.error('用户信息不完整');
+      return;
+    }
+    
+    console.log('使用企业用户 ID:', currentUser.id);
+    
+    // 适配数据结构：从实际字段中提取求职者信息
+    // 适配数据结构：从实际字段中提取求职者信息
+    let jobSeekerUserId = null;
+    let jobSeekerInfo = {};
+    
+    if (application.job_seeker && application.job_seeker.id) {
+      jobSeekerUserId = application.job_seeker.id;
+      jobSeekerInfo = application.job_seeker;
+    } else if (application.applicant) {
+      jobSeekerUserId = application.applicant;
+      jobSeekerInfo = {
+        id: application.applicant,
+        username: application.applicant_name || '求职者',
+        nickname: application.resume_name || application.applicant_name || '求职者'
+      };
+    } else {
+      console.error('应用数据中缺少求职者信息:', application);
+      message.error('应用数据不完整，无法创建聊天');
+      return;
+    }
+    
+    console.log('求职者用户ID:', jobSeekerUserId);
+    
+    // 尝试获取招聘信息ID（可选）
+    let recruitmentId = null;
+    if (application.recruitment && application.recruitment.id) {
+      recruitmentId = application.recruitment.id;
+    } else if (application.recruitment_id) {
+      recruitmentId = application.recruitment_id;
+    }
+    // 如果没有招聘信息ID，也可以创建聊天
+    
+    const requestData = {
+      enterprise_user_id: currentUser.id,
+      job_seeker_user_id: jobSeekerUserId,
+    };
+    
+    // 只有在有招聘信息ID时才添加
+    if (recruitmentId) {
+      requestData.recruitment_id = recruitmentId;
+    }
+    
+    console.log('请求数据:', JSON.stringify(requestData, null, 2));
+    
+    const response = await api.post('/api/chat/chatrooms/start_chat/', requestData);
+    
+    console.log('聊天室创建成功:', response.data);
+    message.success('聊天室创建成功！');
+    router.push(`/chat/${response.data.id}`);
+  } catch (error) {
+    console.error('=== 创建聊天室失败 ===');
+    console.error('错误对象:', error);
+    
+    if (error.response) {
+      console.error('状态码:', error.response.status);
+      console.error('响应头:', error.response.headers);
+      console.error('响应数据:', error.response.data);
+      
+      if (error.response.status === 400) {
+        if (error.response.data) {
+          if (typeof error.response.data === 'object') {
+            console.error('错误详情:', JSON.stringify(error.response.data, null, 2));
+            
+            if (error.response.data.enterprise_user_id) {
+              message.error(`企业用户ID错误: ${error.response.data.enterprise_user_id}`);
+            } else if (error.response.data.job_seeker_user_id) {
+              message.error(`求职者用户ID错误: ${error.response.data.job_seeker_user_id}`);
+            } else if (error.response.data.recruitment_id) {
+              message.error(`招聘信息ID错误: ${error.response.data.recruitment_id}`);
+            } else if (error.response.data.detail) {
+              message.error(`请求错误: ${error.response.data.detail}`);
+            } else if (error.response.data.message) {
+              message.error(`错误: ${error.response.data.message}`);
+            } else {
+              message.error('请求参数错误，请检查数据格式');
+            }
+          } else {
+            console.error('错误响应文本:', error.response.data);
+            message.error(`服务器返回错误: ${error.response.data}`);
+          }
+        } else {
+          message.error('请求参数错误 (400)');
+        }
+      } else {
+        message.error(`服务器错误: ${error.response.status}`);
+      }
+    } else if (error.request) {
+      message.error('网络错误，无法连接到服务器');
+    } else {
+      message.error('未知错误: ' + error.message);
+    }
+  }
+};
 // 最近招聘的列定义
 const recentColumns = [
   {
@@ -282,7 +506,7 @@ onMounted(async () => {
     try {
       console.log('开始获取企业信息...');
       
-      // 获取企业信息
+      // 1. 获取企业信息
       const enterpriseRes = await axios.get('/enterprises/');
       console.log('企业信息API完整响应:', enterpriseRes);
       
@@ -300,8 +524,11 @@ onMounted(async () => {
         }
       }
       
-      // 获取招聘信息
+      // 2. 获取招聘信息
       await fetchRecentRecruitments();
+      
+      // 3. 获取真实的申请数据
+      await fetchApplications();
       
     } catch (error) {
       console.error('获取企业数据失败:', error);
@@ -310,6 +537,66 @@ onMounted(async () => {
     router.push('/login');
   }
 });
+
+// 新增：获取申请记录的函数
+const fetchApplications = async () => {
+  applicationsLoading.value = true;
+  try {
+    const response = await axios.get('/applications/');
+    console.log('申请记录API响应:', response);
+    
+    if (response.data) {
+      let data = response.data;
+      
+      // 处理不同的响应格式
+      if (response.data.results) {
+        data = response.data.results;
+        console.log('从results字段获取申请数据:', data);
+      }
+      
+      if (Array.isArray(data)) {
+        applications.value = data;
+        console.log('成功设置申请数据:', applications.value);
+        
+        // 更新统计数据
+        receivedResumes.value = applications.value.length;
+        pendingInterviews.value = applications.value.filter(app => 
+          app.status === 'pending' || app.status === 'PENDING'
+        ).length;
+      } else {
+        console.warn('申请数据不是数组格式:', data);
+        applications.value = [];
+      }
+    }
+  } catch (error) {
+    console.error('获取申请记录失败:', error);
+    // 可以保留模拟数据用于开发测试
+    applications.value = getMockApplications();
+  } finally {
+    applicationsLoading.value = false;
+  }
+};
+
+// 模拟数据函数（开发阶段使用）
+const getMockApplications = () => {
+  return [
+    {
+      id: 1,
+      job_seeker: {
+        id: 2, // 真实的求职者用户ID
+        username: 'zhangsan',
+        nickname: '张三',
+        avatar: ''
+      },
+      recruitment: {
+        id: 201, // 真实的招聘信息ID
+        title: '前端开发工程师'
+      },
+      status: 'pending',
+      created_at: new Date().toISOString()
+    }
+  ];
+};
 
 const fetchRecentRecruitments = async () => {
   tableLoading.value = true;
@@ -378,6 +665,84 @@ const getDefaultData = () => {
 // 事件处理
 const handleViewApplications = (jobId) => {
   router.push(`/enterprise/recruitments/${jobId}/applications`);
+};
+
+
+const getStatusType = (status) => {
+  const statusMap = {
+    'pending': 'warning',
+    'accepted': 'success',
+    'rejected': 'error',
+    'reviewed': 'info'
+  }
+  return statusMap[status] || 'default'
+}
+
+const getStatusText = (status) => {
+  const textMap = {
+    'pending': '待处理',
+    'accepted': '已接受',
+    'rejected': '已拒绝',
+    'reviewed': '已查看'
+  }
+  return textMap[status] || status
+}
+
+// 添加时间格式化函数（复用聊天列表的格式）
+const formatTime = (time) => {
+  if (!time) return ''
+  const date = new Date(time)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  
+  if (diff < 24 * 60 * 60 * 1000) {
+    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  } else if (diff < 7 * 24 * 60 * 60 * 1000) {
+    const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+    return days[date.getDay()]
+  } else {
+    return date.toLocaleDateString('zh-CN')
+  }
+}
+
+
+// 修复测试聊天函数
+const testStartChat = async () => {
+  try {
+    console.log('=== 测试聊天功能 ===');
+    console.log('当前用户:', currentUser.value);
+    
+    if (!currentUser.value) {
+      message.error('请先登录');
+      return;
+    }
+
+    // 使用更完整的测试数据
+    const testApplication = {
+      job_seeker: {
+        id: 123,
+        username: 'test_user',
+        nickname: '测试用户'
+      },
+      recruitment: {
+        id: 456,
+        title: '测试职位'
+      }
+    };
+
+    const response = await api.post('/chatrooms/start_chat/', {
+      enterprise_user_id: currentUser.value.id,
+      job_seeker_user_id: testApplication.job_seeker.id,
+      recruitment_id: testApplication.recruitment.id
+    });
+    
+    message.success('测试聊天室创建成功！');
+    console.log('测试响应:', response.data);
+    router.push(`/chat/${response.data.id}`);
+  } catch (error) {
+    console.error('测试创建聊天室失败:', error);
+    message.error('测试失败: ' + (error.response?.data?.message || error.message));
+  }
 };
 </script>
 
@@ -532,5 +897,52 @@ const handleViewApplications = (jobId) => {
   margin: 0 auto;
   padding: 0 20px;
   text-align: center;
+}
+
+
+.applications-section {
+  margin-bottom: 20px;
+}
+
+.application-content {
+  flex: 1;
+  margin-left: 12px;
+}
+
+.application-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.applicant-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}
+
+.apply-time {
+  font-size: 12px;
+  color: #888;
+}
+
+.application-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.job-title {
+  font-size: 13px;
+  color: #666;
+}
+
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: #666;
 }
 </style>

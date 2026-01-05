@@ -34,7 +34,6 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { getResumeList, deleteResume } from '@/api/resume';
 import { useMessage } from 'naive-ui';
-
 const resumeList = ref([]);
 const router = useRouter();
 const message = useMessage();

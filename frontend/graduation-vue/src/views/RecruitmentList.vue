@@ -11,6 +11,8 @@
   </div>
 </template>
 
+
+
 <script setup>
 import { h, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -113,6 +115,9 @@ const columns = ref([
     }
   }
 ])
+
+
+
 
 // 数据获取和方法保持不变
 const fetchRecruitments = async () => {

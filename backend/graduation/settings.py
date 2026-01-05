@@ -45,8 +45,19 @@ INSTALLED_APPS = [
     "user_info", #用户信息
     "resume", #简历
     "article_publish", #文章发布
-    "enterprise" #企业模块
+    "enterprise", #企业模块
+    "chat", #聊天模块
+    "channels", #Django Channels
 ]
+
+ASGI_APPLICATION = "graduation.asgi.application"
+
+# 配置 Channels 后端（开发环境使用内存）
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
 
 AUTH_USER_MODEL = "register.User"
 

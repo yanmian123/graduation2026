@@ -8,9 +8,25 @@ https://docs.djangoproject.com/en/5.2/howto/deployment/asgi/
 """
 
 import os
-
+import django
 from django.core.asgi import get_asgi_application
 
+# 设置环境变量
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "graduation.settings")
 
-application = get_asgi_application()
+# 先初始化Django
+django.setup()
+
+# 现在可以安全地导入其他模块
+from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.auth import AuthMiddlewareStack
+import chat.routing
+
+application = ProtocolTypeRouter({
+    "http": get_asgi_application(),
+    "websocket": AuthMiddlewareStack(
+        URLRouter(
+            chat.routing.websocket_urlpatterns
+        )
+    ),
+})

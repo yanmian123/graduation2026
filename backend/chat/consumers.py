@@ -3,6 +3,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
 from .models import ChatRoom, Message
+from register.models import User
 from .serializers import MessageSerializer
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -10,22 +11,25 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.room_id = self.scope['url_route']['kwargs']['room_id']
         self.room_group_name = f'chat_{self.room_id}'
         
-        # 临时：跳过所有认证检查
-        print(f"🔓 调试模式：允许连接到聊天室 {self.room_id}")
+        # 添加用户认证
+        user = self.scope.get('user')
+        if user.is_authenticated:
+            self.user = user
+            print(f"✅ 用户认证成功: {user.username} (ID: {user.id})")
+        else:
+            # 临时调试：尝试从查询参数获取用户ID
+            user_id = self.scope.get('query_string', b'').decode().split('user_id=')[-1]
+            if user_id:
+                try:
+                    self.user = await database_sync_to_async(User.objects.get)(id=int(user_id))
+                    print(f"🔧 调试模式获取用户: {self.user.username} (ID: {self.user.id})")
+                except:
+                    self.user = AnonymousUser()
+            else:
+                self.user = AnonymousUser()
         
-        # 直接接受连接，不检查权限
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-        
+        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
-        
-        # 发送连接成功消息
-        await self.send(text_data=json.dumps({
-            'type': 'connection_established',
-            'message': '连接成功（调试模式）'
-        }))
 
     async def disconnect(self, close_code):
         # 离开房间组
@@ -44,28 +48,21 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.handle_read_receipt(data)
 
     async def handle_chat_message(self, data):
-        """处理聊天消息 - 简化版"""
-        # 临时：使用匿名用户或默认用户
-        from register.models import User
-        try:
-            # 尝试获取第一个用户作为发送者
-            user = await database_sync_to_async(User.objects.first)()
-        except:
-            # 如果失败，创建一个虚拟用户
-            user = AnonymousUser()
+        """处理聊天消息 - 使用认证用户"""
+        user = self.user
+        
+        if not user.is_authenticated:
+            print("❌ 用户未认证，无法发送消息")
+            return
         
         content = data['content']
         message_type = data.get('message_type', 'text')
         
-        # 保存消息到数据库（简化）
         try:
             message = await self.save_message(user, content, message_type)
-            
-            # 序列化消息
             serializer = MessageSerializer(message)
             message_data = serializer.data
             
-            # 发送消息到房间组
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {

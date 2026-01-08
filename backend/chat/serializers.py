@@ -19,7 +19,7 @@ class MessageSerializer(serializers.ModelSerializer):
             'message_type', 'file', 'file_name', 'file_size',
             'is_read', 'read_at', 'created_at'
         ]
-        read_only_fields = ['id', 'created_at', 'sender_info']
+        read_only_fields = ['id', 'created_at', 'sender_info','sender','chat_room']
 
 class ChatRoomSerializer(serializers.ModelSerializer):
     """聊天室序列化器"""

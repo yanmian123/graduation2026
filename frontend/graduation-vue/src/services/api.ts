@@ -14,6 +14,7 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    console.log("当前用户的Token:", token)
     return config
   },
   (error) => {
@@ -40,9 +41,12 @@ export const chatApi = {
   // 已有的方法...
   getChatRooms: () => api.get('api/chat/chatrooms/'),
   getMessages: (roomId: number) => api.get(`api/chat/chatrooms/${roomId}/messages/`),
-  sendMessage: (roomId: number, content: string, type: string) => 
-    api.post(`api/chat/chatrooms/${roomId}/messages/`, { content, message_type: type }),
-  
+  sendMessage: (roomId: number, content: string, type: string = 'text') => 
+    api.post(`api/chat/chatrooms/${roomId}/messages/`, { 
+      content: content,
+      message_type: type,
+      type: type  // 双重保险，确保字段匹配
+    }),
   // 新增缺失的方法
   getChatRoom: (roomId: number) => api.get(`api/chat/chatrooms/${roomId}/`),
   startChat: (params: any) => api.post('api/chat/chatrooms/start_chat/', params),

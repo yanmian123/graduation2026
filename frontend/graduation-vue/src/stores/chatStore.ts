@@ -22,7 +22,7 @@ export const useChatStore = defineStore('chat', () => {
   )
 
   const currentUser = computed(() => {
-    const userStr = localStorage.getItem('user')
+    const userStr = localStorage.getItem('userInfo') // 🔥 改为 userInfo
     return userStr ? JSON.parse(userStr) : null
   })
 
@@ -103,10 +103,20 @@ export const useChatStore = defineStore('chat', () => {
 
   const sendMessage = async (roomId: number, content: string, type: string = 'text') => {
     try {
+      console.log('📤📤 发送消息调试:', { roomId, content, type })
       const response = await chatApi.sendMessage(roomId, content, type)
-      return response.data
+      
+      // 🔥 关键修复：发送成功后立即添加到本地消息列表
+      const newMessage = response.data
+      console.log('✅✅ 消息发送成功，添加到本地状态:', newMessage)
+      addMessage(newMessage)
+      
+      return newMessage
     } catch (error) {
       console.error('发送消息失败:', error)
+      if (typeof error === 'object' && error !== null && 'response' in error) {
+        console.error('错误详情:', (error as any).response?.data)
+      }
       throw error
     }
   }

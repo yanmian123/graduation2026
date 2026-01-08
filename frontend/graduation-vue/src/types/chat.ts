@@ -36,6 +36,10 @@ export interface ChatRoom {
   is_active: boolean
   created_at: string
   updated_at: string
+    // 添加临时消息标识
+  is_temp?: boolean
+  // 可选：添加发送状态
+  send_status?: 'sending' | 'sent' | 'failed'
 }
 
 export interface WebSocketData {

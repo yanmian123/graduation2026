@@ -101,6 +101,7 @@ const rules = {
 }
 
 // 处理登录逻辑
+// 处理登录逻辑
 const handleLogin = async () => {
   if (!formRef.value) return
   
@@ -109,7 +110,7 @@ const handleLogin = async () => {
     loading.value = true
     
     // 调用后端登录接口
-    const response = await axios.post('/login/', {// 不需要完整URL，使用相对路径>>>为什么
+    const response = await axios.post('/login/', {
       username: formData.value.username,
       password: formData.value.password
     })
@@ -119,12 +120,15 @@ const handleLogin = async () => {
     localStorage.setItem('accessToken', access)
     localStorage.setItem('refreshToken', refresh)
     
-    // 跳转到首页（根据你的需求修改路径）
-    // router.push('/api/user/info')
-    router.push('/enterprise/home')
+    // 🔥 新增：获取并保存完整用户信息
+    const userInfoResponse = await axios.get('/user/info/')
+    const userInfo = userInfoResponse.data
+    localStorage.setItem('userInfo', JSON.stringify(userInfo))
+    
+    // 跳转到首页
+    router.push('/enterprise/home') // 或 '/home'
   } catch (error) {
     console.error('登录失败:', error.response?.data || error.message)
-    // 显示错误提示（可根据需求添加UI提示）
   } finally {
     loading.value = false
   }

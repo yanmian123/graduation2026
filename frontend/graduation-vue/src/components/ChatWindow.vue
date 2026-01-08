@@ -45,46 +45,103 @@
           </div>
           
           <!-- 普通消息 -->
-          <div v-else :class="['message-bubble', { 'own-message': isOwnMessage(message) }]">
-            <!-- 文件消息 -->
-            <div v-if="message.message_type === 'file'" class="file-message">
-              <n-space align="center" :size="12">
-                <n-icon size="24" color="#409eff">
-                  <DocumentIcon />
-                </n-icon>
-                <div class="file-info">
-                  <div class="file-name">{{ message.file_name }}</div>
-                  <div class="file-size">{{ formatFileSize(message.file_size || 0) }}</div>
+          <div v-else :class="['message-item', { 'own-message': isOwnMessage(message) }]">
+            <!-- 对方的消息（左侧显示） -->
+            <div v-if="!isOwnMessage(message)" class="other-message">
+              <!-- 对方头像 -->
+              <n-avatar
+                round
+                :size="36"
+                :src="oppositeUser?.avatar"
+                class="message-avatar"
+              >
+                {{ oppositeUser?.nickname?.charAt(0) || 'U' }}
+              </n-avatar>
+              
+              <!-- 消息内容 -->
+              <div class="message-bubble other-bubble">
+                <!-- 文件消息 -->
+                <div v-if="message.message_type === 'file'" class="file-message">
+                  <n-space align="center" :size="12">
+                    <n-icon size="24" color="#409eff">
+                      <DocumentIcon />
+                    </n-icon>
+                    <div class="file-info">
+                      <div class="file-name">{{ message.file_name }}</div>
+                      <div class="file-size">{{ formatFileSize(message.file_size || 0) }}</div>
+                    </div>
+                    <n-button type="primary" text @click="downloadFile(message)">
+                      下载
+                    </n-button>
+                  </n-space>
                 </div>
-                <n-button type="primary" text @click="downloadFile(message)">
-                  下载
-                </n-button>
-              </n-space>
+                
+                <!-- 文本消息 -->
+                <div v-else class="text-message">
+                  {{ message.content }}
+                </div>
+                
+                <div class="message-meta">
+                  <span class="time">{{ formatMessageTime(message.created_at) }}</span>
+                </div>
+              </div>
             </div>
             
-            <!-- 文本消息 -->
-            <div v-else class="text-message">
-              {{ message.content }}
-            </div>
-            
-            <div class="message-meta">
-              <span class="time">{{ formatMessageTime(message.created_at) }}</span>
-              <n-space v-if="isOwnMessage(message)" align="center" :size="4">
-                <n-icon
-                  v-if="message.is_read"
-                  size="16"
-                  color="#409eff"
-                >
-                  <CheckIcon />
-                </n-icon>
-                <n-icon
-                  v-else
-                  size="16"
-                  color="#ccc"
-                >
-                  <CheckIcon />
-                </n-icon>
-              </n-space>
+            <!-- 自己的消息（右侧显示） -->
+            <div v-else class="own-message">
+              <!-- 消息内容 -->
+              <div class="message-bubble own-bubble">
+                <!-- 文件消息 -->
+                <div v-if="message.message_type === 'file'" class="file-message">
+                  <n-space align="center" :size="12">
+                    <n-icon size="24" color="#fff">
+                      <DocumentIcon />
+                    </n-icon>
+                    <div class="file-info">
+                      <div class="file-name" style="color: white">{{ message.file_name }}</div>
+                      <div class="file-size" style="color: rgba(255,255,255,0.8)">{{ formatFileSize(message.file_size || 0) }}</div>
+                    </div>
+                    <n-button type="primary" text @click="downloadFile(message)" style="color: white">
+                      下载
+                    </n-button>
+                  </n-space>
+                </div>
+                
+                <!-- 文本消息 -->
+                <div v-else class="text-message">
+                  {{ message.content }}
+                </div>
+                
+                <div class="message-meta">
+                  <span class="time">{{ formatMessageTime(message.created_at) }}</span>
+                  <n-space v-if="isOwnMessage(message)" align="center" :size="4">
+                    <n-icon
+                      v-if="message.is_read"
+                      size="16"
+                      color="#fff"
+                    >
+                      <CheckIcon />
+                    </n-icon>
+                    <n-icon
+                      v-else
+                      size="16"
+                      color="rgba(255,255,255,0.6)"
+                    >
+                      <CheckIcon />
+                    </n-icon>
+                  </n-space>
+                </div>
+              </div>
+              
+              <!-- 自己头像 -->
+              <n-avatar
+                round
+                :size="36"
+                :src="currentUserAvatar"
+                class="message-avatar"
+              >
+                {{ currentUser?.nickname?.charAt(0) || 'U' }}
+              </n-avatar>
             </div>
           </div>
         </div>
@@ -177,10 +234,20 @@ const {
   addMessage 
 } = chatStore
 
+// 新增计算属性：当前用户头像
+const currentUser = computed(() => chatStore.currentUser)
+const currentUserAvatar = computed(() => {
+  // 这里根据你的用户数据结构调整，假设头像字段是 avatar
+  return currentUser.value?.avatar || ''
+})
+
 const isConnected = computed(() => webSocketService.isConnected.value)
 
 const isOwnMessage = (message: Message) => {
+  const currentUserId = chatStore.currentUser?.id
+    // console.log('🔍 消息发送者:', message.sender, '当前用户:', currentUserId)
   return message.sender === chatStore.currentUser?.id
+
 }
 
 // 发送文本消息
@@ -391,8 +458,99 @@ watch(currentRoom, (newRoom) => {
   position: relative;
 }
 
+
+/* 消息项容器 */
+.message-item {
+  margin-bottom: 16px;
+}
+
+/* 对方消息布局（左侧） */
+.other-message {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+/* 自己消息布局（右侧） */
 .own-message {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+/* 消息头像 */
+.message-avatar {
+  margin: 0 8px;
+}
+
+/* 消息气泡基础样式 */
+.message-bubble {
+  max-width: 70%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* 对方消息气泡（左侧，浅色） */
+.other-bubble {
+  background: white;
+  color: #333;
+  margin-right: 8px;
+}
+
+/* 自己消息气泡（右侧，蓝色） */
+.own-bubble {
   background: #409eff;
+  color: white;
+  margin-left: 8px;
+}
+
+/* 文本消息样式 */
+.text-message {
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+/* 文件消息样式 */
+.file-message {
+  display: flex;
+  align-items: center;
+}
+
+.file-info {
+  flex: 1;
+  margin-left: 8px;
+}
+
+.file-name {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.file-size {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+/* 消息元信息（时间、已读状态） */
+.message-meta {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.own-bubble .message-meta {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+
+.own-message {
+  /* background: #409eff; */
   color: white;
   margin-left: auto;
 }

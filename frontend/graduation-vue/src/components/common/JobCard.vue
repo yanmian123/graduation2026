@@ -1,4 +1,10 @@
 <template>
+
+  <div>">
+  <p>enterprise_user_id: {{ job.enterprise_user_id }}</p>
+  <p>enterprise: {{ job.enterprise }}</p>
+  <p>完整的job对象: {{ job }}</p>
+</div>
   <n-card class="job-card" hoverable>
     <div class="job-header">
       <div class="job-title-section">
@@ -74,19 +80,37 @@
         <n-icon size="14" class="time-icon"><TimeOutline /></n-icon>
         <span class="publish-time">{{ formatPublishTime(job.created_at) }}</span>
       </div>
-      <n-button 
-        type="primary" 
-        size="small" 
-        class="apply-btn"
-        @click.stop="handleApply"
-        :loading="applying"
-        round
-      >
-        <template #icon>
-          <n-icon><PaperPlaneOutline /></n-icon>
-        </template>
-        {{ applying ? '投递中...' : '立即申请' }}
-      </n-button>
+      <div class="footer-buttons">
+        <n-button 
+          type="primary" 
+          size="small" 
+          class="apply-btn"
+          @click.stop="handleApply"
+          :loading="applying"
+          round
+        >
+          <template #icon>
+            <n-icon><PaperPlaneOutline /></n-icon>
+          </template>
+          {{ applying ? '投递中...' : '立即申请' }}
+        </n-button>
+        
+        <!-- 新增联系企业按钮 -->
+        <n-button 
+          type="info" 
+          size="small" 
+          @click.stop="handleContact"
+          :loading="contacting"
+          round
+        >
+          <template #icon>
+            <n-icon><ChatbubblesOutline /></n-icon>
+          </template>
+          {{ contacting ? '连接中...' : '联系企业' }}
+        </n-button>
+      </div>
+
+      
     </div>
 
     <!-- 简历选择模态框 -->
@@ -117,9 +141,11 @@ import {
   BriefcaseOutline,
   SchoolOutline,
   TimeOutline,
-  PaperPlaneOutline
+  PaperPlaneOutline,
+  ChatbubblesOutline // 新增联系图标
 } from '@vicons/ionicons5'
 import ResumeSelectModal from '@/components/common/ResumeSelectModal.vue'
+import { useChatStore } from '@/stores/chatStore'
 
 const props = defineProps({
   job: {
@@ -131,9 +157,11 @@ const props = defineProps({
 
 const router = useRouter()
 const message = useMessage()
+const chatStore = useChatStore()
 
 const showResumeModal = ref(false)
 const applying = ref(false)
+const contacting = ref(false) // 新增联系状态
 
 // 默认公司Logo
 const defaultCompanyLogo = ref('/images/default-company-logo.png')
@@ -163,7 +191,6 @@ const educationMap = {
   'MASTER': '硕士',
   'DOCTOR': '博士及以上'
 }
-
 
 // 计算属性
 const isLogin = computed(() => {
@@ -216,6 +243,75 @@ const handleApply = async () => {
 const handleApplySuccess = () => {
   applying.value = false
   message.success('职位申请成功！')
+}
+
+// 新增联系企业方法
+const handleContact = async () => {
+  if (!isLogin.value) {
+    message.warning('请先登录后再联系企业')
+    router.push('/login')
+    return
+  }
+  
+  // 验证企业用户ID是否存在
+  if (!props.job.enterprise_user_id) {
+    message.error('无法获取企业信息，请联系客服')
+    return
+  }
+  
+  contacting.value = true
+  
+  try {
+    // 从正确的键名获取用户信息
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+    
+    // 添加调试信息查看实际获取的数据
+    console.log('🔍 从localStorage获取的用户信息:', currentUser)
+    console.log('🔍 实际存储的user键值:', localStorage.getItem('user'))
+    
+    if (!currentUser.id) {
+      // 尝试从其他可能的键名获取
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      if (userInfo.id) {
+        Object.assign(currentUser, userInfo)
+      }
+      
+      if (!currentUser.id) {
+        message.error('无法获取用户ID，请重新登录')
+        contacting.value = false
+        return
+      }
+    }
+    
+    // 验证当前用户类型
+    if (currentUser.is_enterprise) {
+      message.error('企业用户不能联系其他企业')
+      contacting.value = false
+      return
+    }
+    
+    console.log('联系企业参数:', {
+      enterprise_user_id: props.job.enterprise_user_id,
+      job_seeker_user_id: currentUser.id,
+      recruitment_id: props.job.id
+    })
+    
+    // 调用聊天室的 startChat 方法
+    const chatRoom = await chatStore.startChat({
+      enterprise_user_id: props.job.enterprise_user_id,
+      job_seeker_user_id: currentUser.id,
+      recruitment_id: props.job.id
+    })
+    
+    message.success('已连接到企业聊天室')
+    router.push(`/chat/${chatRoom.id}`)
+    
+  } catch (error) {
+    console.error('创建聊天室失败:', error)
+    message.error('联系企业失败: ' + (error.response?.data?.error || '请稍后重试'))
+  } finally {
+    contacting.value = false
+  }
 }
 </script>
 
@@ -360,7 +456,12 @@ const handleApplySuccess = () => {
   color: #6b7280;
 }
 
-.apply-btn {
+.footer-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.apply-btn, .contact-btn {
   min-width: 100px;
   font-weight: 500;
 }
@@ -381,7 +482,11 @@ const handleApplySuccess = () => {
     align-items: stretch;
   }
   
-  .apply-btn {
+  .footer-buttons {
+    flex-direction: column;
+  }
+  
+  .apply-btn, .contact-btn {
     width: 100%;
   }
 }

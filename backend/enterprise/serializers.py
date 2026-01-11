@@ -19,19 +19,31 @@ class RecruitmentSerializer(serializers.ModelSerializer):
     """招聘信息序列化器"""
     enterprise_name = serializers.CharField(source="enterprise.name", read_only=True)  # 冗余显示企业名称
     enterprise_id = serializers.IntegerField(source="enterprise.id", read_only=True)
+    enterprise_logo = serializers.SerializerMethodField()  # 新增：企业Logo
+    enterprise_industry = serializers.CharField(source="enterprise.industry", read_only=True)  # 新增：企业行业
+    enterprise_user_id = serializers.IntegerField(source="enterprise.user.id", read_only=True)  # 新增：企业用户ID
     is_published = serializers.SerializerMethodField()
     
     class Meta:
         model = Recruitment
         fields = [
-            "id", "enterprise", "enterprise_name", "enterprise_id",
-            "title","job", "job_type", "work_location", "salary",
+            "id", "enterprise", "enterprise_name", "enterprise_id", "enterprise_logo",
+            "title","job", "job_type", "work_location", "salary","enterprise_industry","enterprise_user_id", 
             "number_of_recruits", "experience", "education",
             "job_desc", "job_require", "status","is_published", "is_urgent",
             "deadline", "created_at", "updated_at"
         ]
         read_only_fields = ["enterprise"]  # 自动关联当前企业，前端无需传递
-        
+    
+    def get_enterprise_logo(self, obj):
+        """获取企业Logo的完整URL"""
+        if obj.enterprise.logo:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.enterprise.logo.url)
+            return obj.enterprise.logo.url
+        return None
+    
     def get_is_published(self, obj):
         """将 status 字段映射为 is_published 布尔值"""
         return obj.status == "PUBLISHED"

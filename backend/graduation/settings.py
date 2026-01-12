@@ -72,6 +72,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     
 ]
+CORS_ALLOW_ALL_ORIGINS = True  # 开发环境可以这样设置，生产环境需要指定域名
+CORS_ALLOW_CREDENTIALS = True  # 允许携带Cookie
 
 ROOT_URLCONF = "graduation.urls"
 

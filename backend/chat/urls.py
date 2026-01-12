@@ -12,4 +12,5 @@ urlpatterns = [
         'get': 'list', 
         'post': 'create'
     }), name='message-list'),
+     path('chatrooms/<int:room_id>/upload/', views.upload_file, name='upload-file'),
 ]

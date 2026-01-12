@@ -29,14 +29,28 @@ export const useChatStore = defineStore('chat', () => {
   const oppositeUser = computed(() => {
     if (!currentRoom.value || !currentUser.value) return null
     
-    // 修复：使用正确的属性名进行比较
     const currentUserId = currentUser.value.id
-    const enterpriseUserId = currentRoom.value.enterprise_user
+    const room = currentRoom.value
     
-    // 修复：比较用户ID而不是整个对象
-    return currentUserId === enterpriseUserId
-      ? currentRoom.value.job_seeker_user_info
-      : currentRoom.value.enterprise_user_info
+    // 修复：企业用户显示企业信息，求职者显示用户信息
+    if (currentUserId === room.enterprise_user) {
+      // 当前用户是企业，对方是求职者 - 显示用户信息
+      return room.job_seeker_user_info
+    } else {
+      // 当前用户是求职者，对方是企业 - 显示企业信息
+      // 如果聊天室有企业信息，使用企业信息；否则使用用户信息作为后备
+      if (room.enterprise_info) {
+        return {
+          id: room.enterprise_user,
+          nickname: room.enterprise_info.name,  // 使用企业名称
+          avatar: room.enterprise_info.logo,   // 使用企业logo
+          is_enterprise: true
+        }
+      } else {
+        // 后备方案：使用用户信息
+        return room.enterprise_user_info
+      }
+    }
   })
 
   // 方法
@@ -148,7 +162,13 @@ export const useChatStore = defineStore('chat', () => {
   const uploadFile = async (roomId: number, file: File) => {
     try {
       const response = await chatApi.uploadFile(roomId, file)
-      return response.data
+      
+      // 🔥 关键修复：上传成功后立即添加到本地消息列表
+      const newMessage = response.data
+      console.log('✅✅ 文件上传成功，添加到本地状态:', newMessage)
+      addMessage(newMessage)
+      
+      return newMessage
     } catch (error) {
       console.error('上传文件失败:', error)
       throw error

@@ -24,6 +24,16 @@ export interface Message {
   created_at: string
 }
 
+// 定义企业信息接口类型
+export interface EnterpriseInfo {
+  id: number
+  name: string
+  address?: string
+  industry?: string
+  logo?: string
+  // 可以根据实际需求添加更多字段
+}
+
 export interface ChatRoom {
   id: number
   enterprise_user: number
@@ -31,6 +41,7 @@ export interface ChatRoom {
   recruitment?: number
   enterprise_user_info: User
   job_seeker_user_info: User
+  enterprise_info?: EnterpriseInfo 
   last_message?: Message
   unread_count: number
   is_active: boolean

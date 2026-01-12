@@ -1,26 +1,47 @@
 <template>
   <div class="chat-window">
+
     <!-- 聊天头部 -->
     <div class="chat-header">
       <n-space align="center" :size="12">
-        <n-avatar
-          round
-          :size="40"
-          :src="oppositeUser?.avatar"
-        >
-          {{ oppositeUser?.nickname?.charAt(0) || 'U' }}
-        </n-avatar>
-        
+        <!-- 条件渲染测试 -->
+        <div style="border: 2px solid red; padding: 5px;">
+          
+          <!-- 有头像时只显示图片 -->
+          <n-avatar
+            v-if="displayUser?.avatar"
+            round
+            :size="40"
+            :src="getFullAvatarUrl(displayUser.avatar)"
+            @error="handleAvatarError"
+          />
+          
+          <!-- 无头像时显示文字 -->
+          <n-avatar
+            v-else
+            round
+            :size="40"
+          >
+            {{ displayUser?.nickname?.charAt(0) || 'U' }}
+          </n-avatar>
+        </div>
+
         <div class="user-info">
-          <div class="username">{{ oppositeUser?.nickname }}</div>
+          <div class="username">{{ displayUser?.nickname }}</div>
+          <div class="debug-info" style="font-size: 10px; color: #999;">
+            ID: {{ displayUser?.id }} | 
+            类型: {{ displayUser?.is_enterprise ? '企业' : '个人' }} |
+            头像URL: {{ displayUser?.avatar }}
+          </div>
+          
           <div class="status">
-            <n-tag v-if="oppositeUser?.id !== undefined && isUserOnline(oppositeUser.id)" type="success" size="small" round>
+            <n-tag v-if="displayUser?.id !== undefined && isUserOnline(displayUser.id)" type="success" size="small" round>
               在线
             </n-tag>
             <n-tag v-else type="default" size="small" round>
               离线
             </n-tag>
-            <span v-if="oppositeUser?.id !== undefined && isUserOnline(oppositeUser.id)" class="online-time">最后在线: 刚刚</span>
+            <span v-if="displayUser?.id !== undefined && isUserOnline(displayUser.id)" class="online-time">最后在线: 刚刚</span>
           </div>
         </div>
       </n-space>
@@ -50,12 +71,20 @@
             <div v-if="!isOwnMessage(message)" class="other-message">
               <!-- 对方头像 -->
               <n-avatar
+                v-if="displayUser?.avatar"
                 round
                 :size="36"
-                :src="oppositeUser?.avatar"
+                :src="getFullAvatarUrl(displayUser.avatar)"
+                class="message-avatar"
+                @error="handleAvatarError"
+              />
+              <n-avatar
+                v-else
+                round
+                :size="36"
                 class="message-avatar"
               >
-                {{ oppositeUser?.nickname?.charAt(0) || 'U' }}
+                {{ displayUser?.nickname?.charAt(0) || 'U' }}
               </n-avatar>
               
               <!-- 消息内容 -->
@@ -135,9 +164,17 @@
               
               <!-- 自己头像 -->
               <n-avatar
+                v-if="currentUserAvatar"
                 round
                 :size="36"
-                :src="currentUserAvatar"
+                :src="getFullAvatarUrl(currentUserAvatar)"
+                class="message-avatar"
+                @error="handleAvatarError"
+              />
+              <n-avatar
+                v-else
+                round
+                :size="36"
                 class="message-avatar"
               >
                 {{ currentUser?.nickname?.charAt(0) || 'U' }}
@@ -245,9 +282,7 @@ const isConnected = computed(() => webSocketService.isConnected.value)
 
 const isOwnMessage = (message: Message) => {
   const currentUserId = chatStore.currentUser?.id
-    // console.log('🔍 消息发送者:', message.sender, '当前用户:', currentUserId)
   return message.sender === chatStore.currentUser?.id
-
 }
 
 // 发送文本消息
@@ -270,12 +305,27 @@ const handleFileUpload = async (options: UploadCustomRequestOptions) => {
   if (!currentRoom.value) return
 
   const rawFile = options.file.file as File
+  console.log('📤 上传文件信息:', {
+    name: rawFile.name,
+    size: rawFile.size,
+    type: rawFile.type,
+    roomId: currentRoom.value.id
+  })
 
   try {
     await uploadFile(currentRoom.value.id, rawFile)
     options.onFinish?.()
   } catch (error) {
-    console.error('上传文件失败:', error)
+    console.error('上传文件失败详情:', error)
+    // 🔥 显示具体错误信息
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'response' in error &&
+      (error as any).response?.data
+    ) {
+      console.error('服务器错误响应:', (error as any).response.data)
+    }
     options.onError?.()
   }
 }
@@ -355,8 +405,104 @@ const handleEmojiSelect = (emoji: string) => {
   showEmojiPicker.value = false
 }
 
+const defaultAvatar = ref('/images/default-avatar.png')
+const defaultCompanyLogo = ref('/images/default-company-logo.png')
+
+// 添加一个处理头像URL的函数
+const getFullAvatarUrl = (avatarPath: string | undefined): string | undefined => {
+  if (!avatarPath) {
+    console.log('❌❌ 头像路径为空')
+    return undefined
+  }
+  
+  // 如果已经是完整URL，直接返回
+  if (avatarPath.startsWith('http')) {
+    console.log('✅ 已经是完整URL:', avatarPath)
+    return avatarPath
+  }
+  
+  // 处理相对路径
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+  
+  // 确保路径格式正确
+  let normalizedPath = avatarPath
+  if (!avatarPath.startsWith('/')) {
+    normalizedPath = `/${avatarPath}`
+  }
+  
+  const fullUrl = `${baseUrl}${normalizedPath}`
+  console.log('🔗🔗 拼接完整URL:', { avatarPath, normalizedPath, fullUrl })
+  return fullUrl
+}
+
+// 计算显示的用户信息
+const displayUser = computed(() => {
+  const room = chatStore.currentRoom
+  const currentUser = chatStore.currentUser
+  
+  console.log('🔍🔍🔍🔍 当前聊天室数据:', room)
+  console.log('🔍🔍🔍🔍 企业信息:', room?.enterprise_info)
+  console.log('🔍🔍🔍🔍 企业logo:', room?.enterprise_info?.logo)
+  
+  if (!room || !currentUser) {
+    return {
+      nickname: '未知用户',
+      avatar: defaultAvatar.value,
+      is_enterprise: false
+    }
+  }
+  
+  const isCurrentUserEnterprise = currentUser.id === room.enterprise_user
+  
+  if (isCurrentUserEnterprise) {
+    // 当前用户是企业，显示求职者
+    const jobSeekerInfo = room.job_seeker_user_info
+    return {
+      id: room.job_seeker_user,
+      nickname: jobSeekerInfo?.nickname || jobSeekerInfo?.username || '求职者',
+      avatar: jobSeekerInfo?.avatar || defaultAvatar.value,
+      is_enterprise: false
+    }
+  } else {
+    // 当前用户是求职者，显示企业
+    if (room.enterprise_info && room.enterprise_info.logo) {
+      const logoUrl = room.enterprise_info.logo
+      console.log('✅ 使用企业logo:', logoUrl)
+      return {
+        id: room.enterprise_user,
+        nickname: room.enterprise_info.name || '企业用户',
+        avatar: logoUrl,
+        is_enterprise: true
+      }
+    } else if (room.enterprise_user_info) {
+      console.log('⚠️ 没有企业信息，使用企业用户信息')
+      return {
+        id: room.enterprise_user,
+        nickname: room.enterprise_user_info.nickname || room.enterprise_user_info.username || '企业用户',
+        avatar: defaultCompanyLogo.value,
+        is_enterprise: true
+      }
+    } else {
+      console.log('❌❌ 无任何企业信息，使用默认')
+      return {
+        id: room.enterprise_user,
+        nickname: '企业用户',
+        avatar: defaultCompanyLogo.value,
+        is_enterprise: true
+      }
+    }
+  }
+})
+
+const handleAvatarError = (e: Event) => {
+  console.error('❌❌ 头像加载错误:', {
+    target: e.target,
+    src: (e.target as HTMLImageElement)?.src
+  })
+}
+
 const emojiOptions = [
-  { label: '😀', key: '😀' },
+  { label: '😀😀', key: '😀😀' },
   { label: '😂', key: '😂' },
   { label: '❤️', key: '❤️' },
   { label: '👍', key: '👍' },
@@ -391,6 +537,7 @@ watch(currentRoom, (newRoom) => {
 </script>
 
 <style scoped>
+/* 样式保持不变 */
 .chat-window {
   flex: 1;
   display: flex;
@@ -457,7 +604,6 @@ watch(currentRoom, (newRoom) => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   position: relative;
 }
-
 
 /* 消息项容器 */
 .message-item {
@@ -548,9 +694,7 @@ watch(currentRoom, (newRoom) => {
   color: rgba(255, 255, 255, 0.9);
 }
 
-
 .own-message {
-  /* background: #409eff; */
   color: white;
   margin-left: auto;
 }

@@ -89,13 +89,34 @@ const searchKeyword = ref('')
 const { loading, unreadTotal, sortedChatRooms, currentRoom, fetchChatRooms, setCurrentRoom } = chatStore
 
 const filteredRooms = computed(() => {
-  if (!searchKeyword.value.trim()) return sortedChatRooms
+  let rooms = sortedChatRooms
   
-  return sortedChatRooms.filter(room => {
-    const user = getOppositeUser(room)
-    return user.nickname?.toLowerCase().includes(searchKeyword.value.toLowerCase()) || 
-           user.username?.toLowerCase().includes(searchKeyword.value.toLowerCase())
+  // 先按搜索关键词过滤
+  if (searchKeyword.value.trim()) {
+    rooms = rooms.filter(room => {
+      const user = getOppositeUser(room)
+      return user.nickname?.toLowerCase().includes(searchKeyword.value.toLowerCase()) || 
+             user.username?.toLowerCase().includes(searchKeyword.value.toLowerCase())
+    })
+  }
+  
+  // 对聊天室进行去重：同一个对方的聊天室只显示最新的一个
+  const uniqueRooms = []
+  const roomMap = new Map() // key: enterprise_user + job_seeker_user
+  
+  rooms.forEach(room => {
+    const key = `${room.enterprise_user}-${room.job_seeker_user}`
+    const existingRoom = roomMap.get(key)
+    
+    if (!existingRoom || new Date(room.updated_at) > new Date(existingRoom.updated_at)) {
+      roomMap.set(key, room)
+    }
   })
+  
+  // 将Map转换回数组并按更新时间排序
+  return Array.from(roomMap.values()).sort((a, b) => 
+    new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+  )
 })
 
 const getOppositeUser = (room: ChatRoom): User => {

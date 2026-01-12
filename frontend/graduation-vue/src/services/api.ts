@@ -32,6 +32,12 @@ api.interceptors.response.use(
       localStorage.removeItem('refreshToken')
       window.location.href = '/login'
     }
+        // 🔥 添加详细错误日志
+    console.error('API Error Details:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      url: error.config?.url
+    })
     return Promise.reject(error)
   }
 )
@@ -56,8 +62,16 @@ export const chatApi = {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('message_type', 'file')
+    formData.append('type', 'file')  // 双重保险
+    // 🔥 添加content字段，有些后端需要
+    formData.append('content', file.name)
+    
     return api.post(`api/chat/chatrooms/${roomId}/messages/`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 
+        'Content-Type': 'multipart/form-data',
+        // 🔥 确保token正确传递
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+      }
     })
   }
 }

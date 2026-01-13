@@ -30,6 +30,10 @@
                   <span class="stat-value">{{ receivedResumes }}</span>
                   <span class="stat-label">收到简历</span>
                 </div>
+                  <div class="stat-item">
+                    <span class="stat-value">{{ talentPoolCount }}</span>
+                    <span class="stat-label">人才库</span>
+                  </div>
                 <div class="stat-item">
                   <span class="stat-value">{{ pendingInterviews }}</span>
                   <span class="stat-label">待面试</span>
@@ -106,6 +110,21 @@
               <p>查看招聘效果统计分析</p>
             </div>
           </n-card>
+          <n-card 
+            class="action-card" 
+            hoverable
+            @click="$router.push('/enterprise/talent-pool')"
+          >
+            <div class="action-icon">
+              <n-icon size="32" color="#722ed1">
+                <People /> <!-- 需要导入 People 图标 -->
+              </n-icon>
+            </div>
+            <div class="action-info">
+              <h3>人才库</h3>
+              <p>管理企业潜在人才资源</p>
+            </div>
+          </n-card>
         </div>
       </section>
       <section class="applications-section" >
@@ -161,39 +180,6 @@
       </section>
 
 
-      <section class="test-section">
-  <div class="section-header">
-    <h2>测试联系功能</h2>
-  </div>
-  
-  <n-card>
-    <n-list>
-      <n-list-item>
-        <template #prefix>
-          <n-avatar round :size="40">张</n-avatar>
-        </template>
-        
-        <div class="application-content">
-          <div class="application-header">
-            <span class="applicant-name">测试用户</span>
-            <span class="apply-time">刚刚</span>
-          </div>
-          
-          <div class="application-details">
-            <span class="job-title">申请职位: 前端开发工程师</span>
-            <n-tag type="warning" size="small">待处理</n-tag>
-          </div>
-        </div>
-        
-        <template #suffix>
-          <n-button type="primary" @click="testStartChat">
-            联系求职者（测试）
-          </n-button>
-        </template>
-      </n-list-item>
-    </n-list>
-  </n-card>
-</section>
       <!-- 最近招聘信息 -->
       <section class="recent-jobs-section">
         <div class="section-header">
@@ -245,7 +231,8 @@ import {
   Briefcase, 
   BarChart,
   LogOut,
-  Settings
+  Settings,
+  People,
 } from '@vicons/ionicons5';
 import {  
   NButton, 
@@ -500,6 +487,19 @@ const handleEditRecent = (id) => {
   router.push(`/enterprise/recruitments/edit/${id}`);
 };
 
+// 在 script 中添加
+const talentPoolCount = ref(0)
+
+// 获取人才库统计
+const fetchTalentPoolStats = async () => {
+  try {
+    const response = await axios.get('/talent_pool/')
+    talentPoolCount.value = response.data.count || response.data.length || 0
+  } catch (error) {
+    console.error('获取人才库统计失败:', error)
+  }
+}
+
 // 生命周期
 onMounted(async () => {
   if (isLogin.value) {
@@ -530,6 +530,7 @@ onMounted(async () => {
       // 3. 获取真实的申请数据
       await fetchApplications();
       
+      await fetchTalentPoolStats();
     } catch (error) {
       console.error('获取企业数据失败:', error);
     }

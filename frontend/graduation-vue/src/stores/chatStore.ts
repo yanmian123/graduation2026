@@ -56,14 +56,24 @@ export const useChatStore = defineStore('chat', () => {
   // 方法
   const fetchChatRooms = async () => {
     loading.value = true
+    console.log('🔄 开始获取聊天室列表...')
+    
     try {
       const response = await chatApi.getChatRooms()
+      console.log('✅ ✅✅获取聊天室列表成功:', {
+        count: response.data.length,
+        data: response.data
+      })
+      
       chatRooms.value = response.data
       unreadTotal.value = chatRooms.value.reduce((total, room) => total + (room.unread_count || 0), 0)
+      
     } catch (error) {
-      console.error('获取聊天室列表失败:', error)
+      console.error('❌ 获取聊天室列表失败:', error)
+      // 可以在这里添加重试逻辑或显示错误信息
     } finally {
       loading.value = false
+      console.log('🏁 获取聊天室列表完成')
     }
   }
 

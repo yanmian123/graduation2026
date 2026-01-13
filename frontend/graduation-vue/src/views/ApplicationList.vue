@@ -1,5 +1,36 @@
 <template>
   <div class="application-list">
+    <!-- 批量操作工具栏 -->
+    <n-card v-if="selectedApplications.length > 0" class="bulk-actions-toolbar">
+      <div class="bulk-actions-content">
+        <span class="selected-count">已选择 {{ selectedApplications.length }} 条申请</span>
+        <div class="action-controls">
+          <n-select 
+            v-model:value="bulkAction" 
+            :options="bulkActions" 
+            placeholder="选择批量操作"
+            style="width: 200px; margin-right: 12px;"
+            size="small"
+          />
+          <n-button 
+            type="primary" 
+            size="small" 
+            :loading="bulkUpdating"
+            @click="handleBulkAction"
+            :disabled="!bulkAction"
+          >
+            {{ bulkUpdating ? '处理中...' : '应用' }}
+          </n-button>
+          <n-button 
+            size="small" 
+            @click="clearSelection"
+            style="margin-left: 8px;"
+          >
+            取消选择
+          </n-button>
+        </div>
+      </div>
+    </n-card>    
     <n-card title="收到的简历申请">
       <!-- 添加调试信息 -->
       <div v-if="debug" style="background: #f0f0f0; padding: 10px; margin-bottom: 10px;">
@@ -13,6 +44,8 @@
         :loading="loading"
         :pagination="pagination"
         :row-key="rowKey"
+        :checked-row-keys="selectedApplications"
+        @update:checked-row-keys="handleCheckedRowKeysChange"
       />
     </n-card>
   </div>
@@ -21,19 +54,154 @@
 <script setup>
 import { h, ref, onMounted } from 'vue'
 import { useMessage } from 'naive-ui'
-import { NDataTable, NCard, NTag,NButton } from 'naive-ui' // 确保导入所有使用的组件
+import { NDataTable, NCard, NTag,NButton, NSelect,NSpace ,NDropdown} from 'naive-ui' // 确保导入所有使用的组件
 import axios from '@/utils/axios'
 
 // 调试模式
 const debug = ref(true)
-
+const message = useMessage()
 // 数据状态
 const applications = ref([])
 const loading = ref(false)
-const message = useMessage()
+const selectedApplications = ref([]) // 选中的申请ID
+const bulkAction = ref(null) // 批量操作类型
+const bulkUpdating = ref(false) // 批量更新中状态
 
-// 行键函数
-const rowKey = (row) => row.id
+// 批量操作选项
+const bulkActions = ref([
+  { label: '标记为已查看', value: 'VIEWED' },
+  { label: '标记为待面试', value: 'INTERVIEW' },
+  { label: '标记为已拒绝', value: 'REJECTED' },
+  { label: '标记为已录用', value: 'HIRED' }
+])
+
+// 状态选项
+const statusOptions = [
+  { label: '待处理', value: 'PENDING' },
+  { label: '已查看', value: 'VIEWED' },
+  { label: '待面试', value: 'INTERVIEW' },
+  { label: '已拒绝', value: 'REJECTED' },
+  { label: '已录用', value: 'HIRED' }
+]
+
+// 状态类型映射
+const statusTypeMap = {
+  'PENDING': 'warning',
+  'VIEWED': 'info', 
+  'INTERVIEW': 'primary',
+  'REJECTED': 'error',
+  'HIRED': 'success'
+}
+
+// 状态文本映射
+const statusTextMap = {
+  'PENDING': '待处理',
+  'VIEWED': '已查看',
+  'INTERVIEW': '待面试',
+  'REJECTED': '已拒绝',
+  'HIRED': '已录用'
+}
+
+// 行属性，支持点击选择
+const rowProps = (row) => {
+  return {
+    style: 'cursor: pointer;',
+    onClick: () => {
+      toggleRowSelection(row.id)
+    }
+  }
+}
+
+// 切换行选择状态
+const toggleRowSelection = (rowId) => {
+  const index = selectedApplications.value.indexOf(rowId)
+  if (index > -1) {
+    selectedApplications.value.splice(index, 1)
+  } else {
+    selectedApplications.value.push(rowId)
+  }
+}
+
+// 清除选择
+const clearSelection = () => {
+  selectedApplications.value = []
+  bulkAction.value = null
+}
+
+// 批量更新申请状态
+const handleBulkAction = async () => {
+  if (!bulkAction.value || selectedApplications.value.length === 0) {
+    message.warning('请选择要操作的申请和操作类型')
+    return
+  }
+
+  bulkUpdating.value = true
+  try {
+    console.log('开始批量更新，选中的申请:', selectedApplications.value)
+    
+    // 使用单个更新接口循环处理
+    const updatePromises = selectedApplications.value.map(async (appId) => {
+      try {
+        const response = await axios.post(`/applications/${appId}/update_status/`, {
+          status: bulkAction.value
+        })
+        console.log(`申请 ${appId} 更新成功`)
+        return { success: true, id: appId }
+      } catch (error) {
+        console.error(`申请 ${appId} 更新失败:`, error)
+        return { success: false, id: appId, error }
+      }
+    })
+
+    // 等待所有更新完成
+    const results = await Promise.all(updatePromises)
+    
+    // 统计成功和失败的数量
+    const successfulUpdates = results.filter(result => result.success).length
+    const failedUpdates = results.filter(result => !result.success).length
+    
+    if (failedUpdates === 0) {
+      message.success(`成功更新 ${successfulUpdates} 条申请记录`)
+    } else {
+      message.warning(`成功更新 ${successfulUpdates} 条，失败 ${failedUpdates} 条`)
+    }
+    
+    // 更新本地数据状态
+    applications.value.forEach(app => {
+      if (selectedApplications.value.includes(app.id)) {
+        app.status = bulkAction.value
+      }
+    })
+    
+    // 清除选择
+    clearSelection()
+    
+  } catch (error) {
+    console.error('批量操作失败:', error)
+    message.error('批量操作失败: ' + (error.response?.data?.error || error.message))
+  } finally {
+    bulkUpdating.value = false
+  }
+}
+// 更新单个申请状态
+const updateApplicationStatus = async (applicationId, newStatus) => {
+  try {
+    const response = await axios.post(`/applications/${applicationId}/update_status/`, {
+      status: newStatus
+    })
+    
+    message.success('状态更新成功')
+    
+    // 更新本地数据
+    const index = applications.value.findIndex(app => app.id === applicationId)
+    if (index !== -1) {
+      applications.value[index].status = newStatus
+    }
+  } catch (error) {
+    console.error('更新状态失败:', error)
+    message.error('状态更新失败')
+  }
+}
 
 
 
@@ -46,8 +214,15 @@ const educationMap = {
   'DOCTOR': '博士及以上'
 }
 
+
+
 // 列定义
 const columns = [
+  {
+    type: 'selection',
+    fixed: 'left',
+    width: 50
+  },
   {
     title: '申请人',
     key: 'applicant_name',
@@ -146,14 +321,74 @@ const columns = [
         return timeStr
       }
     }
+  },
+
+  // 新增：状态操作列
+  {
+    title: '操作',
+    key: 'actions',
+    render: (row) => {
+      return h(NSelect, {
+        value: row.status,
+        options: statusOptions,
+        onUpdateValue: (value) => {
+          updateApplicationStatus(row.id, value)
+        },
+        size: 'small',
+        style: 'min-width: 120px;'
+      })
+    }
+  },
+  {
+  title: '操作',
+  key: 'actions',
+  render: (row) => {
+    const actions = [
+      {
+        label: '加入人才库',
+        key: 'add_to_talent',
+        onClick: () => addToTalentPool(row)
+      },
+      {
+        label: '开始聊天',
+        key: 'start_chat',
+        onClick: () => startChat(row)
+      }
+    ]
+    
+    return h(NSpace, { size: 'small' }, {
+      default: () => [
+        // h(NSelect, {
+        //   value: row.status,
+        //   options: statusOptions,
+        //   onUpdateValue: (value) => updateApplicationStatus(row.id, value),
+        //   size: 'small',
+        //   style: 'min-width: 120px; margin-right: 8px;'
+        // }),
+        h(NDropdown, {
+          trigger: 'click',
+          options: actions,
+          size: 'small'
+        }, {
+          default: () => h(NButton, { size: 'small' }, { default: () => '更多' })
+        })
+      ]
+    })
   }
+}
 ]
 
-// 分页配置
-const pagination = {
-  pageSize: 10
-}
+// 行键函数
+const rowKey = (row) => row.id
 
+// 分页配置
+const pagination = {pageSize: 10}
+
+
+// 处理选择变化
+const handleCheckedRowKeysChange = (keys) => {
+  selectedApplications.value = keys
+}
 // 获取申请记录
 const fetchApplications = async () => {
   loading.value = true
@@ -217,6 +452,26 @@ const getDefaultData = () => {
   ]
 }
 
+// 在 script 中添加加入人才库的方法
+const addToTalentPool = async (application) => {
+  try {
+    const response = await axios.post('/talent_pool/add_from_application/', {
+      application_id: application.id,
+      tags: '来自申请', // 可以添加默认标签
+      notes: `从职位"${application.recruitment_title}"申请中添加`
+    })
+    
+    message.success('已成功加入人才库')
+  } catch (error) {
+    console.error('加入人才库失败:', error)
+    if (error.response?.status === 400) {
+      message.error(error.response.data.error || '该人才已存在人才库中')
+    } else {
+      message.error('加入人才库失败')
+    }
+  }
+}
+
 onMounted(() => {
   fetchApplications()
 })
@@ -225,5 +480,36 @@ onMounted(() => {
 <style scoped>
 .application-list {
   padding: 20px;
+}
+
+.bulk-actions-toolbar {
+  margin-bottom: 16px;
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+}
+
+.bulk-actions-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.selected-count {
+  font-weight: 600;
+  color: #0369a1;
+}
+
+.action-controls {
+  display: flex;
+  align-items: center;
+}
+
+/* 选中行样式 */
+:deep(.n-data-table-tr--checked) {
+  background-color: #f0f9ff !important;
+}
+
+:deep(.n-data-table-td) {
+  vertical-align: middle;
 }
 </style>

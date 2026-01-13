@@ -300,9 +300,9 @@ const handleContact = async () => {
     const chatRoom = await chatStore.startChat({
       enterprise_user_id: props.job.enterprise_user_id,
       job_seeker_user_id: currentUser.id,
-      recruitment_id: props.job.id
     })
-    
+// 🔥 关键修复：立即设置当前聊天室
+    chatStore.setCurrentRoom(chatRoom)
     message.success('已连接到企业聊天室')
     router.push(`/chat/${chatRoom.id}`)
     

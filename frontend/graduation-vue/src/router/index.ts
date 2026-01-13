@@ -48,6 +48,16 @@ const router = createRouter({
     {path: '/enterprise/home', name: 'Enterprise-home', component:Enterprisehome,meta: { requiresAuth: true ,layout: 'enterprise'}},
     {path: '/enterprise/login', name: 'Enterpriselogin', component:Enterpriselogin,meta: { requiresAuth: false, layout:'empty' }},
     {path: '/enterprise/applications', name: 'ApplicationList', component:ApplicationList,meta: { layout: 'enterprise', requiresAuth: true }},
+    {
+  path: '/enterprise/talent-pool',
+  name: 'TalentPool',
+  component: () => import('@/views/TalentPool.vue'),
+  meta: { 
+    requiresAuth: true, 
+    layout: 'enterprise',
+    title: '人才库管理'
+  }
+},
 {
   path: '/chat/:roomId?', // 添加roomId作为可选参数
   name: 'Chat', 

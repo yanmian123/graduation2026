@@ -1,5 +1,9 @@
 <template>
   <div class="chat-room-list">
+
+      <div v-if="filteredRooms.length === 0" style="padding: 16px; color: #666;">
+      暂无聊天室数据 (总数: {{ sortedChatRooms.length }})
+    </div>
     <div class="header">
       <h2>聊天列表</h2>
       <n-space>
@@ -77,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted,onUnmounted  } from 'vue'
 import { NList, NListItem, NAvatar, NSpace, NButton, NBadge, NInput, NScrollbar, NIcon, NTag } from 'naive-ui'
 import { Refresh as RefreshIcon, Search as SearchIcon } from '@vicons/ionicons5'
 import { useChatStore } from '@/stores/chatStore'
@@ -86,10 +90,18 @@ import type { ChatRoom, User } from '@/types/chat'
 const chatStore = useChatStore()
 const searchKeyword = ref('')
 
-const { loading, unreadTotal, sortedChatRooms, currentRoom, fetchChatRooms, setCurrentRoom } = chatStore
 
+// 改为直接访问或使用 computed
+const sortedChatRooms = computed(() => chatStore.sortedChatRooms)
+const currentRoom = computed(() => chatStore.currentRoom)
+const loading = computed(() => chatStore.loading)
+const unreadTotal = computed(() => chatStore.unreadTotal)
+
+// 方法可以直接解构
+const { fetchChatRooms, setCurrentRoom } = chatStore
 const filteredRooms = computed(() => {
-  let rooms = sortedChatRooms
+  
+  let rooms = sortedChatRooms.value
   
   // 先按搜索关键词过滤
   if (searchKeyword.value.trim()) {
@@ -151,8 +163,29 @@ const refresh = () => {
   fetchChatRooms()
 }
 
+// 添加定时刷新
+let refreshInterval: number
+
 onMounted(() => {
-  fetchChatRooms()
+  console.log('🚀 ChatRoomList 挂载')
+  
+  // 立即刷新一次
+  refresh()
+  
+  // 每30秒自动刷新一次
+  refreshInterval = window.setInterval(() => {
+    if (!loading) {
+      console.log('⏰ 定时刷新聊天室列表')
+      refresh()
+    }
+  }, 30000)
+})
+
+onUnmounted(() => {
+  if (refreshInterval) {
+    clearInterval(refreshInterval)
+    console.log('🧹 清理定时器')
+  }
 })
 </script>
 

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Enterprise, Recruitment, JobApplication
+from .models import Enterprise, Recruitment, JobApplication, TalentPool, TalentPoolTag
 from resume.models import Resume 
 class EnterpriseSerializer(serializers.ModelSerializer):
     """企业信息序列化器"""
@@ -130,3 +130,41 @@ class JobApplicationSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("您已经申请过该职位")
         
         return attrs
+    
+    
+# 在 enterprise/serializers.py 中添加
+class TalentPoolSerializer(serializers.ModelSerializer):
+    """人才库序列化器"""
+    job_seeker_name = serializers.CharField(source="job_seeker.username", read_only=True)
+    job_seeker_email = serializers.CharField(source="job_seeker.email", read_only=True)
+    application_info = serializers.SerializerMethodField()
+    tags_list = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TalentPool
+        fields = [
+            "id", "enterprise", "job_seeker", "job_seeker_name", "job_seeker_email",
+            "application", "application_info", "resume_snapshot", "tags", "tags_list",
+            "notes", "status", "rating", "added_at", "updated_at"
+        ]
+        read_only_fields = ["enterprise", "job_seeker", "application", "resume_snapshot"]
+
+    def get_application_info(self, obj):
+        if obj.application:
+            return {
+                "recruitment_title": obj.application.recruitment.title,
+                "applied_at": obj.application.applied_at
+            }
+        return None
+
+    def get_tags_list(self, obj):
+        if obj.tags:
+            return [tag.strip() for tag in obj.tags.split(',') if tag.strip()]
+        return []
+
+class TalentPoolTagSerializer(serializers.ModelSerializer):
+    """人才库标签序列化器"""
+    class Meta:
+        model = TalentPoolTag
+        fields = ["id", "enterprise", "name", "color", "created_at"]
+        read_only_fields = ["enterprise"]

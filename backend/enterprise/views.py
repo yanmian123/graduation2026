@@ -1,9 +1,9 @@
 from rest_framework import viewsets, permissions, status, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Enterprise, Recruitment, JobApplication
+from .models import Enterprise, Recruitment, JobApplication, TalentPool, TalentPoolTag
 from resume.models import Resume
-from .serializers import EnterpriseSerializer, RecruitmentSerializer, JobApplicationSerializer
+from .serializers import EnterpriseSerializer, RecruitmentSerializer, JobApplicationSerializer, TalentPoolSerializer, TalentPoolTagSerializer
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser # 支持文件上传
 from django.db.models import Count, Q
 from django.utils import timezone
@@ -200,6 +200,9 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         elif self.action in ["list", "retrieve", "update", "partial_update"]:
             # 这些动作需要根据对象权限判断
             permission_classes = [permissions.IsAuthenticated]
+        elif self.action in ["update_status", "enterprise_stats", "bulk_update_status","bulk_actions"]:
+            # 企业更新状态和查看统计需要企业用户权限
+            permission_classes = [permissions.IsAuthenticated, IsEnterpriseUser]
         else:
             permission_classes = [permissions.IsAuthenticated]
         return [permission() for permission in permission_classes]
@@ -352,6 +355,61 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(application)
         return Response(serializer.data)
 
+
+    @action(detail=False, methods=['post'], url_path='bulk_update_status')
+    def bulk_update_status(self, request):
+        """批量更新申请状态"""
+        
+        application_ids = request.data.get('application_ids', [])
+        new_status = request.data.get('status')
+        
+        if not application_ids:
+            return Response(
+                {"error": "必须提供申请ID列表"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not new_status:
+            return Response(
+                {"error": "必须提供状态参数"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 验证状态值
+        valid_statuses = [choice[0] for choice in JobApplication._meta.get_field('status').choices]
+        if new_status not in valid_statuses:
+            return Response(
+                {"error": "无效的状态值"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 获取当前企业的所有申请，确保只能操作自己的申请
+        enterprise = request.user.enterprise_profile
+        applications = JobApplication.objects.filter(
+            id__in=application_ids,
+            recruitment__enterprise=enterprise
+        )
+        
+        # 批量更新
+        updated_count = applications.update(status=new_status)
+        
+        return Response({
+            "message": f"成功更新 {updated_count} 条申请记录",
+            "updated_count": updated_count
+        })
+
+    @action(detail=False, methods=['get'])
+    def bulk_actions(self, request):
+        """获取可用的批量操作"""
+        return Response({
+            "status_actions": [
+                {"value": "VIEWED", "label": "标记为已查看"},
+                {"value": "INTERVIEW", "label": "标记为待面试"},
+                {"value": "REJECTED", "label": "标记为已拒绝"},
+                {"value": "HIRED", "label": "标记为已录用"}
+            ]
+        })
+
     @action(detail=False, methods=['get'])
     def enterprise_stats(self, request):
         """企业查看申请统计"""
@@ -381,3 +439,139 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         }
         
         return Response(data)
+    
+# 在 enterprise/views.py 中添加人才库视图集
+class TalentPoolViewSet(viewsets.ModelViewSet):
+    """人才库管理"""
+    serializer_class = TalentPoolSerializer
+    permission_classes = [permissions.IsAuthenticated, IsEnterpriseOwner]
+
+    def get_queryset(self):
+        # 只能查看自己企业的人才库
+        enterprise = self.request.user.enterprise_profile
+        return TalentPool.objects.filter(enterprise=enterprise).select_related(
+            'job_seeker', 'application', 'application__recruitment'
+        ).order_by("-added_at")
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+    @action(detail=False, methods=['post'])
+    def add_from_application(self, request):
+        """从申请记录添加到人才库"""
+        application_id = request.data.get('application_id')
+        tags = request.data.get('tags', '')
+        notes = request.data.get('notes', '')
+
+        if not application_id:
+            return Response(
+                {"error": "必须提供申请ID"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            application = JobApplication.objects.get(id=application_id)
+        except JobApplication.DoesNotExist:
+            return Response(
+                {"error": "申请记录不存在"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # 验证权限：必须是该企业的申请
+        enterprise = request.user.enterprise_profile
+        if application.recruitment.enterprise != enterprise:
+            return Response(
+                {"error": "无权操作此申请记录"}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # 检查是否已存在
+        if TalentPool.objects.filter(enterprise=enterprise, job_seeker=application.applicant).exists():
+            return Response(
+                {"error": "该求职者已存在人才库中"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 创建人才库记录
+        talent_pool = TalentPool.objects.create(
+            enterprise=enterprise,
+            job_seeker=application.applicant,
+            application=application,
+            resume_snapshot=application.resume_snapshot,
+            tags=tags,
+            notes=notes
+        )
+
+        serializer = self.get_serializer(talent_pool)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def update_status(self, request, pk=None):
+        """更新人才状态"""
+        talent_pool = self.get_object()
+        new_status = request.data.get('status')
+        notes = request.data.get('notes', '')
+
+        if not new_status:
+            return Response(
+                {"error": "必须提供状态参数"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        valid_statuses = [choice[0] for choice in TalentPool._meta.get_field('status').choices]
+        if new_status not in valid_statuses:
+            return Response(
+                {"error": "无效的状态值"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        talent_pool.status = new_status
+        if notes:
+            talent_pool.notes = notes
+        talent_pool.save()
+
+        serializer = self.get_serializer(talent_pool)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def update_rating(self, request, pk=None):
+        """更新人才评分"""
+        talent_pool = self.get_object()
+        rating = request.data.get('rating')
+
+        if rating is None:
+            return Response(
+                {"error": "必须提供评分"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            rating = int(rating)
+            if rating < 0 or rating > 5:
+                raise ValueError
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "评分必须是0-5的整数"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        talent_pool.rating = rating
+        talent_pool.save()
+
+        serializer = self.get_serializer(talent_pool)
+        return Response(serializer.data)
+
+class TalentPoolTagViewSet(viewsets.ModelViewSet):
+    """人才库标签管理"""
+    serializer_class = TalentPoolTagSerializer
+    permission_classes = [permissions.IsAuthenticated, IsEnterpriseOwner]
+
+    def get_queryset(self):
+        enterprise = self.request.user.enterprise_profile
+        return TalentPoolTag.objects.filter(enterprise=enterprise).order_by("name")
+
+    def perform_create(self, serializer):
+        enterprise = self.request.user.enterprise_profile
+        serializer.save(enterprise=enterprise)

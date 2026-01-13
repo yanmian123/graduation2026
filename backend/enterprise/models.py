@@ -1,6 +1,6 @@
 from django.db import models
 from register.models import User
-from django.core.validators import RegexValidator, MinValueValidator 
+from django.core.validators import RegexValidator, MinValueValidator, MaxValueValidator 
 from django.utils import timezone
 # Create your models here.
 
@@ -247,3 +247,78 @@ class JobApplication(models.Model):
 
     def __str__(self):
         return f"{self.applicant.username}申请{self.recruitment.title}"
+    
+    
+    # 在 enterprise/models.py 中添加人才库相关模型
+class TalentPool(models.Model):
+    """企业人才库"""
+    enterprise = models.ForeignKey(
+        Enterprise, 
+        on_delete=models.CASCADE, 
+        related_name="talent_pool",
+        verbose_name="所属企业"
+    )
+    job_seeker = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name="talent_pool_entries",
+        verbose_name="求职者"
+    )
+    application = models.ForeignKey(
+        JobApplication, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name="talent_pool_entry",
+        verbose_name="关联的申请记录"
+    )
+    # 人才信息快照（保留加入时的简历信息）
+    resume_snapshot = models.JSONField(default=dict, verbose_name="简历快照")
+    tags = models.CharField(max_length=500, blank=True, verbose_name="标签")
+    notes = models.TextField(blank=True, verbose_name="备注")
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ("ACTIVE", "活跃"),
+            ("ARCHIVED", "已归档"),
+            ("BLACKLIST", "黑名单")
+        ],
+        default="ACTIVE",
+        verbose_name="人才状态"
+    )
+    rating = models.PositiveSmallIntegerField(
+        default=0, 
+        validators=[MinValueValidator(0), MaxValueValidator(5)],
+        verbose_name="评分"
+    )
+    added_at = models.DateTimeField(auto_now_add=True, verbose_name="添加时间")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
+
+    class Meta:
+        unique_together = ['enterprise', 'job_seeker']  # 防止重复添加
+        verbose_name = "人才库"
+        verbose_name_plural = "人才库"
+        ordering = ["-added_at"]
+
+    def __str__(self):
+        return f"{self.enterprise.name} - {self.job_seeker.username}"
+
+class TalentPoolTag(models.Model):
+    """人才库标签"""
+    enterprise = models.ForeignKey(
+        Enterprise, 
+        on_delete=models.CASCADE, 
+        related_name="talent_tags",
+        verbose_name="所属企业"
+    )
+    name = models.CharField(max_length=50, verbose_name="标签名称")
+    color = models.CharField(max_length=7, default="#1890ff", verbose_name="标签颜色")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+
+    class Meta:
+        unique_together = ['enterprise', 'name']
+        verbose_name = "人才库标签"
+        verbose_name_plural = "人才库标签"
+
+    def __str__(self):
+        return self.name

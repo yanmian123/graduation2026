@@ -37,14 +37,13 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def start_chat(self, request):
         """
-        开始聊天 - 修复版本
-        智能查找或创建聊天室，避免重复创建
+        开始聊天 - 忽略recruitment_id，只根据用户ID创建
         """
         enterprise_user_id = request.data.get('enterprise_user_id')
         job_seeker_user_id = request.data.get('job_seeker_user_id')
-        recruitment_id = request.data.get('recruitment_id')
+        recruitment_id = request.data.get('recruitment_id')  # 保留但不使用
         
-        print(f"🔍 开始聊天请求参数: enterprise={enterprise_user_id}, job_seeker={job_seeker_user_id}, recruitment={recruitment_id}")
+        print(f"🔍🔍 开始聊天请求参数: enterprise={enterprise_user_id}, job_seeker={job_seeker_user_id}, recruitment={recruitment_id}")
         
         # 1. 验证必需参数
         if not enterprise_user_id or not job_seeker_user_id:
@@ -64,78 +63,47 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # 3. 处理招聘信息（可选）
-        recruitment = None
-        if recruitment_id:
-            try:
-                recruitment = Recruitment.objects.get(id=recruitment_id)
-                print(f"✅ 找到招聘信息: {recruitment.title}")
-            except Recruitment.DoesNotExist:
-                print("⚠️ 招聘信息不存在，但不影响聊天室创建")
-                # 招聘信息不存在不影响聊天室创建
-        
-        # 4. 智能查找或创建聊天室
-        created = False  # 🔧 关键修复：初始化变量
+        # 3. 简单查找或创建聊天室 - 只根据用户ID
+        created = False
         
         try:
-            # 构建查询条件
-            base_query = Q(enterprise_user=enterprise_user) & Q(job_seeker_user=job_seeker_user)
+            # 只根据用户ID查找，忽略recruitment_id
+            chat_rooms = ChatRoom.objects.filter(
+                enterprise_user=enterprise_user,
+                job_seeker_user=job_seeker_user
+            ).order_by('-created_at')  # 取最新的一个
             
-            if recruitment:
-                # 如果提供了招聘信息，优先精确匹配
-                exact_query = base_query & Q(recruitment=recruitment)
-                chat_rooms = ChatRoom.objects.filter(exact_query)
-                
-                if chat_rooms.exists():
-                    # 找到精确匹配的聊天室
-                    chat_room = chat_rooms.first()
-                    created = False
-                    print("✅ 找到精确匹配的聊天室（包含招聘信息）")
-                else:
-                    # 没找到精确匹配，创建新的
-                    chat_room = ChatRoom.objects.create(
-                        enterprise_user=enterprise_user,
-                        job_seeker_user=job_seeker_user,
-                        recruitment=recruitment
-                    )
-                    created = True
-                    print("✅ 创建新的聊天室（包含招聘信息）")
+            if chat_rooms.exists():
+                # 使用已存在的聊天室（取最新的）
+                chat_room = chat_rooms.first()
+                created = False
+                print("✅ 找到已存在的聊天室")
             else:
-                # 没有招聘信息，查找通用聊天室
-                chat_rooms = ChatRoom.objects.filter(base_query & Q(recruitment__isnull=True))
+                # 创建新的聊天室，recruitment_id设为null
+                chat_room = ChatRoom.objects.create(
+                    enterprise_user=enterprise_user,
+                    job_seeker_user=job_seeker_user,
+                    recruitment=None  # 总是设为null
+                )
+                created = True
+                print("✅ 创建新的聊天室")
                 
-                if chat_rooms.exists():
-                    # 找到通用聊天室
-                    chat_room = chat_rooms.first()
-                    created = False
-                    print("✅ 找到通用聊天室（无招聘信息）")
-                else:
-                    # 没找到，创建新的通用聊天室
-                    chat_room = ChatRoom.objects.create(
-                        enterprise_user=enterprise_user,
-                        job_seeker_user=job_seeker_user,
-                        recruitment=None
-                    )
-                    created = True
-                    print("✅ 创建新的通用聊天室")
-                    
         except Exception as e:
-            print(f"❌ 创建聊天室时发生错误: {e}")
+            print(f"❌❌ 创建聊天室时发生错误: {e}")
             return Response(
                 {"error": "创建聊天室失败"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         
-        # 5. 序列化并返回结果
+        # 4. 序列化并返回结果
         serializer = self.get_serializer(chat_room)
         
-        print(f"🎯 聊天室处理完成: 创建={created}, 聊天室ID={chat_room.id}")
+        print(f"🎯🎯 聊天室处理完成: 创建={created}, 聊天室ID={chat_room.id}")
         
         return Response(
             serializer.data,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
         )
-
 class MessageViewSet(viewsets.ModelViewSet):
     """消息视图集"""
     queryset = Message.objects.all()

@@ -32,7 +32,7 @@ class ChatRoom(models.Model):
     class Meta:
         verbose_name = "聊天室"
         verbose_name_plural = "聊天室"
-        unique_together = ['enterprise_user', 'job_seeker_user', 'recruitment']
+        unique_together = ['enterprise_user', 'job_seeker_user']
         ordering = ['-updated_at']
     
     def __str__(self):

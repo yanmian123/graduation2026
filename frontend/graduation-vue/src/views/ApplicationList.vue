@@ -367,7 +367,24 @@ const columns = [
         // }),
         h(NDropdown, {
           trigger: 'click',
-          options: actions,
+          options: [
+            {
+              label: '加入人才库',
+              key: 'add_to_talent',
+              // 移除这里的onClick
+            },
+            {
+              label: '开始聊天', 
+              key: 'start_chat',
+            }
+          ],
+          onSelect: (key) => {
+            if (key === 'add_to_talent') {
+              addToTalentPool(row)
+            } else if (key === 'start_chat') {
+              startChat(row)
+            }
+          },
           size: 'small'
         }, {
           default: () => h(NButton, { size: 'small' }, { default: () => '更多' })

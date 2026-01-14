@@ -272,6 +272,13 @@ class TalentPool(models.Model):
         related_name="talent_pool_entry",
         verbose_name="关联的申请记录"
     )
+        # 添加PDF文件字段，与JobApplication保持一致
+    pdf_file = models.FileField(
+        upload_to='talent_pool/resumes/%Y/%m/%d/', 
+        null=True, 
+        blank=True, 
+        verbose_name="PDF简历"
+    )
     # 人才信息快照（保留加入时的简历信息）
     resume_snapshot = models.JSONField(default=dict, verbose_name="简历快照")
     tags = models.CharField(max_length=500, blank=True, verbose_name="标签")

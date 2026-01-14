@@ -224,22 +224,32 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         context['request'] = self.request
         return context
 
+    # 在 JobApplicationViewSet 中修改 _copy_pdf_file 方法
     def _copy_pdf_file(self, resume):
         """复制PDF文件到申请记录"""
-        if resume.pdf_url and hasattr(resume.pdf_url, 'file'):  # 检查是否有PDF文件
-            # 生成新的文件名，避免冲突
-            original_name = resume.pdf_url.name
-            import os
-            from django.core.files.base import ContentFile
-            
-            # 读取原文件内容
-            resume.pdf_url.open('rb')
-            file_content = resume.pdf_url.read()
-            resume.pdf_url.close()
-            
-            # 创建新文件（返回ContentFile对象，后续会保存到FileField）
-            from django.core.files.base import ContentFile
-            return ContentFile(file_content, name=original_name)
+        try:
+            if resume.pdf_url and hasattr(resume.pdf_url, 'name'):
+                # 确保文件存在
+                if not resume.pdf_url.storage.exists(resume.pdf_url.name):
+                    print(f"❌ PDF文件不存在: {resume.pdf_url.name}")
+                    return None
+                    
+                # 读取文件内容
+                with resume.pdf_url.open('rb') as f:
+                    from django.core.files import File
+                    from django.utils.timezone import now
+                    
+                    # 生成唯一文件名
+                    import os
+                    original_name = os.path.basename(resume.pdf_url.name)
+                    timestamp = now().strftime("%Y%m%d_%H%M%S")
+                    new_name = f"{resume.id}_{timestamp}_{original_name}"
+                    
+                    return File(f, name=new_name)
+        except Exception as e:
+            print(f"❌ 复制PDF文件失败: {e}")
+            return None
+        
         return None
 
     def perform_create(self, serializer):
@@ -500,6 +510,7 @@ class TalentPoolViewSet(viewsets.ModelViewSet):
             job_seeker=application.applicant,
             application=application,
             resume_snapshot=application.resume_snapshot,
+            pdf_file=application.pdf_file,  # 复制PDF文件
             tags=tags,
             notes=notes
         )

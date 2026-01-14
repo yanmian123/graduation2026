@@ -139,12 +139,13 @@ class TalentPoolSerializer(serializers.ModelSerializer):
     job_seeker_email = serializers.CharField(source="job_seeker.email", read_only=True)
     application_info = serializers.SerializerMethodField()
     tags_list = serializers.SerializerMethodField()
-
+    pdf_file = serializers.FileField(read_only=True)
+    
     class Meta:
         model = TalentPool
         fields = [
             "id", "enterprise", "job_seeker", "job_seeker_name", "job_seeker_email",
-            "application", "application_info", "resume_snapshot", "tags", "tags_list",
+            "application", "application_info", "resume_snapshot", "pdf_file","tags", "tags_list",
             "notes", "status", "rating", "added_at", "updated_at"
         ]
         read_only_fields = ["enterprise", "job_seeker", "application", "resume_snapshot"]

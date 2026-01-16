@@ -302,7 +302,7 @@ class TalentPool(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
 
     class Meta:
-        unique_together = ['enterprise', 'job_seeker']  # 防止重复添加
+        unique_together = ['enterprise', 'application']  # 确保同一企业同一申请记录只能加入一次人才库
         verbose_name = "人才库"
         verbose_name_plural = "人才库"
         ordering = ["-added_at"]

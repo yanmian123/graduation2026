@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "enterprise", #企业模块
     "chat", #聊天模块
     "channels", #Django Channels
+    "notification", #通知模块
 ]
 
 ASGI_APPLICATION = "graduation.asgi.application"

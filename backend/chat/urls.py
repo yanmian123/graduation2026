@@ -12,5 +12,8 @@ urlpatterns = [
         'get': 'list', 
         'post': 'create'
     }), name='message-list'),
-     path('chatrooms/<int:room_id>/upload/', views.upload_file, name='upload-file'),
+    path('chatrooms/<int:room_id>/messages/<int:pk>/mark_as_read/', views.MessageViewSet.as_view({
+        'post': 'mark_as_read'
+    }), name='message-mark-as-read'),
+    path('chatrooms/<int:room_id>/upload/', views.upload_file, name='upload-file'),
 ]

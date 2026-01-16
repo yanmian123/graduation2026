@@ -9,11 +9,18 @@ from register.models import User
 from rest_framework.decorators import api_view, permission_classes
 from django.conf import settings
 import os
+from notification.utils import create_notification
 
 class IsChatParticipant(permissions.BasePermission):
     """验证用户是否是聊天室的参与者"""
     def has_object_permission(self, request, view, obj):
-        return obj.enterprise_user == request.user or obj.job_seeker_user == request.user
+        # 如果是ChatRoom对象
+        if isinstance(obj, ChatRoom):
+            return obj.enterprise_user == request.user or obj.job_seeker_user == request.user
+        # 如果是Message对象，通过chat_room属性检查
+        elif isinstance(obj, Message):
+            return obj.chat_room.enterprise_user == request.user or obj.chat_room.job_seeker_user == request.user
+        return False
 
 class ChatRoomViewSet(viewsets.ModelViewSet):
     """聊天室视图集"""
@@ -118,7 +125,57 @@ class MessageViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         room_id = self.kwargs.get('room_id')
         chat_room = ChatRoom.objects.get(id=room_id)
-        serializer.save(chat_room=chat_room, sender=self.request.user)
+        
+        # 保存消息
+        message = serializer.save(chat_room=chat_room, sender=self.request.user)
+        
+        # 确定接收者和通知类型
+        sender = self.request.user
+        recipient = None
+        notification_type = None
+        
+        if sender.is_enterprise:
+            # 企业发送消息给求职者
+            recipient = chat_room.job_seeker_user
+            notification_type = 'company_chat'
+        else:
+            # 求职者发送消息给企业
+            recipient = chat_room.enterprise_user
+            notification_type = 'jobseeker_message'
+        
+        # 创建通知
+        if recipient:
+            title = "新消息"
+            message_content = message.content if len(message.content) <= 50 else f"{message.content[:50]}..."
+            create_notification(
+                recipient=recipient,
+                notification_type=notification_type,
+                title=title,
+                message=message_content,
+                related_object_id=chat_room.id,
+                related_object_type='chat_room'
+            )
+        
+        # 通过WebSocket广播消息
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        from .serializers import MessageSerializer
+        
+        channel_layer = get_channel_layer()
+        room_group_name = f'chat_{room_id}'
+        
+        # 序列化消息
+        serializer = MessageSerializer(message)
+        message_data = serializer.data
+        
+        # 广播消息
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                'type': 'chat_message',
+                'message': message_data
+            }
+        )
     
     @action(detail=True, methods=['post'])
     def mark_as_read(self, request, room_id=None, pk=None):

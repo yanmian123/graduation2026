@@ -32,4 +32,5 @@ urlpatterns = [
     path('api/', include('article_publish.urls')), #文章发布接口路径：/api/posts/
     path('api/', include('enterprise.urls')), #企业模块接口路径：/api/enterprise/
     path('api/chat/', include('chat.urls')),
+    path('api/', include('notification.urls')),  # 通知接口路径：/api/notifications/
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

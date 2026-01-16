@@ -234,18 +234,21 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
                     print(f"❌ PDF文件不存在: {resume.pdf_url.name}")
                     return None
                     
-                # 读取文件内容
+                # 读取文件内容到内存
                 with resume.pdf_url.open('rb') as f:
-                    from django.core.files import File
-                    from django.utils.timezone import now
-                    
-                    # 生成唯一文件名
-                    import os
-                    original_name = os.path.basename(resume.pdf_url.name)
-                    timestamp = now().strftime("%Y%m%d_%H%M%S")
-                    new_name = f"{resume.id}_{timestamp}_{original_name}"
-                    
-                    return File(f, name=new_name)
+                    file_content = f.read()
+                
+                from django.core.files.base import ContentFile
+                from django.utils.timezone import now
+                
+                # 生成唯一文件名
+                import os
+                original_name = os.path.basename(resume.pdf_url.name)
+                timestamp = now().strftime("%Y%m%d_%H%M%S")
+                new_name = f"{resume.id}_{timestamp}_{original_name}"
+                
+                # 创建一个新的文件对象，使用内存中的内容
+                return ContentFile(file_content, name=new_name)
         except Exception as e:
             print(f"❌ 复制PDF文件失败: {e}")
             return None
@@ -296,6 +299,23 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
             )
             
             logger.info(f"成功创建申请记录，ID: {application.id}, PDF文件: {application.pdf_file}")
+            
+            # 发送通知给企业用户
+            from notification.utils import create_notification
+            
+            # 获取企业用户（招聘信息所属企业的用户）
+            enterprise_user = recruitment.enterprise.user
+            
+            # 创建通知
+            create_notification(
+                recipient=enterprise_user,
+                notification_type='resume_received',  # 使用已定义的通知类型
+                title="收到新简历",
+                message=f"求职者 {self.request.user.username} 投递了简历到职位 {recruitment.title}",
+                related_object_id=recruitment.id,
+                related_object_type='recruitment'
+            )
+            
             return application
             
         except Exception as e:
@@ -364,6 +384,49 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(application)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def send_notification(self, request, pk=None):
+        """发送申请状态通知给求职者"""
+        from notification.utils import create_notification
+        
+        application = self.get_object()
+        
+        # 状态中文映射
+        status_map = {
+            'PENDING': '待处理',
+            'VIEWED': '已查看',
+            'INTERVIEW': '待面试',
+            'REJECTED': '已拒绝',
+            'HIRED': '已录用'
+        }
+        
+        # 构建通知消息
+        notification_data = {
+            'recipient': application.applicant,
+            'type': 'application_status',
+            'title': '申请状态更新',
+            'content': f'您申请的职位"{application.recruitment.title}"状态已更新为：{status_map.get(application.status, application.status)}',
+            'related_id': application.id,
+            'related_model': 'JobApplication'
+        }
+        
+        # 发送通知
+        try:
+            create_notification(
+                recipient=notification_data['recipient'],
+                notification_type=notification_data['type'],
+                title=notification_data['title'],
+                message=notification_data['content'],
+                related_object_id=notification_data['related_id'],
+                related_object_type=notification_data['related_model']
+            )
+            return Response({'message': '状态通知发送成功'})
+        except Exception as e:
+            return Response(
+                {'error': f'发送通知失败: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
     @action(detail=False, methods=['post'], url_path='bulk_update_status')
@@ -497,13 +560,18 @@ class TalentPoolViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # 检查是否已存在
-        if TalentPool.objects.filter(enterprise=enterprise, job_seeker=application.applicant).exists():
+        # 检查该申请记录是否已经在人才库中
+        existing_talent = TalentPool.objects.filter(
+            enterprise=enterprise,
+            application=application
+        ).first()
+        
+        if existing_talent:
             return Response(
-                {"error": "该求职者已存在人才库中"}, 
+                {"error": "该申请记录已存在于人才库中"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
+        
         # 创建人才库记录
         talent_pool = TalentPool.objects.create(
             enterprise=enterprise,

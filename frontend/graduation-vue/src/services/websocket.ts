@@ -256,6 +256,16 @@ export class WebSocketService {
     this.disconnectCallbacks.push(callback)
   }
 
+  removeReadReceiptCallback(callback: (messageId: number, readerId: number) => void) {
+    const index = this.readReceiptCallbacks.indexOf(callback)
+    if (index > -1) {
+      this.readReceiptCallbacks.splice(index, 1)
+      console.log('📩 移除已读回执回调', {
+        remainingCallbacks: this.readReceiptCallbacks.length
+      })
+    }
+  }
+
   removeMessageCallback(callback: (message: Message) => void) {
     const index = this.messageCallbacks.indexOf(callback)
     if (index > -1) {

@@ -431,7 +431,6 @@ const getFullAvatarUrl = (avatarPath: string | undefined): string | undefined =>
   }
   
   const fullUrl = `${baseUrl}${normalizedPath}`
-  console.log('🔗🔗 拼接完整URL:', { avatarPath, normalizedPath, fullUrl })
   return fullUrl
 }
 
@@ -523,12 +522,15 @@ onMounted(() => {
 onUnmounted(() => {
   webSocketService.disconnect()
   webSocketService.removeMessageCallback(handleNewMessage)
+  webSocketService.removeReadReceiptCallback(handleReadReceipt)
 })
 
 // 监听当前聊天室变化
 watch(currentRoom, (newRoom) => {
   if (newRoom) {
     webSocketService.connect(newRoom.id)
+    webSocketService.onMessage(handleNewMessage)
+    webSocketService.onReadReceipt(handleReadReceipt)
     scrollToBottom()
   } else {
     webSocketService.disconnect()

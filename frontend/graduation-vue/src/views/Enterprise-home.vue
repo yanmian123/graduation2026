@@ -148,7 +148,7 @@
                   <div class="application-header">
                     <!-- 显示求职者姓名 -->
                     <span class="applicant-name">
-                      {{ application.applicant_name || application.job_seeker?.nickname || application.job_seeker?.username }}
+                      {{ application.resume_name || application.applicant_name || application.job_seeker?.nickname || application.job_seeker?.username }}
                     </span>
                     <span class="apply-time">{{ formatTime(application.created_at || application.applied_at) }}</span>
                   </div>
@@ -589,6 +589,7 @@ const getMockApplications = () => {
         nickname: '张三',
         avatar: ''
       },
+      resume_name: '张小明', // 简历中的真实姓名
       recruitment: {
         id: 201, // 真实的招聘信息ID
         title: '前端开发工程师'

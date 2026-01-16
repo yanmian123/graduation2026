@@ -383,9 +383,20 @@ const filteredTalents = computed(() => {
     const keyword = searchKeyword.value.toLowerCase()
     result = result.filter(talent => {
       return (
-        talent.job_seeker_name.toLowerCase().includes(keyword) ||
+        // 按姓名搜索（使用简历中的姓名，而非用户名）
+        (talent.resume_snapshot?.name || '').toLowerCase().includes(keyword) ||
+        // 按学历搜索
+        (talent.resume_snapshot?.education || '').toLowerCase().includes(keyword) ||
+        // 按联系方式搜索（电话和邮箱）
+        (talent.resume_snapshot?.phone || '').toLowerCase().includes(keyword) ||
+        (talent.resume_snapshot?.email || '').toLowerCase().includes(keyword) ||
+        // 按添加时间搜索
+        (talent.added_at || '').toLowerCase().includes(keyword) ||
+        // 按技能搜索
         (talent.resume_snapshot?.skills || '').toLowerCase().includes(keyword) ||
+        // 按标签搜索
         (talent.tags || '').toLowerCase().includes(keyword) ||
+        // 按来源职位搜索
         (talent.application_info?.recruitment_title || '').toLowerCase().includes(keyword)
       )
     })

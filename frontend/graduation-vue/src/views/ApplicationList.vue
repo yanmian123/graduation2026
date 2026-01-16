@@ -72,7 +72,8 @@ const bulkActions = ref([
   { label: '标记为已查看', value: 'VIEWED' },
   { label: '标记为待面试', value: 'INTERVIEW' },
   { label: '标记为已拒绝', value: 'REJECTED' },
-  { label: '标记为已录用', value: 'HIRED' }
+  { label: '标记为已录用', value: 'HIRED' },
+  { label: '发送招聘状态', value: 'SEND_STATUS' }
 ])
 
 // 状态选项
@@ -200,6 +201,19 @@ const updateApplicationStatus = async (applicationId, newStatus) => {
   } catch (error) {
     console.error('更新状态失败:', error)
     message.error('状态更新失败')
+  }
+}
+
+// 发送申请状态通知
+const sendApplicationNotification = async (applicationId) => {
+  try {
+    await axios.post(`/applications/${applicationId}/send_notification/`)
+    console.log(`成功发送申请 ${applicationId} 的状态通知`)
+    message.success('状态通知发送成功')
+  } catch (error) {
+    console.error('发送状态通知失败:', error)
+    message.error('发送状态通知失败: ' + (error.response?.data?.error || error.message))
+    throw error
   }
 }
 
@@ -370,12 +384,15 @@ const columns = [
           options: [
             {
               label: '加入人才库',
-              key: 'add_to_talent',
-              // 移除这里的onClick
+              key: 'add_to_talent'
             },
             {
               label: '开始聊天', 
-              key: 'start_chat',
+              key: 'start_chat'
+            },
+            {
+              label: '发送流程通知', 
+              key: 'send_notification'
             }
           ],
           onSelect: (key) => {
@@ -383,6 +400,8 @@ const columns = [
               addToTalentPool(row)
             } else if (key === 'start_chat') {
               startChat(row)
+            } else if (key === 'send_notification') {
+              sendApplicationNotification(row.id)
             }
           },
           size: 'small'

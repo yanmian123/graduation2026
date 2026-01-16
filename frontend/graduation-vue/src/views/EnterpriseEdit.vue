@@ -1,81 +1,132 @@
 <template>
   <div class="enterprise-edit-page">
-    <n-card title="完善企业信息">
+    <n-card title="完善企业信息" class="edit-card">
       <n-form 
         ref="formRef" 
         :model="formData" 
         :rules="rules"
         label-placement="top"
       >
-        <n-form-item path="name" label="企业名称">
-          <n-input 
-            v-model:value="formData.name" 
-            placeholder="请输入企业名称"
-          />
-        </n-form-item>
+        <div class="form-grid">
+          <!-- 企业基本信息区域 -->
+          <div class="form-section">
+            <h3 class="section-title">企业基本信息</h3>
+            
+            <div class="form-row">
+              <div class="form-col">
+                <n-form-item path="name" label="企业名称">
+                  <n-input 
+                    v-model:value="formData.name" 
+                    placeholder="请输入企业名称"
+                    class="form-input"
+                  />
+                </n-form-item>
+              </div>
+            </div>
 
-        <n-form-item path="logo" label="企业Logo">
-          <n-upload
-            :default-file-list="fileList"
-            @change="handleFileChange"
-            :max-count="1" 
-            type="select" 
-          >
-            <n-button>选择图片</n-button>
-          </n-upload>
-          <n-image 
-            v-if="formData.logo" 
-            :src="formData.logo" 
-            style="max-width: 200px; margin-top: 10px;"
-          />
-        </n-form-item>
+            <div class="form-row">
+              <div class="form-col">
+                <n-form-item path="logo" label="企业Logo">
+                  <div class="logo-upload-section">
+                    <n-upload
+                      :default-file-list="fileList"
+                      @change="handleFileChange"
+                      :max-count="1" 
+                      type="select" 
+                    >
+                      <n-button type="primary" class="upload-btn">选择图片</n-button>
+                    </n-upload>
+                    
+                    <div class="logo-preview-container" v-if="formData.logo">
+                      <n-image 
+                        :src="formData.logo" 
+                        class="logo-preview"
+                      />
+                      <div class="logo-hint">当前Logo预览</div>
+                    </div>
+                  </div>
+                </n-form-item>
+              </div>
+            </div>
 
-        <n-form-item path="description" label="企业简介">
-          <n-input 
-            v-model:value="formData.description" 
-            type="textarea"
-            rows="4"
-            placeholder="请输入企业简介"
-          />
-        </n-form-item>
+            <div class="form-row">
+              <div class="form-col">
+                <n-form-item path="description" label="企业简介">
+                  <n-input 
+                    v-model:value="formData.description" 
+                    type="textarea"
+                    rows="4"
+                    placeholder="请输入企业简介"
+                    class="form-input"
+                  />
+                </n-form-item>
+              </div>
+            </div>
+          </div>
 
-        <n-form-item path="contact_person" label="联系人">
-          <n-input 
-            v-model:value="formData.contact_person" 
-            placeholder="请输入联系人姓名"
-          />
-        </n-form-item>
+          <!-- 联系方式区域 -->
+          <div class="form-section">
+            <h3 class="section-title">联系方式</h3>
+            
+            <div class="form-row">
+              <div class="form-col">
+                <n-form-item path="contact_person" label="联系人">
+                  <n-input 
+                    v-model:value="formData.contact_person" 
+                    placeholder="请输入联系人姓名"
+                    class="form-input"
+                  />
+                </n-form-item>
+              </div>
+              
+              <div class="form-col">
+                <n-form-item path="contact_phone" label="联系电话">
+                  <n-input 
+                    v-model:value="formData.contact_phone" 
+                    placeholder="请输入联系电话"
+                    class="form-input"
+                  />
+                </n-form-item>
+              </div>
+            </div>
 
-        <n-form-item path="contact_phone" label="联系电话">
-          <n-input 
-            v-model:value="formData.contact_phone" 
-            placeholder="请输入联系电话"
-          />
-        </n-form-item>
+            <div class="form-row">
+              <div class="form-col">
+                <n-form-item path="contact_email" label="联系邮箱">
+                  <n-input 
+                    v-model:value="formData.contact_email" 
+                    placeholder="请输入联系邮箱"
+                    class="form-input"
+                  />
+                </n-form-item>
+              </div>
+            </div>
 
-        <n-form-item path="contact_email" label="联系邮箱">
-          <n-input 
-            v-model:value="formData.contact_email" 
-            placeholder="请输入联系邮箱"
-          />
-        </n-form-item>
+            <div class="form-row">
+              <div class="form-col">
+                <n-form-item path="address" label="企业地址">
+                  <n-input 
+                    v-model:value="formData.address" 
+                    placeholder="请输入企业地址"
+                    class="form-input"
+                  />
+                </n-form-item>
+              </div>
+            </div>
+          </div>
+        </div>
 
-        <n-form-item path="address" label="企业地址">
-          <n-input 
-            v-model:value="formData.address" 
-            placeholder="请输入企业地址"
-          />
-        </n-form-item>
-
-        <n-form-item>
+        <div class="form-actions">
           <n-button 
             type="primary" 
             @click="handleSubmit"
             :loading="loading"
+            size="large"
+            class="submit-btn"
           >
             保存信息
           </n-button>
-        </n-form-item>
+        </div>
       </n-form>
     </n-card>
   </div>
@@ -198,6 +249,16 @@ const handleSubmit = async () => {
     }
     
     message.success('企业信息保存成功！')
+    
+    // 更新本地存储的企业信息
+    const enterpriseInfo = {
+      id: formData.value.id,
+      name: formData.value.name,
+      logo: formData.value.logo,
+      avatar: formData.value.logo // 保持兼容性
+    }
+    localStorage.setItem('enterpriseInfo', JSON.stringify(enterpriseInfo))
+    
     router.push('/enterprise/home')
     
   } catch (error) {
@@ -221,7 +282,138 @@ onMounted(() => {
 <style scoped>
 .enterprise-edit-page {
   padding: 20px;
-  max-width: 800px;
+  max-width: 1200px;
   margin: 0 auto;
+}
+
+.edit-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 30px;
+}
+
+.form-section {
+  background: #fafafa;
+  padding: 20px;
+  border-radius: 8px;
+  border-left: 4px solid #1890ff;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 20px 0;
+  color: #333;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.form-col {
+  width: 100%;
+}
+
+.form-input {
+  width: 100%;
+  border-radius: 4px;
+}
+
+.logo-upload-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.logo-preview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 15px;
+  padding: 15px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.logo-preview {
+  width: 120px !important;
+  height: 120px !important;
+  object-fit: contain !important;
+  border-radius: 4px !important;
+  max-width: 120px !important;
+  max-height: 120px !important;
+  min-width: 120px !important;
+  min-height: 120px !important;
+  display: block !important;
+}
+
+/* 强制n-image容器也使用相同的尺寸 */
+.logo-preview-container :deep(.n-image) {
+  width: 120px !important;
+  height: 120px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.logo-preview-container :deep(.n-image img) {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+}
+
+.logo-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #999;
+}
+
+.upload-btn {
+  border-radius: 4px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+  margin-top: 20px;
+  border-top: 1px solid #e8e8e8;
+}
+
+.submit-btn {
+  border-radius: 4px;
+  min-width: 120px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .logo-upload-section {
+    align-items: stretch;
+  }
+  
+  .upload-btn {
+    width: 100%;
+  }
+  
+  .logo-preview {
+    width: 100px;
+    height: 100px;
+  }
 }
 </style>

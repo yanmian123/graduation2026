@@ -33,6 +33,53 @@
             </template>
           </n-input>
           
+          <!-- 通知中心 - 原生实现 -->
+          <div class="notification-container" @mouseenter="openNotificationDropdown" @mouseleave="closeNotificationDropdown">
+            <!-- 通知图标触发器 -->
+            <div class="notification-trigger">
+              <n-icon size="20">
+                <Notifications />
+              </n-icon>
+              <!-- 未读通知数量 -->
+              <span v-if="unreadCount > 0" class="notification-badge">
+                {{ unreadCount > 99 ? '99+' : unreadCount }}
+              </span>
+            </div>
+            
+            <!-- 通知下拉菜单 -->
+            <div v-if="showNotification" class="notification-dropdown">
+              <div class="notification-header">
+                <h3>通知中心</h3>
+                <button class="notification-mark-all" @click="markAllAsRead">全部已读</button>
+              </div>
+              
+              <div class="notification-list">
+                <div v-if="notificationStore.isLoading" class="notification-loading">
+                  加载中...
+                </div>
+                
+                <div v-else-if="notifications.length === 0" class="notification-empty">
+                  暂无通知
+                </div>
+                
+                <div 
+                  v-for="notification in notifications" 
+                  :key="notification.id"
+                  class="notification-item"
+                  :class="{ 'unread': !notification.is_read }"
+                  @click="markAsRead(notification.id)"
+                >
+                  <div class="notification-title">{{ notification.title }}</div>
+                  <div class="notification-message">{{ notification.message }}</div>
+                  <div class="notification-time">{{ formatTime(notification.created_at) }}</div>
+                </div>
+              </div>
+              
+              <div class="notification-footer">
+                <button class="notification-view-all" @click="showAllNotifications">查看全部</button>
+              </div>
+            </div>
+          </div>
           
           <n-dropdown 
             v-if="isLogin" 
@@ -66,7 +113,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onErrorCaptured } from 'vue'
+import { ref, onMounted, onErrorCaptured, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { 
   NLayoutHeader, 
@@ -75,9 +122,13 @@ import {
   NDropdown, 
   NButton, 
   NIcon, 
-  NAvatar 
+  NAvatar,
+  NBadge,
+  NSpin,
+  NPopover
 } from 'naive-ui'
-import { Briefcase, Search, Person } from '@vicons/ionicons5'
+import { Briefcase, Search, Person, Notifications, NotificationsOutline } from '@vicons/ionicons5'
+import { useNotificationStore } from '@/stores/notificationStore'
 
 // 错误处理
 const error = ref(null)
@@ -95,6 +146,26 @@ const route = useRoute()
 const isLogin = ref(false)
 const userAvatar = ref('')
 const searchQuery = ref('')
+
+// 通知相关
+const notificationStore = useNotificationStore()
+const unreadCount = computed(() => notificationStore.unreadCount)
+const notifications = computed(() => notificationStore.sortedNotifications.slice(0, 5)) // 只显示最近5条通知
+const showNotification = ref(false)
+
+// 打开通知下拉菜单
+const openNotificationDropdown = () => {
+  showNotification.value = true
+  notificationStore.fetchNotifications()
+}
+
+// 关闭通知下拉菜单
+const closeNotificationDropdown = () => {
+  // 添加一个小延迟，确保用户有时间将鼠标从触发器移动到下拉菜单
+  setTimeout(() => {
+    showNotification.value = false
+  }, 200)
+}
 
 // 导航菜单配置
 const menuOptions = ref([
@@ -128,12 +199,14 @@ onMounted(() => {
 })
 
 // 初始化组件
-const initializeComponent = () => {
+const initializeComponent = async () => {
   try {
     // 检查登录状态
     isLogin.value = !!localStorage.getItem('accessToken')
     if (isLogin.value) {
       userAvatar.value = 'https://picsum.photos/id/100/40/40'
+      // 初始化通知功能
+      await notificationStore.init()
     }
     
     // 设置当前激活的菜单项
@@ -202,6 +275,39 @@ const handleSearch = () => {
     // 实际搜索逻辑
   }
 }
+
+// 通知相关方法
+const formatTime = (timeString) => {
+  const date = new Date(timeString)
+  const now = new Date()
+  const diffTime = Math.abs(now - date)
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+  const diffHours = Math.floor(diffTime / (1000 * 60 * 60))
+  const diffMinutes = Math.floor(diffTime / (1000 * 60))
+  
+  if (diffDays > 0) {
+    return `${diffDays}天前`
+  } else if (diffHours > 0) {
+    return `${diffHours}小时前`
+  } else if (diffMinutes > 0) {
+    return `${diffMinutes}分钟前`
+  } else {
+    return '刚刚'
+  }
+}
+
+const markAsRead = (notificationId) => {
+  notificationStore.markAsRead(notificationId)
+}
+
+const markAllAsRead = () => {
+  notificationStore.markAllAsRead()
+}
+
+const showAllNotifications = () => {
+  // 这里可以跳转到通知列表页面
+  message.info('跳转到通知列表页面')
+}
 </script>
 
 <style scoped>
@@ -255,6 +361,135 @@ const handleSearch = () => {
   font-size: 18px;
   font-weight: 600;
   color: #1d2129;
+}
+
+/* 原生通知中心样式 */
+.notification-container {
+  position: relative;
+  display: inline-block;
+  margin-right: 16px;
+  /* 确保容器足够大，包含触发器和下拉菜单 */
+}
+
+.notification-trigger {
+  position: relative;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background-color: #ff4d4f;
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% - 1px); /* 减少与触发器之间的间隙 */
+  right: 0;
+  width: 300px;
+  background-color: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  margin-top: 1px; /* 最小化间隙 */
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.notification-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+.notification-mark-all {
+  background: none;
+  border: none;
+  color: #2d8cf0;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.notification-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.notification-loading,
+.notification-empty {
+  padding: 20px;
+  text-align: center;
+  color: #999;
+}
+
+.notification-item {
+  padding: 12px;
+  border-bottom: 1px solid #f5f5f5;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.notification-item:hover {
+  background-color: #f5f5f5;
+}
+
+.notification-item.unread {
+  background-color: #f0f7ff;
+}
+
+.notification-title {
+  font-weight: 500;
+  margin-bottom: 4px;
+  color: #1d2129;
+}
+
+.notification-message {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.notification-time {
+  font-size: 12px;
+  color: #999;
+}
+
+.notification-footer {
+  padding: 8px 12px;
+  border-top: 1px solid #e8e8e8;
+  text-align: right;
+}
+
+.notification-view-all {
+  background: none;
+  border: none;
+  color: #2d8cf0;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
 }
 
 .main-menu {
@@ -328,5 +563,131 @@ const handleSearch = () => {
   .logo-text {
     font-size: 16px;
   }
+}
+
+/* 通知相关样式 */
+.notification-trigger {
+  position: relative;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-trigger:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.notification-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform: translate(30%, -30%);
+}
+
+.notification-dropdown {
+  width: 380px;
+  max-height: 500px;
+  padding: 8px 0;
+  z-index: 10000;
+  background-color: white;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.notification-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.notification-list {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.notification-loading {
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.notification-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.notification-empty p {
+  margin: 12px 0 0;
+  font-size: 14px;
+}
+
+.notification-item {
+  padding: 12px 16px;
+  display: flex;
+  align-items: flex-start;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.notification-item:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.notification-item.unread {
+  background-color: rgba(45, 140, 240, 0.05);
+}
+
+.notification-icon {
+  font-size: 24px;
+  margin-right: 12px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-title {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  color: rgba(0, 0, 0, 0.9);
+}
+
+.notification-message {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.6);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notification-time {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.notification-footer {
+  padding: 8px 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  text-align: center;
 }
 </style>

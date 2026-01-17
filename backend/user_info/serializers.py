@@ -15,7 +15,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
             'graduation_school', 'education_level', 'major', 
             'graduation_year', 'phone_number', 'current_status',
             'intended_position', 'intended_salary', 'address',
-            'intended_city', 'personal_profile'
+            'intended_city', 'personal_profile', 'avatar'
         ]
         read_only_fields = ['id', 'username']  # 只读字段
 
@@ -58,5 +58,5 @@ class UserInfoUpdateSerializer(serializers.ModelSerializer):
             'education_level', 'major', 'graduation_year', 
             'phone_number', 'current_status', 'intended_position',
             'intended_salary', 'address', 'intended_city', 
-            'personal_profile'
+            'personal_profile', 'avatar'
         ]

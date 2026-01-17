@@ -18,6 +18,7 @@ class User(AbstractUser):
     intended_city = models.CharField(max_length=100, blank=True, null=True,verbose_name="意向城市")  # 意向城市
     personal_profile = models.TextField(max_length=600,blank=True, null=True,verbose_name="个人简介")  # 个人简介
     is_enterprise = models.BooleanField(default=False, verbose_name="是否企业用户")
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True, verbose_name="用户头像")
 # Create your models here.
     class Meta:
         verbose_name = "用户"  # 单数显示名称（在admin后台等地方显示）

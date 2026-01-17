@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Article,Attachment,Comment
+from .models import Article,Attachment,Comment,Collection
 
 class AttachmentSerializer(serializers.ModelSerializer):
     '''附件序列化器'''
@@ -15,7 +15,21 @@ class ArticleSerializer(serializers.ModelSerializer):
         # 新增：添加作者相关字段（从关联的 user 模型中提取）
     user_id = serializers.ReadOnlyField(source='user.id')  # 作者 ID（关键）
     username = serializers.ReadOnlyField(source='user.username')  # 作者用户名
-    user_avatar = serializers.ReadOnlyField(source='user.avatar.url')  # 作者头像（如果有）
+    user_avatar = serializers.SerializerMethodField()  # 自定义作者头像字段处理
+    is_collected = serializers.SerializerMethodField()  # 文章收藏状态
+    
+    def get_user_avatar(self, obj):
+        if obj.user.avatar:
+            return obj.user.avatar.url
+        return None  # 没有头像时返回None
+    
+    def get_is_collected(self, obj):
+        # 检查当前用户是否收藏了该文章
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return Collection.objects.filter(user=request.user, article=obj).exists()
+        return False  # 未登录用户默认为未收藏
+    
     class Meta:
         model=Article
         exclude = ['user',]  # 排除user字段，自动关联当前用户
@@ -37,8 +51,13 @@ class ArticleSerializer(serializers.ModelSerializer):
 class ArticleSerializer2(serializers.ModelSerializer):
     # 嵌套用户信息
     username = serializers.ReadOnlyField(source='user.username')
-    avatar = serializers.ReadOnlyField(source='user.avatar.url')
+    avatar = serializers.SerializerMethodField()
     identity = serializers.ReadOnlyField(source='user.profile.identity')
+    
+    def get_avatar(self, obj):
+        if obj.user.avatar:
+            return obj.user.avatar.url
+        return None
     
     class Meta:
         model = Article
@@ -51,7 +70,12 @@ class ArticleSerializer2(serializers.ModelSerializer):
 # 评论序列化器
 class CommentSerializer(serializers.ModelSerializer):
     username = serializers.ReadOnlyField(source='user.username')
-    avatar = serializers.ReadOnlyField(source='user.avatar.url')
+    avatar = serializers.SerializerMethodField()
+    
+    def get_avatar(self, obj):
+        if obj.user.avatar:
+            return obj.user.avatar.url
+        return None
     
     class Meta:
         model = Comment

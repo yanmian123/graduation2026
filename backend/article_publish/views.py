@@ -50,11 +50,12 @@ class ArticleViewSet(viewsets.ModelViewSet):
     
     
     def get_queryset(self):
-        '''支持按分类和标签过滤'''
+        '''支持按分类、标签过滤和自定义排序'''
         queryset=Article.objects.all()
         category=self.request.query_params.get('category')
         tag=self.request.query_params.get('tag')
         keyword=self.request.query_params.get('keyword')
+        ordering=self.request.query_params.get('ordering')
         
         if category and category != 'all':
             queryset=queryset.filter(category=category)
@@ -63,6 +64,9 @@ class ArticleViewSet(viewsets.ModelViewSet):
         if keyword:
             queryset=queryset.filter(models.Q(title__icontains=keyword) | models.Q(content__icontains=keyword))
             
+        # 尊重前端传入的排序参数，如果没有则使用默认排序
+        if ordering:
+            return queryset.order_by(ordering)
         return queryset.order_by('-created_at')  # 按创建时间倒序
     
     def get_serializer_context(self):

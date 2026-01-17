@@ -143,13 +143,20 @@ const handleBulkAction = async () => {
     // 使用单个更新接口循环处理
     const updatePromises = selectedApplications.value.map(async (appId) => {
       try {
-        const response = await axios.post(`/applications/${appId}/update_status/`, {
-          status: bulkAction.value
-        })
-        console.log(`申请 ${appId} 更新成功`)
+        if (bulkAction.value === 'SEND_STATUS') {
+          // 发送状态通知
+          await sendApplicationNotification(appId)
+          console.log(`申请 ${appId} 状态通知发送成功`)
+        } else {
+          // 更新申请状态
+          const response = await axios.post(`/applications/${appId}/update_status/`, {
+            status: bulkAction.value
+          })
+          console.log(`申请 ${appId} 状态更新成功`)
+        }
         return { success: true, id: appId }
       } catch (error) {
-        console.error(`申请 ${appId} 更新失败:`, error)
+        console.error(`申请 ${appId} ${bulkAction.value === 'SEND_STATUS' ? '发送通知' : '更新状态'}失败:`, error)
         return { success: false, id: appId, error }
       }
     })
@@ -167,12 +174,14 @@ const handleBulkAction = async () => {
       message.warning(`成功更新 ${successfulUpdates} 条，失败 ${failedUpdates} 条`)
     }
     
-    // 更新本地数据状态
-    applications.value.forEach(app => {
-      if (selectedApplications.value.includes(app.id)) {
-        app.status = bulkAction.value
-      }
-    })
+    // 更新本地数据状态（只在非发送通知操作时执行）
+    if (bulkAction.value !== 'SEND_STATUS') {
+      applications.value.forEach(app => {
+        if (selectedApplications.value.includes(app.id)) {
+          app.status = bulkAction.value
+        }
+      })
+    }
     
     // 清除选择
     clearSelection()

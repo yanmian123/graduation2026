@@ -17,17 +17,19 @@ import EnterpriseRegister from '@/views/EnterpriseRegister.vue'; //企业注册
 import EnterpriseEdit from '@/views/EnterpriseEdit.vue'; //企业信息编辑
 import RecruitmentList from '@/views/RecruitmentList.vue'; //招聘信息列表
 import RecruitmentCreate from '@/views/RecruitmentCreate.vue'; //创建招聘信息
+import RecruitmentEdit from '@/views/RecruitmentEdit.vue'; //编辑招聘信息
 import Enterprisehome from '@/views/Enterprise-home.vue'; //企业首页
 import Enterpriselogin from '@/views/Enterpriselogin.vue'; //企业登录
 import ApplicationList from '@/views/ApplicationList.vue';//应聘者简历接收列表
 import ChatView from '@/views/ChatView.vue'; //聊天页面
-// import RecruitmentEdit from '@/views/RecruitmentEdit.vue'; //编辑招聘信息
+import NotificationCenter from '@/views/NotificationCenter.vue'; //通知中心页面
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/register', name: 'Register', component: Register,meta: { requiresAuth: false, layout:'empty'} },  // 注册页面路由,添加隐藏布局标识(隐藏导航和页脚)
     { path: '/login', name: 'Login', component: Login,meta: { requiresAuth: false, layout:'empty' }  },  // 登录页面路由,添加隐藏布局标识(隐藏导航和页脚)
-    { path:'/userinfo',name:'UserInfo',component: UserInfo,meta: { requiresAuth: true,layout:'default' }}, //用户信息页面路由(标记需要登录才能访问)
+    {path:'/userinfo',name:'UserInfo',component: UserInfo,meta: { requiresAuth: true,layout:'default' }}, //用户信息页面路由(标记需要登录才能访问)
+    {path:'/notifications',name:'NotificationCenter',component: NotificationCenter,meta: { requiresAuth: true,layout:'default' }}, //通知中心页面路由
     // 新增：简历路由
     { path: '/resumes', name: 'ResumeList', component: ResumeList, meta: { requiresAuth: true,layout:'default' } },
     { path: '/resumes/create', name: 'ResumeCreate', component: ResumeCreate, meta: { requiresAuth: true,layout:'default' } },
@@ -58,13 +60,12 @@ const router = createRouter({
     title: '人才库管理'
   }
 },
-{
-  path: '/chat/:roomId?', // 添加roomId作为可选参数
+{path: '/chat/:roomId?', // 添加roomId作为可选参数
   name: 'Chat', 
   component: ChatView,
   meta: { requiresAuth: true }
-}
-    // {path: '/enterprise/recruitments/:id/edit', name: 'RecruitmentEdit', component:RecruitmentEdit,meta: { requiresAuth: true }},
+},
+    {path: '/enterprise/recruitments/:id/edit', name: 'RecruitmentEdit', component:RecruitmentEdit,meta: { layout: 'enterprise', requiresAuth: true }},
   ],
 })
 

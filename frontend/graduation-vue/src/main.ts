@@ -45,7 +45,11 @@ import {
   NListItem,     // 新增：列表项组件
   NBadge,        // 新增：徽章组件
   NScrollbar,    // 新增：滚动条组件
+  NSkeleton,     // 新增：骨架屏组件
   NUpload,       // 保留：上传组件
+  NPagination,   // 新增：分页组件
+  NGrid,         // 新增：网格布局组件
+  NGridItem,     // 新增：网格布局项组件
   // 新增离散API
   createDiscreteApi
 } from 'naive-ui'
@@ -90,6 +94,10 @@ const naive = create({
     NListItem,     // 新增
     NBadge,        // 新增
     NScrollbar,    // 新增
+    NSkeleton,     // 新增：骨架屏组件
+    NPagination,   // 新增：分页组件
+    NGrid,         // 新增：网格布局组件
+    NGridItem,     // 新增：网格布局项组件
   ]
 })
 

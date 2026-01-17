@@ -2,6 +2,34 @@
   <div class="user-info-container">
     <h2>个人信息</h2>
     <form @submit.prevent="handleSave">
+      <!-- 头像上传 -->
+      <div class="form-item avatar-upload">
+        <label>头像：</label>
+        <div class="avatar-container">
+          <n-space vertical>
+            <n-image 
+              :src="previewAvatarUrl" 
+              class="preview-avatar" 
+              v-if="previewAvatarUrl"
+            />
+            <n-avatar size="large" v-else class="preview-avatar">
+              <template #fallback>
+                <n-icon><Person /></n-icon>
+              </template>
+            </n-avatar>
+            <n-upload
+              :default-file-list="avatarFileList"
+              @change="handleAvatarChange"
+              :max="1"
+              type="select"
+            >
+              <n-button type="primary" size="small">上传头像</n-button>
+            </n-upload>
+          </n-space>
+          <div class="avatar-hint">支持 JPG、PNG 格式，大小不超过 2MB</div>
+        </div>
+      </div>
+
       <!-- 昵称 -->
       <div class="form-item">
         <label>昵称：</label>
@@ -188,10 +216,14 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { getUserInfo, updateUserInfo } from '@/api/user';
-import { NInput, NSelect, NInputNumber,NButton, useMessage } from 'naive-ui';
+import { useRouter } from 'vue-router';
+import { getUserInfo, updateUserInfo, uploadUserAvatar } from '@/api/user';
+import { NInput, NSelect, NInputNumber, NButton, NAvatar, NIcon, NUpload, NSpace, useMessage, NImage } from 'naive-ui';
+import { Person } from '@vicons/ionicons5';
 // Naive UI 消息提示
 const message = useMessage();
+// 路由实例
+const router = useRouter();
 
 // 表单数据
 const form = ref({
@@ -209,13 +241,89 @@ const form = ref({
   address: '',
   intended_city: '',
   personal_profile: '',
+  avatar: '',
 });
+
+// 头像上传相关
+const avatarFileList = ref([]);
+// 头像预览URL
+const previewAvatarUrl = ref('');
+
+// 处理头像文件变化
+const handleAvatarChange = (data) => {
+  console.log('handleAvatarChange called with:', data);
+  avatarFileList.value = data.fileList;
+  
+  // 如果有文件，创建本地预览
+  if (avatarFileList.value.length > 0 && avatarFileList.value[0].file) {
+    const file = avatarFileList.value[0].file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      previewAvatarUrl.value = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+// 校验头像文件
+const validateAvatarFile = (file) => {
+  const isJPG = file.type === 'image/jpeg' || file.type === 'image/png';
+  const isLt2M = file.size / 1024 / 1024 < 2;
+  
+  if (!isJPG) {
+    message.error('只能上传 JPG/PNG 格式的图片');
+    return false;
+  }
+  if (!isLt2M) {
+    message.error('图片大小不能超过 2MB');
+    return false;
+  }
+  
+  return true;
+};
 
 // 页面加载时获取用户信息
 onMounted(async () => {
   try {
     const response = await getUserInfo();
-    form.value = response.data;  // 回显用户信息到表单
+    const userData = response.data;
+    
+    // 类型转换：确保数字字段为Number类型
+    if (userData.age) userData.age = Number(userData.age);
+    if (userData.graduation_year) userData.graduation_year = Number(userData.graduation_year);
+    if (userData.intended_salary) userData.intended_salary = Number(userData.intended_salary);
+    
+    form.value = userData;  // 回显用户信息到表单
+    
+    // 处理头像URL，确保是完整URL
+    let avatarUrl = form.value.avatar || '';
+    if (avatarUrl && !avatarUrl.startsWith('http')) {
+      avatarUrl = `http://localhost:8000${avatarUrl}`;
+      console.log('初始化时处理的完整URL:', avatarUrl);
+    }
+    
+    // 初始化头像预览URL
+    previewAvatarUrl.value = avatarUrl;
+    
+    // 更新表单中的头像URL
+    form.value.avatar = avatarUrl;
+    
+    // 初始化头像文件列表（与EnterpriseEdit.vue保持一致）
+    if (avatarUrl) {
+      avatarFileList.value = [{
+        id: 'avatar',
+        name: 'avatar.png',
+        url: avatarUrl
+      }];
+    }
+    
+    // 更新本地存储的用户信息
+    const userInfo = {
+      id: form.value.id,
+      username: form.value.username,
+      avatar: avatarUrl
+    };
+    localStorage.setItem('userInfo', JSON.stringify(userInfo));
   } catch (error) {
     message.error('获取用户信息失败，请重试');
     console.error(error);
@@ -226,12 +334,70 @@ onMounted(async () => {
 const handleSave = async () => {
   console.log('保存按钮被点击，开始执行保存逻辑'); // 确认事件触发
   try {
-    console.log('提交的数据:', form.value); // 打印提交数据
-    await updateUserInfo(form.value);
+    // 1. 先保存基本信息（排除头像）
+    const submitData = { ...form.value }
+    // 移除头像字段，单独处理
+    delete submitData.avatar
+    // 移除后端不接受的字段
+    delete submitData.id
+    delete submitData.username
+
+    console.log('提交的基本信息:', submitData); // 打印提交数据
+    
+    // 调用API保存基本信息
+    await updateUserInfo(submitData)
+    
+    // 2. 如果有头像文件，上传头像
+    if (avatarFileList.value.length > 0 && avatarFileList.value[0].file) {
+      console.log('检测到头像文件，开始上传...');
+      
+      // 校验头像文件
+      if (!validateAvatarFile(avatarFileList.value[0].file)) {
+        return;
+      }
+      
+      const uploadFormData = new FormData();
+      uploadFormData.append('avatar', avatarFileList.value[0].file);
+      
+      const avatarResponse = await uploadUserAvatar(uploadFormData);
+      console.log('头像上传成功，原始URL:', avatarResponse.data.avatar);
+      
+      // 处理URL，确保是完整URL
+      let avatarUrl = avatarResponse.data.avatar;
+      if (avatarUrl && !avatarUrl.startsWith('http')) {
+        // 如果是相对路径，添加完整前缀
+        avatarUrl = `http://localhost:8000${avatarUrl}`;
+        console.log('处理后的完整URL:', avatarUrl);
+      }
+      
+      // 更新表单数据和预览URL
+      form.value.avatar = avatarUrl;
+      previewAvatarUrl.value = avatarUrl;
+      
+      // 更新文件列表（与EnterpriseEdit.vue完全一致）
+      avatarFileList.value = [{
+        id: 'avatar',
+        name: 'avatar.png',
+        url: avatarUrl
+      }];
+      
+      // 更新本地存储的用户信息（与Header.vue保持一致）
+      const userInfo = {
+        id: form.value.id,
+        username: form.value.username,
+        avatar: avatarUrl
+      };
+      localStorage.setItem('userInfo', JSON.stringify(userInfo));
+    }
+    
     message.success('信息更新成功');
+    
+    // 保存成功后跳转到首页
+    router.push('/home');
   } catch (error) {
     message.error('更新失败，请检查输入');
     console.error('保存失败原因:', error);
+    console.error('错误响应:', error.response);
   }
 };
 </script>
@@ -252,5 +418,35 @@ label {
 .n-button {
   margin-top: 20px;
   margin-left: 110px;
+}
+
+/* 头像上传样式 */
+.avatar-upload {
+  align-items: flex-start;
+  padding-top: 10px;
+}
+
+.avatar-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.preview-avatar {
+  width: 120px;
+  height: 120px;
+}
+
+.avatar-hint {
+  font-size: 12px;
+  color: #999;
+  margin-top: 5px;
+}
+
+.avatar-uploader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 </style>

@@ -174,7 +174,7 @@ onMounted(() => {
   
   // 每30秒自动刷新一次
   refreshInterval = window.setInterval(() => {
-    if (!loading) {
+    if (!loading.value) {
       console.log('⏰ 定时刷新聊天室列表')
       refresh()
     }

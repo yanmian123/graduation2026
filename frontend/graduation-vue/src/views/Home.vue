@@ -249,39 +249,67 @@ const banners = [
   }
 ];
 
-// 模拟数据 - 推荐岗位
-const recommendedJobs = [
-  {
-    id: 1,
-    title: '前端开发工程师',
-    company: '字节跳动',
-    companyLogo: 'https://picsum.photos/id/1/60/60',
-    salary: '15k-25k',
-    location: '北京',
-    type: '校招',
-    tags: ['JavaScript', 'Vue', 'React']
-  },
-  {
-    id: 2,
-    title: '产品经理',
-    company: '腾讯',
-    companyLogo: 'https://picsum.photos/id/2/60/60',
-    salary: '12k-20k',
-    location: '深圳',
-    type: '实习',
-    tags: ['需求分析', '原型设计']
-  },
-  {
-    id: 3,
-    title: '数据分析师',
-    company: '阿里巴巴',
-    companyLogo: 'https://picsum.photos/id/3/60/60',
-    salary: '18k-30k',
-    location: '杭州',
-    type: '校招',
-    tags: ['Python', 'SQL', '可视化']
+// 推荐岗位数据
+const recommendedJobs = ref([]);
+
+// 获取最近发布的三个招聘岗位
+const fetchRecommendedJobs = async () => {
+  try {
+    const response = await axios.get('/recruitments/');
+    // 筛选已发布的招聘，并按创建时间倒序排序，取最近的3个
+    const publishedJobs = response.data.filter(job => job.status === 'PUBLISHED');
+    publishedJobs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    
+    // 转换API数据为前端需要的格式
+    recommendedJobs.value = publishedJobs.slice(0, 3).map(job => ({
+      id: job.id,
+      title: job.title,
+      company: job.enterprise_name || '未知企业', // 企业名称（直接使用顶级字段）
+      companyLogo: job.enterprise_logo || 'https://picsum.photos/id/1/60/60', // 企业logo（直接使用顶级字段）
+      salary: job.salary,
+      location: job.work_location, // 工作地点
+      type: job.job_type === 'FULL_TIME' ? '全职' : job.job_type === 'PART_TIME' ? '兼职' : '实习', // 工作类型
+      tags: ['JavaScript', 'Vue', 'React'] // 暂时使用默认标签
+    }));
+    
+    console.log('📊 获取推荐岗位成功，数量:', recommendedJobs.value.length);
+  } catch (error) {
+    console.error('❌ 获取推荐岗位失败:', error);
+    // 失败时使用默认数据
+    recommendedJobs.value = [
+      {
+        id: 1,
+        title: '前端开发工程师',
+        company: '字节跳动',
+        companyLogo: 'https://picsum.photos/id/1/60/60',
+        salary: '15k-25k',
+        location: '北京',
+        type: '校招',
+        tags: ['JavaScript', 'Vue', 'React']
+      },
+      {
+        id: 2,
+        title: '产品经理',
+        company: '腾讯',
+        companyLogo: 'https://picsum.photos/id/2/60/60',
+        salary: '12k-20k',
+        location: '深圳',
+        type: '实习',
+        tags: ['需求分析', '原型设计']
+      },
+      {
+        id: 3,
+        title: '数据分析师',
+        company: '阿里巴巴',
+        companyLogo: 'https://picsum.photos/id/3/60/60',
+        salary: '18k-30k',
+        location: '杭州',
+        type: '校招',
+        tags: ['Python', 'SQL', '可视化']
+      }
+    ];
   }
-];
+};
 
 // 招聘信息
 const allJobs = ref([
@@ -429,6 +457,9 @@ onMounted(async () => {
       isLogin.value = false;
     }
   }
+  
+  // 获取推荐岗位
+  await fetchRecommendedJobs();
 });
 
 

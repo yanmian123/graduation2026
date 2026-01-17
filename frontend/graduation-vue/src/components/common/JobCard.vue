@@ -1,10 +1,5 @@
 <template>
 
-  <div>">
-  <p>enterprise_user_id: {{ job.enterprise_user_id }}</p>
-  <p>enterprise: {{ job.enterprise }}</p>
-  <p>完整的job对象: {{ job }}</p>
-</div>
   <n-card class="job-card" hoverable>
     <div class="job-header">
       <div class="job-title-section">

@@ -1,47 +1,5 @@
 <template>
   <n-layout class="community-layout">
-    <!-- 顶部导航 -->
-    <n-layout-header bordered class="header">
-      <n-grid :x-gap="24" class="header-grid">
-        <n-grid-item span="4">
-          <div class="logo" @click="$router.push('/')">
-            <n-icon size="28" class="logo-icon">
-              <Briefcase />
-            </n-icon>
-            <span class="logo-text">职享圈</span>
-          </div>
-        </n-grid-item>
-
-        <n-grid-item span="12">
-          <n-menu mode="horizontal" :options="menuOptions" class="main-menu" @select="handleMenuSelect" />
-        </n-grid-item>
-
-        <n-grid-item span="7">
-          <div class="header-actions">
-            <n-input
-              v-model:value="searchQuery"
-              placeholder="搜索经验分享..."
-              size="small"
-              class="search-input"
-              :prefix="Search"
-              @keyup.enter="handleSearch"
-            />
-            <n-button
-              type="primary"
-              size="small"
-              class="post-btn"
-              @click="$router.push('/community/articlescreate')"
-            >
-              <n-icon size="16">
-                <!-- <Pen /> -->
-              </n-icon>
-              发布经验
-            </n-button>
-          </div>
-        </n-grid-item>
-      </n-grid>
-    </n-layout-header>
-
     <!-- 主体内容 -->
     <n-layout-content class="main-content">
       <n-grid :x-gap="24" :y-gap="24" class="content-grid">
@@ -145,12 +103,13 @@
             </n-avatar-group>
 
             <!-- 帖子内容 -->
-            <n-card-header class="post-header">
-              <n-card-title class="post-title">{{ post.title }}</n-card-title>
-            </n-card-header>
-            <n-card-content>
-
-              <p class="post-excerpt" v-html="post.excerpt"></p>
+            <template #header>
+              <div class="post-header">
+                <div class="post-title">{{ post.title }}</div>
+              </div>
+            </template>
+            <div class="post-content">
+              <div class="post-excerpt" v-html="post.excerpt"></div>
 
               <n-space wrap class="post-tags">
                 <n-tag
@@ -158,35 +117,38 @@
                   :key="tag"
                   size="small"
                   type="outline"
+                  round
                 >
                   {{ tag }}
                 </n-tag>
               </n-space>
-            </n-card-content>
+            </div>
 
             <!-- 互动数据 -->
-            <n-card-footer class="post-meta">
-              <n-space size="medium">
-                <n-space align="center">
-                  <n-icon size="16">
-                    <Eye />
-                  </n-icon>
-                  <span>{{ post.viewCount }}</span>
+            <template #footer>
+              <div class="post-meta">
+                <n-space size="large">
+                  <n-space align="center">
+                    <n-icon size="16" :color="'#8c8c8c'">
+                      <Eye />
+                    </n-icon>
+                    <n-text type="secondary" size="small">{{ post.viewCount }} 浏览</n-text>
+                  </n-space>
+                  <n-space align="center">
+                    <n-icon size="16" :color="'#ff4d4f'">
+                      <Heart />
+                    </n-icon>
+                    <n-text type="secondary" size="small">{{ post.likeCount }} 点赞</n-text>
+                  </n-space>
+                  <n-space align="center">
+                    <n-icon size="16" :color="'#1890ff'">
+                      <Chatbubble />
+                    </n-icon>
+                    <n-text type="secondary" size="small">{{ post.commentCount }} 评论</n-text>
+                  </n-space>
                 </n-space>
-                <n-space align="center">
-                  <n-icon size="16">
-                    <Heart />
-                  </n-icon>
-                  <span>{{ post.likeCount }}</span>
-                </n-space>
-                <n-space align="center">
-                  <n-icon size="16">
-                    <!-- <MessageCircle /> -->
-                  </n-icon>
-                  <span>{{ post.commentCount }}</span>
-                </n-space>
-              </n-space>
-            </n-card-footer>
+              </div>
+            </template>
           </n-card>
           <!-- 空状态 -->
       <n-empty
@@ -204,39 +166,64 @@
         </n-empty>
 
 
-          <!-- 加载更多 -->
-          <n-button
-            v-if="hasMore && !loading"
-            class="load-more-btn"
-            ghost
-            block
-            @click="isSearching ? loadMoreSearch() : loadMorePosts"
-          >
-            加载更多
-          </n-button>
+          <!-- 分页器 -->
+          <div class="pagination-container">
+            <n-pagination
+              v-if="!loading && totalResults > 0"
+              :page="currentPage"
+              :page-size="pageSize"
+              :page-count="Math.ceil(totalResults / pageSize)"
+              :show-size-picker="true"
+              :page-sizes="[5, 10, 20]"
+              @update:page="handlePageChange"
+              @update:page-size="handlePageSizeChange"
+              show-quick-jumper
+              show-total
+              :total="totalResults"
+              align="center"
+            />
+          </div>
         </n-grid-item>
 
         <!-- 右侧热门推荐 -->
         <n-grid-item span="6" class="right-sidebar">
           <!-- 热门帖子 -->
-          <n-card title="热门经验" bordered class="sidebar-card">
+          <n-card title="热门帖子" bordered class="sidebar-card">
             <n-list>
               <n-list-item
-                v-for="hotPost in hotPosts"
+                v-for="(hotPost, index) in hotPosts"
                 :key="hotPost.id"
                 class="hot-post-item"
                 @click="$router.push(`/community/post/${hotPost.id}`)"
               >
-                <!-- 直接使用内容，不依赖 NListItemMain -->
-                <n-text>{{ hotPost.title }}</n-text>
-                <n-space size="small" class="hot-post-meta">
-                  <n-text type="secondary" size="small">
-                    {{ hotPost.likeCount }} 赞
-                  </n-text>
-                  <n-text type="secondary" size="small">
-                    {{ hotPost.commentCount }} 评论
-                  </n-text>
-                </n-space>
+                <n-avatar
+                  :size="20"
+                  :style="{
+                    backgroundColor: index < 3 ? '#ff6b6b' : '#ccc',
+                    color: '#fff',
+                    fontSize: '12px'
+                  }"
+                  class="hot-rank"
+                >
+                  {{ index + 1 }}
+                </n-avatar>
+                <div class="hot-post-content">
+                  <n-text strong class="hot-post-title">{{ hotPost.title }}</n-text>
+                  <n-space size="small" class="hot-post-meta">
+                    <n-space size="small" align="center">
+                      <n-icon size="12">
+                        <Heart />
+                      </n-icon>
+                      <n-text type="secondary" size="small">{{ hotPost.likeCount }}</n-text>
+                    </n-space>
+                    <n-space size="small" align="center">
+                      <n-icon size="12">
+                        <Chatbubble />
+                      </n-icon>
+                      <n-text type="secondary" size="small">{{ hotPost.commentCount }}</n-text>
+                    </n-space>
+                  </n-space>
+                </div>
               </n-list-item>
             </n-list>
           </n-card>
@@ -250,15 +237,36 @@
                 class="active-user-item"
               >
                 <n-avatar :src="user.avatar" size="small" />
-                <!-- 直接使用内容，不依赖 NListItemMain -->
                 <div class="user-info">
-                  <n-text>{{ user.name }}</n-text>
-                  <n-text type="secondary" size="small">
-                    {{ user.desc }}
-                  </n-text>
+                  <n-text strong>{{ user.name }}</n-text>
+                  <n-text type="secondary" size="small">{{ user.desc }}</n-text>
                 </div>
+                <n-button
+                  size="small"
+                  type="primary"
+                  ghost
+                  class="follow-btn"
+                >
+                  关注
+                </n-button>
               </n-list-item>
             </n-list>
+          </n-card>
+
+          <!-- 社区公告 -->
+          <n-card title="社区公告" bordered class="sidebar-card" style="margin-top: 16px;">
+            <n-space vertical>
+              <n-card title="欢迎新同学" size="small" bordered>
+                <n-text type="secondary" size="small">
+                  欢迎加入职享圈，分享你的职场经验！
+                </n-text>
+              </n-card>
+              <n-card title="内容规范" size="small" bordered>
+                <n-text type="secondary" size="small">
+                  请遵守社区规范，发布有价值的内容
+                </n-text>
+              </n-card>
+            </n-space>
           </n-card>
         </n-grid-item>
       </n-grid>
@@ -286,6 +294,7 @@ import {
 //   Pen,
   Eye,
   Heart,
+  Chatbubble,
   
 } from '@vicons/ionicons5';
 // Naive UI 组件导入（移除 NListItemMain 等废弃组件）
@@ -312,7 +321,8 @@ import {
   NText,
   NIcon,
   NAvatar,
-  NAvatarGroup
+  NAvatarGroup,
+  NSkeleton  // 添加骨架屏组件
   
 } from 'naive-ui';
 
@@ -341,7 +351,7 @@ const activeUsers = ref([]);
 const hasMore = ref(true);
 const loading = ref(false);
 const currentPage = ref(1);
-const pageSize = ref(10);
+const pageSize = ref(5);
 const sortOptions = [
   {
     label: "最新发布",
@@ -408,8 +418,23 @@ const fetchPosts = async (isLoadMore = false) => {
       // 发送请求
       const response = await axios.get('/posts/', { params });
       console.log('后端返回数据:', response.data);
+      
+      // 处理响应数据（根据后端返回的数据结构调整）
+      let data = response.data;
+      let total = 0;
+      
+      // 检查后端返回的数据结构
+      if (Array.isArray(data)) {
+        // 如果直接返回数组，则没有分页信息，使用所有数据的长度作为总数
+        total = data.length;
+      } else if (data.results && Array.isArray(data.results)) {
+        // 如果返回的是分页对象
+        data = data.results;
+        total = data.count || 0;
+      }
+      
       // 处理响应数据
-      const formattedPosts = response.data.map(post => ({
+      const formattedPosts = data.map(post => ({
         id: post.id,
         title: post.title,
         authorName: post.user?.username || '匿名用户',
@@ -421,15 +446,25 @@ const fetchPosts = async (isLoadMore = false) => {
         likeCount: post.like_count,
         commentCount: post.comment_count,
         publishTime: formatTimeAgo(post.created_at)
-      
       }));
 
+      // 如果后端返回了所有数据（没有分页），则在前端进行分页
+      let paginatedPosts = formattedPosts;
+      if (Array.isArray(response.data)) {
+        // 计算分页的起始和结束索引
+        const startIndex = (currentPage.value - 1) * pageSize.value;
+        const endIndex = startIndex + pageSize.value;
+        paginatedPosts = formattedPosts.slice(startIndex, endIndex);
+      }
+
     // 更新数据
-      posts.value = isLoadMore ? [...posts.value, ...formattedPosts] : formattedPosts;
+      posts.value = isLoadMore ? [...posts.value, ...paginatedPosts] : paginatedPosts;
     
+      // 更新总数据条数
+      totalResults.value = total;
+      
       // 检查是否还有更多数据
-      // hasMore.value = currentPage.value * pageSize.value < response.data.count;
-      hasMore.value = false; // 暂时禁用，后续根据后端分页逻辑调整
+      hasMore.value = currentPage.value * pageSize.value < total;
     } catch (error) {
       console.error('获取文章列表失败:', error);
       message.error('加载内容失败，请重试');
@@ -442,11 +477,23 @@ const fetchPosts = async (isLoadMore = false) => {
 // 获取热门数据
 const fetchHotData = async () => {
   try {
-    // 获取热门帖子
+    // 获取热门帖子，设置page_size为10，获取前10个热门帖子
     const hotResponse = await axios.get('/posts/', {
-      params: { ordering: '-like_count', page_size: 5 }
+      params: { ordering: '-like_count', page_size: 10 }
     });
-    hotPosts.value = hotResponse.data.map(post => ({
+    
+    // 处理响应数据
+    let data = hotResponse.data;
+    
+    // 如果后端返回的是分页对象，获取results
+    if (data.results && Array.isArray(data.results)) {
+      data = data.results;
+    }
+    
+    // 只取前10个热门帖子
+    const top10Posts = data.slice(0, 10);
+    
+    hotPosts.value = top10Posts.map(post => ({
       id: post.id,
       title: post.title,
       likeCount: post.like_count,
@@ -454,16 +501,28 @@ const fetchHotData = async () => {
     }));
 
     // 获取活跃用户
-    const usersResponse = await axios.get('/users/active/');
-    activeUsers.value = usersResponse.data.map(user => ({
-      id: user.id,
-      name: user.username,
-      avatar: user.avatar || 'https://picsum.photos/id/237/40/40',
-      desc: `分享${user.article_count}篇经验 · 帮助${user.help_count|| 0}人`
-    }));
+    // const usersResponse = await axios.get('/user/active/');
+    // activeUsers.value = usersResponse.data.map(user => ({
+    //   id: user.id,
+    //   name: user.username,
+    //   avatar: user.avatar || 'https://picsum.photos/id/237/40/40',
+    //   desc: `分享${user.article_count}篇经验 · 帮助${user.help_count|| 0}人`
+    // }));
   } catch (error) {
     console.error('获取热门数据失败:', error);
   }
+};
+
+// 分页器事件处理
+const handlePageChange = (page) => {
+  currentPage.value = page;
+  fetchPosts();
+};
+
+const handlePageSizeChange = (newPageSize) => {
+  pageSize.value = newPageSize;
+  currentPage.value = 1;
+  fetchPosts();
 };
 
 // 初始化加载
@@ -502,7 +561,7 @@ const handleSearch = async ()=>{
   isSearching.value = true; // 设置搜索状态
   loading.value = true; // 显示加载状态 
   try {
-    const response = await axios.get('posts/searching/', {
+    const response = await axios.get('/posts/searching/', {
       params: { keyword,
        page: 1, 
        page_size: pageSize.value } 

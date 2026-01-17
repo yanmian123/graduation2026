@@ -129,6 +129,7 @@ import {
 } from 'naive-ui'
 import { Briefcase, Search, Person, Notifications, NotificationsOutline } from '@vicons/ionicons5'
 import { useNotificationStore } from '@/stores/notificationStore'
+import { getUserInfo } from '@/api/user'
 
 // 错误处理
 const error = ref(null)
@@ -204,7 +205,41 @@ const initializeComponent = async () => {
     // 检查登录状态
     isLogin.value = !!localStorage.getItem('accessToken')
     if (isLogin.value) {
-      userAvatar.value = 'https://picsum.photos/id/100/40/40'
+      try {
+        // 先从本地存储获取用户信息
+        const storedUserInfo = localStorage.getItem('userInfo')
+        if (storedUserInfo) {
+          const userInfo = JSON.parse(storedUserInfo)
+          if (userInfo.avatar) {
+            userAvatar.value = userInfo.avatar
+            console.log('从本地存储获取头像:', userAvatar.value)
+          }
+        } else {
+          // 如果本地没有，从API获取用户信息，包括头像
+          const response = await getUserInfo()
+          if (response.data && response.data.avatar) {
+            let avatarUrl = response.data.avatar
+            // 处理URL，确保是完整URL
+            if (avatarUrl && !avatarUrl.startsWith('http')) {
+              avatarUrl = `http://localhost:8000${avatarUrl}`
+              console.log('Header初始化时处理的完整URL:', avatarUrl)
+            }
+            userAvatar.value = avatarUrl
+            
+            // 保存到本地存储
+            const userInfo = {
+              id: response.data.id,
+              username: response.data.username,
+              avatar: avatarUrl
+            }
+            localStorage.setItem('userInfo', JSON.stringify(userInfo))
+          }
+        }
+      } catch (err) {
+        console.error('获取用户信息失败:', err)
+        // 使用默认头像
+        userAvatar.value = ''
+      }
       // 初始化通知功能
       await notificationStore.init()
     }
@@ -305,8 +340,8 @@ const markAllAsRead = () => {
 }
 
 const showAllNotifications = () => {
-  // 这里可以跳转到通知列表页面
-  message.info('跳转到通知列表页面')
+  // 跳转到通知中心页面
+  router.push('/notifications')
 }
 </script>
 

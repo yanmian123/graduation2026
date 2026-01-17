@@ -37,12 +37,14 @@
                       <n-button type="primary" class="upload-btn">选择图片</n-button>
                     </n-upload>
                     
-                    <div class="logo-preview-container" v-if="formData.logo">
+                    <div class="logo-preview-container" v-if="formData.logo || previewLogoUrl">
                       <n-image 
-                        :src="formData.logo" 
+                        :src="previewLogoUrl || formData.logo" 
                         class="logo-preview"
                       />
-                      <div class="logo-hint">当前Logo预览</div>
+                      <div class="logo-hint">
+                        {{ previewLogoUrl ? '新选择Logo预览' : '当前Logo预览' }}
+                      </div>
                     </div>
                   </div>
                 </n-form-item>
@@ -150,6 +152,8 @@ const formData = ref({
 })
 
 const fileList = ref([])
+// 实时预览URL
+const previewLogoUrl = ref('')
 const formRef = ref(null)
 const loading = ref(false)
 const router = useRouter()
@@ -199,12 +203,16 @@ const fetchEnterpriseInfo = async () => {
       }
     }
     if (formData.value.logo) {
-      fileList.value = [{
-        id: 'logo',
-        name: 'logo.png',
-        url: formData.value.logo
-      }]
-    }
+    fileList.value = [{
+      id: 'logo',
+      name: 'logo.png',
+      url: formData.value.logo
+    }]
+    
+    // 设置初始化预览URL
+    previewLogoUrl.value = formData.value.logo;
+    console.log('初始化Logo预览URL:', previewLogoUrl.value);
+  }
   } catch (error) {
     console.error('获取企业信息失败:', error)
   }
@@ -269,9 +277,53 @@ const handleSubmit = async () => {
   }
 }
 
-// 简化handleFileChange，只更新文件列表
+// 处理文件上传并添加实时预览
 const handleFileChange = (data) => {
-  fileList.value = data.fileList;
+  // 只保留最新选择的一个文件
+  fileList.value = data.fileList.slice(-1); // 只取最后一个文件
+  
+  // 如果有新文件，生成预览
+  if (fileList.value.length > 0 && fileList.value[0].file) {
+    const file = fileList.value[0].file;
+    
+    // 验证文件类型和大小
+    const isValid = validateLogoFile(file);
+    if (!isValid) {
+      fileList.value = [];
+      previewLogoUrl.value = '';
+      return;
+    }
+    
+    // 使用FileReader生成预览
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      previewLogoUrl.value = e.target.result;
+      console.log('Logo预览生成:', previewLogoUrl.value);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    // 没有文件，清空预览
+    previewLogoUrl.value = '';
+  }
+};
+
+// 校验Logo文件
+const validateLogoFile = (file) => {
+  // 检查文件类型
+  const validTypes = ['image/jpeg', 'image/png'];
+  if (!validTypes.includes(file.type)) {
+    message.error('只支持JPG和PNG格式的图片');
+    return false;
+  }
+  
+  // 检查文件大小 (2MB)
+  const maxSize = 2 * 1024 * 1024;
+  if (file.size > maxSize) {
+    message.error('图片大小不能超过2MB');
+    return false;
+  }
+  
+  return true;
 };
 
 onMounted(() => {

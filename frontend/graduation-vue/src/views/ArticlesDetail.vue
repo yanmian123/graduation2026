@@ -1,43 +1,5 @@
 <template>
   <n-layout class="article-detail-layout">
-    <!-- 顶部导航 -->
-    <n-layout-header bordered class="header">
-      <n-grid :x-gap="24" class="header-grid">
-        <n-grid-item span="4">
-          <div class="logo" @click="$router.push('/home')">
-            <n-icon size="28" class="logo-icon">
-              <Briefcase />
-            </n-icon>
-            <span class="logo-text">职享圈</span>
-          </div>
-        </n-grid-item>
-
-        <n-grid-item span="12">
-          <n-menu mode="horizontal" :options="menuOptions" class="main-menu" />
-        </n-grid-item>
-
-        <n-grid-item span="7">
-          <div class="header-actions">
-            <n-input
-              v-model:value="searchQuery"
-              placeholder="搜索经验分享..."
-              size="small"
-              class="search-input"
-              :prefix="Search"
-              @keyup.enter="handleSearch"
-            />
-            <n-button
-              type="primary"
-              size="small"
-              class="post-btn"
-              @click="$router.push('/community/articlescreate')"
-            >
-              发布经验
-            </n-button>
-          </div>
-        </n-grid-item>
-      </n-grid>
-    </n-layout-header>
 
     <!-- 主体内容 -->
     <n-layout-content class="main-content">
@@ -169,11 +131,12 @@
             </div>
 
             <!-- 评论输入框 -->
-            <n-textarea
+            <n-input
               v-model:value="newComment"
+              type="textarea"
               placeholder="写下你的评论..."
               class="comment-input"
-              rows="3"
+              :rows="3"
             />
             <n-button
               type="primary"
@@ -520,17 +483,40 @@ const handleLike = async () => {
 // 收藏文章
 const handleCollect = async () => {
   try {
+    // 显示加载状态
+    loading.value = true;
+    
+    let response;
     if (article.value.isCollected) {
-      await axios.delete(`/posts/${articleId.value}/collect/`);
-      article.value.collectCount--;
+      response = await axios.delete(`/posts/${articleId.value}/collect/`);
     } else {
-      await axios.post(`/posts/${articleId.value}/collect/`);
-      article.value.collectCount++;
+      response = await axios.post(`/posts/${articleId.value}/collect/`);
     }
-    article.value.isCollected = !article.value.isCollected;
+    
+    // 检查响应数据
+    if (response.data) {
+      // 根据后端返回的最新数据更新状态
+      article.value.isCollected = response.data.is_collected || false;
+      article.value.collectCount = response.data.star_count || 0;
+      
+      message.success(article.value.isCollected ? '收藏成功' : '取消收藏成功');
+    } else {
+      // 如果没有返回数据，手动更新状态
+      article.value.isCollected = !article.value.isCollected;
+      if (article.value.isCollected) {
+        article.value.collectCount++;
+        message.success('收藏成功');
+      } else {
+        article.value.collectCount--;
+        message.success('取消收藏成功');
+      }
+    }
   } catch (error) {
     console.error('收藏失败:', error);
+    console.error('错误详情:', error.response?.data || error.message);
     message.error('操作失败，请重试');
+  } finally {
+    loading.value = false;
   }
 };
 

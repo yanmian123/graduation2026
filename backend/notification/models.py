@@ -16,6 +16,8 @@ class Notification(models.Model):
         ('company_chat', '企业发起聊天'),
         ('report_feedback', '举报反馈'),
         ('post_comment', '帖子评论'),
+        ('post_liked', '帖子被点赞'),
+        ('post_collected', '帖子被收藏'),
         ('user_followed', '被关注'),
         ('user_message', '用户私信'),
         # 通用通知类型

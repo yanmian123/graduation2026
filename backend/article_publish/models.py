@@ -46,6 +46,7 @@ class Attachment(models.Model):
 class Comment(models.Model):
     article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name='comments',verbose_name="评论所属文章")
     user = models.ForeignKey(User, on_delete=models.CASCADE,verbose_name="评论者")
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies', verbose_name="父评论")
     content = models.TextField(verbose_name="评论内容")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="评论时间")
     like_count = models.PositiveIntegerField(default=0, verbose_name="评论点赞数")

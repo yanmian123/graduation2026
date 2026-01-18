@@ -11,6 +11,7 @@ from .serializers import ArticleSerializer, AttachmentSerializer, ArticleSeriali
 from django.db import models
 import logging
 logger = logging.getLogger(__name__)
+from notification.utils import create_notification
 
 # 自定义权限：仅允许文章所有者操作（查看/编辑/删除）
 class IsArticleOwner(permissions.BasePermission):
@@ -115,7 +116,7 @@ class ArticleViewSet(viewsets.ModelViewSet):
         
     def retrieve(self, request, pk=None):
         article = self.get_object()
-        serializer = ArticleSerializer(article)
+        serializer = ArticleSerializer(article, context={'request': request})
         # 新增：判断当前用户是否已关注文章作者
         is_followed = False
         if request.user.is_authenticated:
@@ -141,15 +142,31 @@ class ArticleViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post', 'delete'],  permission_classes=[IsAuthenticated])
     def like(self, request, pk=None):
         article = self.get_object()
+        logger.info(f"点赞操作 - 用户: {request.user.id}, 文章: {article.id}, 方法: {request.method}")
+        
         # like, created = Like.objects.get_or_create(user=request.user, article=article)
         like_exists = Like.objects.filter(user=request.user, article=article).exists()
+        logger.info(f"点赞操作 - 当前点赞状态: {like_exists}")
         
         if request.method == 'POST':
             if not like_exists:
                 # 首次点赞
+                logger.info(f"点赞操作 - 添加点赞记录")
                 Like.objects.create(user=request.user, article=article)
                 article.like_count += 1
                 article.save()
+                logger.info(f"点赞操作 - 点赞数更新为: {article.like_count}")
+                
+                # 发送点赞通知给文章作者
+                if request.user != article.user:
+                    create_notification(
+                        recipient=article.user,
+                        notification_type='post_liked',
+                        title='文章被点赞',
+                        message=f'{request.user.nickname}点赞了你的文章《{article.title}》',
+                        related_object_id=article.id,
+                        related_object_type='article'
+                    )
             # 即使重复点赞，也返回当前状态（已点赞）
             return Response(LikeStatusSerializer({
                 'is_liked': True,
@@ -159,9 +176,11 @@ class ArticleViewSet(viewsets.ModelViewSet):
         if request.method == 'DELETE':
             if like_exists:
                 # 取消已有的点赞
+                logger.info(f"点赞操作 - 删除点赞记录")
                 Like.objects.filter(user=request.user, article=article).delete()
                 article.like_count -= 1
                 article.save()
+                logger.info(f"点赞操作 - 点赞数更新为: {article.like_count}")
             # 即使重复取消，也返回当前状态（未点赞）
             return Response(LikeStatusSerializer({
                 'is_liked': False,
@@ -176,26 +195,45 @@ class ArticleViewSet(viewsets.ModelViewSet):
         logger.info(f"收藏操作 - 用户认证状态: {request.user.is_authenticated}")
         logger.info(f"请求头认证信息: {request.headers.get('Authorization')}")
         article = self.get_object()
+        logger.info(f"收藏操作 - 用户: {request.user.id}, 文章: {article.id}, 方法: {request.method}")
+        
         # collect, created = Collection.objects.get_or_create(user=request.user, article=article)
         collect_exists = Collection.objects.filter(user=request.user, article=article).exists()
-        count = Collection.objects.filter(article=article).count()
+        logger.info(f"收藏操作 - 当前收藏状态: {collect_exists}")
         
         if request.method == 'POST':
             if not collect_exists:
+                logger.info(f"收藏操作 - 添加收藏记录")
                 Collection.objects.create(user=request.user, article=article)
-                count += 1  # 新增收藏后计数+1
+                article.star_count += 1
+                article.save()
+                logger.info(f"收藏操作 - 收藏数更新为: {article.star_count}")
+                
+                # 发送收藏通知给文章作者
+                if request.user != article.user:
+                    create_notification(
+                        recipient=article.user,
+                        notification_type='post_collected',
+                        title='文章被收藏',
+                        message=f'{request.user.nickname}收藏了你的文章《{article.title}》',
+                        related_object_id=article.id,
+                        related_object_type='article'
+                    )
             return Response(CollectionStatusSerializer({
                 'is_collected': True,
-                'count': count
+                'count': article.star_count
             }).data)
             
         if request.method == 'DELETE':
             if collect_exists:
+                logger.info(f"收藏操作 - 删除收藏记录")
                 Collection.objects.filter(user=request.user, article=article).delete()
-                count -= 1  # 取消收藏后计数-1
+                article.star_count -= 1
+                article.save()
+                logger.info(f"收藏操作 - 收藏数更新为: {article.star_count}")
             return Response(CollectionStatusSerializer({
                 'is_collected': False,
-                'count': count
+                'count': article.star_count
             }).data)
             
         return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -204,17 +242,67 @@ class ArticleViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], permission_classes=[AllowAny])
     def get_comments(self, request, pk=None):
         article = self.get_object()
-        comments = article.comments.all().order_by('-created_at')
-        serializer = CommentSerializer(comments, many=True)
-        return Response(serializer.data)
+        # 只返回顶级评论（parent为null的评论），回复通过serializer的replies字段返回
+        comments = article.comments.filter(parent__isnull=True).order_by('-created_at')
+        
+        # 添加分页支持
+        page = request.GET.get('page', 1)
+        page_size = request.GET.get('page_size', 5)
+        
+        from rest_framework.pagination import PageNumberPagination
+        paginator = PageNumberPagination()
+        paginator.page_size = page_size
+        
+        paginated_comments = paginator.paginate_queryset(comments, request)
+        serializer = CommentSerializer(paginated_comments, many=True, context={'request': request})
+        
+        # 返回分页数据
+        return paginator.get_paginated_response(serializer.data)
 
     # 发表评论
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def add_comment(self, request, pk=None):
         article = self.get_object()
+        
+        # 获取parent_id参数（如果有）
+        parent_id = request.data.get('parent_id')
+        parent_comment = None
+        
+        # 如果提供了parent_id，验证它是否存在
+        if parent_id:
+            try:
+                parent_comment = Comment.objects.get(id=parent_id, article=article)
+            except Comment.DoesNotExist:
+                return Response({'error': 'Parent comment not found'}, status=status.HTTP_404_NOT_FOUND)
+        
         serializer = CommentSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            serializer.save(article=article)
+            comment = serializer.save(article=article, parent=parent_comment)
+            
+            # 生成通知
+            from notification.utils import create_notification
+            
+            # 如果是回复评论，通知被回复的评论作者
+            if parent_comment and request.user != parent_comment.user:
+                create_notification(
+                    recipient=parent_comment.user,
+                    notification_type='post_comment',
+                    title='新评论回复',
+                    message=f"{request.user.nickname or request.user.username}回复了你的评论: {comment.content[:20]}...",
+                    related_object_id=article.id,
+                    related_object_type='article'
+                )
+            # 如果是顶级评论，通知文章作者
+            elif not parent_comment and request.user != article.user:
+                create_notification(
+                    recipient=article.user,
+                    notification_type='post_comment',
+                    title='新评论通知',
+                    message=f"{request.user.nickname or request.user.username}评论了你的文章: {comment.content[:20]}...",
+                    related_object_id=article.id,
+                    related_object_type='article'
+                )
+            
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     

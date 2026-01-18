@@ -5,42 +5,54 @@
       <!-- 企业信息概览 -->
       <section class="overview-section">
         <n-card class="overview-card">
-          <div class="overview-header">
-            <h2>企业管理中心</h2>
-            <n-button 
-              type="primary" 
-              size="small" 
-              @click="$router.push('/enterprise/edit')"
-            >
-              编辑企业信息
-            </n-button>
-          </div>
           
-          <div class="enterprise-info">
-            <n-avatar :src="enterpriseLogo" size="large" class="enterprise-logo" />
-            <div class="enterprise-details">
-              <h3>{{ enterpriseName || '未完善企业信息' }}</h3>
-              <p class="enterprise-desc">{{ enterpriseDesc || '请完善企业信息以提升曝光率' }}</p>
-              <div class="enterprise-stats">
-                <div class="stat-item">
-                  <span class="stat-value">{{ activeRecruitments }}</span>
-                  <span class="stat-label">正在招聘</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-value">{{ receivedResumes }}</span>
-                  <span class="stat-label">收到简历</span>
-                </div>
-                  <div class="stat-item">
-                    <span class="stat-value">{{ talentPoolCount }}</span>
-                    <span class="stat-label">人才库</span>
-                  </div>
-                <div class="stat-item">
-                  <span class="stat-value">{{ pendingInterviews }}</span>
-                  <span class="stat-label">待面试</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <n-page-header subtitle="企业管理中心" @back="handleBack">
+            <n-grid :cols="5">
+              <n-gi>
+                <n-statistic label="正在招聘" :value="activeRecruitments" />
+              </n-gi>
+              <n-gi>
+                <n-statistic label="收到简历" :value="receivedResumes" />
+              </n-gi>
+              <n-gi>
+                <n-statistic label="人才库" :value="talentPoolCount" />
+              </n-gi>
+              <n-gi>
+                <n-statistic label="待面试" :value="pendingInterviews" />
+              </n-gi>
+              <n-gi>
+                <n-statistic label="总数据" value="" />
+              </n-gi>
+            </n-grid>
+            <template #title>
+              {{ enterpriseName || '未完善企业信息' }}
+            </template>
+            <template #header>
+              <n-breadcrumb>
+                <n-breadcrumb-item>企业</n-breadcrumb-item>
+                <n-breadcrumb-item>管理中心</n-breadcrumb-item>
+              </n-breadcrumb>
+            </template>
+            <template #avatar>
+              <n-avatar
+                :src="enterpriseLogo"
+                size="large"
+              />
+            </template>
+            <template #extra>
+              <n-space>
+                <n-button @click="$router.push('/enterprise/edit')">编辑信息</n-button>
+                <n-dropdown :options="options" placement="bottom-start">
+                  <n-button :bordered="false" style="padding: 0 4px">
+                    ···
+                  </n-button>
+                </n-dropdown>
+              </n-space>
+            </template>
+            <template #footer>
+              {{ enterpriseDesc || '请完善企业信息以提升曝光率' }}
+            </template>
+          </n-page-header>
         </n-card>
       </section>
 
@@ -241,12 +253,19 @@ import {
   NAvatar, 
   NDataTable, 
   NSpace, 
-  NTag  // 添加 NTag 导入
+  NTag,  
+  NPageHeader,
+  NGrid,
+  NGridItem,
+  NStatistic,
+  NBreadcrumb,
+  NBreadcrumbItem,
+  NDropdown
 } from 'naive-ui';
 import axios from '@/utils/axios';
 
-// 修复1：定义 rowKey 函数
-const rowKey = (row) => row.id;
+// 修复1：定义 rowKey 函数，添加空值检查
+const rowKey = (row) => row?.id;
 
 // 修复2：定义 recentRecruitments 变量
 const recentRecruitments = ref([]);
@@ -469,13 +488,7 @@ const recentColumns = [
             size: 'small',
             onClick: () => handleEditRecent(row.id),
             key: 'edit'
-          }, { default: () => '编辑' }),
-          h(NButton, {
-            text: true,
-            size: 'small',
-            onClick: () => handleViewApplications(row.id),
-            key: 'view'
-          }, { default: () => '查看申请' })
+          }, { default: () => '编辑' }), 
         ]
       });
     }
@@ -484,7 +497,7 @@ const recentColumns = [
 
 // 编辑最近招聘的函数
 const handleEditRecent = (id) => {
-  router.push(`/enterprise/recruitments/edit/${id}`);
+  router.push(`/enterprise/recruitments/${id}/edit`)
 };
 
 // 在 script 中添加
@@ -746,6 +759,30 @@ const testStartChat = async () => {
     message.error('测试失败: ' + (error.response?.data?.message || error.message));
   }
 };
+
+// 处理返回按钮点击
+const handleBack = () => {
+  message.info('[onBack]');
+};
+
+// 下拉菜单选项
+const options = [
+  {
+    label: '企业设置',
+    key: 'settings',
+    onClick: () => $router.push('/enterprise/settings')
+  },
+  {
+    label: '查看统计',
+    key: 'statistics',
+    onClick: () => $router.push('/enterprise/statistics')
+  },
+  {
+    label: '关于我们',
+    key: 'about',
+    onClick: () => $router.push('/enterprise/about')
+  }
+];
 </script>
 
 <style scoped>

@@ -41,8 +41,13 @@ export const uncollectArticle = (id: number) => {
 };
 
 // 获取文章评论
-export const getArticleComments = (id: number) => {
-  return axios.get(`/posts/${id}/get_comments/`);
+export const getArticleComments = (id: number, page: number = 1, page_size: number = 5) => {
+  return axios.get(`/posts/${id}/get_comments/`, {
+    params: {
+      page,
+      page_size
+    }
+  });
 };
 
 // 发表评论

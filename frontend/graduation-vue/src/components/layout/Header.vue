@@ -113,7 +113,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onErrorCaptured, computed } from 'vue'
+import { ref, onMounted, onUnmounted, onErrorCaptured, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { 
   NLayoutHeader, 
@@ -197,6 +197,13 @@ const message = {
 onMounted(() => {
   console.log('Header组件挂载完成')
   initializeComponent()
+  // 注册实时通知处理程序
+  notificationStore.registerNotificationHandler()
+})
+
+onUnmounted(() => {
+  // 移除实时通知处理程序
+  notificationStore.unregisterNotificationHandler()
 })
 
 // 初始化组件

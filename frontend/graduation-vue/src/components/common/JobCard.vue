@@ -1,6 +1,6 @@
 <template>
 
-  <n-card class="job-card" hoverable>
+  <n-card class="job-card" hoverable @click.stop="goToDetail">
     <div class="job-header">
       <div class="job-title-section">
         <h3 class="job-title">{{ job.title }}</h3>
@@ -193,6 +193,11 @@ const isLogin = computed(() => {
 })
 
 // 方法
+const goToDetail = () => {
+  // 在新窗口中打开职位详情页面
+  window.open(`/jobs/${props.job.id}`, '_blank')
+}
+
 const getJobTypeTag = (type) => {
   return jobTypeMap[type]?.type || 'default'
 }

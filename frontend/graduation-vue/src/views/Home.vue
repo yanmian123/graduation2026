@@ -512,14 +512,14 @@ const seeMore = (type) => {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 16px;
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin: 24px 0 16px;
+  margin: 16px 0 12px;
 }
 
 .section-header h2 {
@@ -567,7 +567,7 @@ const seeMore = (type) => {
 .banner-carousel {
   width: 100%;
   height: 400px;
-  margin: 20px 0;
+  margin: 16px 0;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -606,8 +606,8 @@ const seeMore = (type) => {
 /* 推荐区域 */
 .recommendation-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
 }
 
 .recommendation-card {
@@ -718,14 +718,14 @@ const seeMore = (type) => {
 
 .load-more-btn {
   width: 100%;
-  margin: 20px 0;
+  margin: 16px 0;
 }
 
 /* 资源共享区 */
 .resources-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 16px;
 }
 
 .resource-card {
@@ -761,12 +761,12 @@ const seeMore = (type) => {
 /* 社区区域 */
 .articles-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(550px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(540px, 1fr));
+  gap: 16px;
 }
 
 .article-item {
-  padding: 16px;
+  padding: 12px;
   border: 1px solid #e8e8e8;
   border-radius: 8px;
   cursor: pointer;

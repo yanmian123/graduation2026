@@ -99,7 +99,7 @@ const columns = ref([
           text: true,
           size: 'small',
           onClick: () => handleEdit(row.id)
-        }, () => '编辑'),
+        }, () => '编辑'), 
         h(NButton, {
           text: true,
           size: 'small',

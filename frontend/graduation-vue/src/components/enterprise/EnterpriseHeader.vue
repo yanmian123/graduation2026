@@ -105,7 +105,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   NMenu, NButton, NIcon, NAvatar, NDropdown, NBadge, NSpin 
@@ -186,6 +186,13 @@ const handleLogout = () => {
 onMounted(() => {
   // 初始化企业用户信息
   initializeEnterpriseUser()
+  // 注册实时通知处理程序
+  notificationStore.registerNotificationHandler()
+})
+
+onUnmounted(() => {
+  // 移除实时通知处理程序
+  notificationStore.unregisterNotificationHandler()
 })
 
 const initializeEnterpriseUser = async () => {

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import type { Notification } from '@/types/notification'
 import { notificationApi } from '@/services/api'
 import { notificationWebSocketService } from '@/services/notificationWebSocket'
@@ -109,18 +109,15 @@ export const useNotificationStore = defineStore('notification', () => {
     connectWebSocket()
   }
 
-  // 组件挂载时连接WebSocket并监听通知
-  onMounted(() => {
+  // 注册实时通知处理程序
+  const registerNotificationHandler = () => {
     notificationWebSocketService.onNotification(handleRealTimeNotification)
-    connectWebSocket()
-  })
+  }
 
-  // 组件卸载时清理WebSocket连接
-  onUnmounted(() => {
+  // 移除实时通知处理程序
+  const unregisterNotificationHandler = () => {
     notificationWebSocketService.removeNotificationCallback(handleRealTimeNotification)
-    // 注意：这里不直接断开连接，因为可能有其他组件也在使用通知WebSocket
-    // disconnectWebSocket()
-  })
+  }
 
   return {
     // 状态
@@ -140,6 +137,8 @@ export const useNotificationStore = defineStore('notification', () => {
     updateUnreadCount,
     init,
     connectWebSocket,
-    disconnectWebSocket
+    disconnectWebSocket,
+    registerNotificationHandler,
+    unregisterNotificationHandler
   }
 })

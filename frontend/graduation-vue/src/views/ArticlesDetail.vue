@@ -3,16 +3,13 @@
 
     <!-- 主体内容 -->
     <n-layout-content class="main-content">
-      <n-grid :x-gap="24" :y-gap="24" class="content-grid">
+      <n-grid :x-gap="16" :y-gap="24" class="content-grid">
         <!-- 左侧文章详情 -->
-        <n-grid-item span="16" class="article-content">
+        <n-grid-item span="19" class="article-content">
           <n-card bordered class="article-card">
-            <!-- 文章标题 -->
-            <h1 class="article-title">{{ article.title }}</h1>
-
             <!-- 作者信息 -->
             <div class="author-info">
-              <n-avatar :src="article.authorAvatar" class="author-avatar" />
+              <n-avatar :src="article.authorAvatar" class="author-avatar" round />
               <div class="author-details">
                 <div class="author-name">{{ article.authorName }}</div>
                 <div class="author-identity">{{ article.authorIdentity }}</div>
@@ -42,6 +39,9 @@
               <span class="publish-time">{{ article.publishTime }}</span>
               <span class="category-tag">{{ getCategoryText(article.category) }}</span>
             </div>
+
+            <!-- 文章标题 -->
+            <h1 class="article-title">{{ article.title }}</h1>
 
             <!-- 文章内容 -->
             <div class="article-body" v-html="article.content"></div>
@@ -131,10 +131,21 @@
             </div>
 
             <!-- 评论输入框 -->
+            <div v-if="replyingToCommentId" class="reply-header">
+              <span class="reply-to">回复 <span class="reply-username">{{ replyingToUsername }}</span>:</span>
+              <n-button
+                ghost
+                size="small"
+                class="cancel-reply-btn"
+                @click="cancelReply"
+              >
+                取消回复
+              </n-button>
+            </div>
             <n-input
               v-model:value="newComment"
               type="textarea"
-              placeholder="写下你的评论..."
+              :placeholder="replyingToCommentId ? `回复 ${replyingToUsername}...` : '写下你的评论...'"
               class="comment-input"
               :rows="3"
             />
@@ -144,61 +155,187 @@
               @click="submitComment"
               :disabled="!newComment.trim()"
             >
-              发表评论
+              {{ replyingToCommentId ? '回复' : '发表评论' }}
             </n-button>
 
             <!-- 评论列表 -->
             <div class="comments-list">
-              <n-card
-                v-for="comment in comments"
-                :key="comment.id"
-                bordered
-                class="comment-item"
-              >
-                <div class="comment-header">
-                  <n-avatar :src="comment.userAvatar" size="small" />
-                  <div class="comment-user-info">
-                    <div class="comment-username">{{ comment.username }}</div>
-                    <div class="comment-time">{{ formatTimeAgo(comment.createdAt) }}</div>
+              <!-- 递归组件用于渲染评论和回复 -->
+              <template v-for="comment in comments" :key="comment.id">
+                <div class="comment-container">
+                  <n-card
+                    bordered
+                    class="comment-item"
+                  >
+                    <div class="comment-header">
+                      <n-avatar :src="comment.userAvatar" size="large" round/>
+                      <div class="comment-user-info">
+                        <div class="comment-username">{{ comment.username }}</div>
+                        <div class="comment-time">{{ formatTimeAgo(comment.createdAt) }}</div>
+                      </div>
+                    </div>
+                    <div class="comment-content">{{ comment.content }}</div>
+                    <div class="comment-actions">
+                      <n-button
+                        v-if="!comment.isLiked"
+                        ghost
+                        size="tiny"
+                        class="comment-action-btn"
+                        @click="likeComment(comment.id)"
+                      >
+                        <Heart size="14" />
+                        <span>{{ comment.likeCount }}</span>
+                      </n-button>
+                      <n-button
+                        v-else
+                        ghost
+                        size="tiny"
+                        class="comment-action-btn liked"
+                        @click="likeComment(comment.id)"
+                      >
+                        <Heart size="14" />
+                        <span>{{ comment.likeCount }}</span>
+                      </n-button>
+                      <n-button
+                        ghost
+                        size="tiny"
+                        class="comment-action-btn"
+                        @click="replyToComment(comment.id)"
+                      >
+                        回复
+                      </n-button>
+                    </div>
+                  </n-card>
+                  
+                  <!-- 渲染回复 -->
+                  <div class="comment-replies" v-if="comment.replies && comment.replies.length > 0">
+                    <template v-for="reply in comment.replies" :key="reply.id">
+                      <n-card
+                        bordered
+                        class="comment-reply-item"
+                      >
+                        <div class="comment-header">
+                          <n-avatar :src="reply.userAvatar" size="small" round/>
+                          <div class="comment-user-info">
+                            <div class="comment-username">{{ reply.username }}</div>
+                            <div class="comment-time">{{ formatTimeAgo(reply.createdAt) }}</div>
+                          </div>
+                        </div>
+                        <div class="comment-content">{{ reply.content }}</div>
+                        <div class="comment-actions">
+                          <n-button
+                            v-if="!reply.isLiked"
+                            ghost
+                            size="tiny"
+                            class="comment-action-btn"
+                            @click="likeComment(reply.id)"
+                          >
+                            <Heart size="12" />
+                            <span>{{ reply.likeCount }}</span>
+                          </n-button>
+                          <n-button
+                            v-else
+                            ghost
+                            size="tiny"
+                            class="comment-action-btn liked"
+                            @click="likeComment(reply.id)"
+                          >
+                            <Heart size="12" />
+                            <span>{{ reply.likeCount }}</span>
+                          </n-button>
+                          <n-button
+                            ghost
+                            size="tiny"
+                            class="comment-action-btn"
+                            @click="replyToComment(reply.id)"
+                          >
+                            回复
+                          </n-button>
+                        </div>
+                      </n-card>
+                      
+                      <!-- 递归渲染回复的回复 -->
+                      <div class="comment-replies" v-if="reply.replies && reply.replies.length > 0">
+                        <template v-for="nestedReply in reply.replies" :key="nestedReply.id">
+                          <n-card
+                            bordered
+                            class="comment-reply-item"
+                          >
+                            <div class="comment-header">
+                              <n-avatar :src="nestedReply.userAvatar" size="small" round/>
+                              <div class="comment-user-info">
+                                <div class="comment-username">{{ nestedReply.username }}</div>
+                                <div class="comment-time">{{ formatTimeAgo(nestedReply.createdAt) }}</div>
+                              </div>
+                            </div>
+                            <div class="comment-content">{{ nestedReply.content }}</div>
+                            <div class="comment-actions">
+                              <n-button
+                                v-if="!nestedReply.isLiked"
+                                ghost
+                                size="tiny"
+                                class="comment-action-btn"
+                                @click="likeComment(nestedReply.id)"
+                              >
+                                <Heart size="12" />
+                                <span>{{ nestedReply.likeCount }}</span>
+                              </n-button>
+                              <n-button
+                                v-else
+                                ghost
+                                size="tiny"
+                                class="comment-action-btn liked"
+                                @click="likeComment(nestedReply.id)"
+                              >
+                                <Heart size="12" />
+                                <span>{{ nestedReply.likeCount }}</span>
+                              </n-button>
+                              <n-button
+                                ghost
+                                size="tiny"
+                                class="comment-action-btn"
+                                @click="replyToComment(nestedReply.id)"
+                              >
+                                回复
+                              </n-button>
+                            </div>
+                          </n-card>
+                        </template>
+                      </div>
+                    </template>
                   </div>
                 </div>
-                <div class="comment-content">{{ comment.content }}</div>
-                <div class="comment-actions">
-                  <n-button
-                    v-if="!comment.isLiked"
-                    ghost
-                    size="tiny"
-                    class="comment-action-btn"
-                    @click="likeComment(comment.id)"
-                  >
-                    <Heart size="14" />
-                    <span>{{ comment.likeCount }}</span>
-                  </n-button>
-                  <n-button
-                    v-else
-                    ghost
-                    size="tiny"
-                    class="comment-action-btn liked"
-                    @click="likeComment(comment.id)"
-                  >
-                    <Heart size="14" />
-                    <span>{{ comment.likeCount }}</span>
-                  </n-button>
-                  <n-button
-                    ghost
-                    size="tiny"
-                    class="comment-action-btn"
-                    @click="replyToComment(comment.id)"
-                  >
-                    回复
-                  </n-button>
-                </div>
-              </n-card>
+              </template>
             </div>
 
-            <!-- 加载更多评论 -->
+            <!-- 评论控制按钮 -->
+            <div v-if="totalComments > 5">
+              <!-- 显示全部评论按钮 -->
+              <n-button
+                v-if="!showAllComments"
+                ghost
+                block
+                class="load-more-comments"
+                @click="() => { showAllComments = true; fetchComments(1, false); }"
+              >
+                显示全部 {{ totalComments }} 条评论
+              </n-button>
+              
+              <!-- 收起评论按钮 -->
+              <n-button
+                v-else
+                ghost
+                block
+                class="load-more-comments"
+                @click="() => { showAllComments = false; fetchComments(1, false); }"
+              >
+                收起评论
+              </n-button>
+            </div>
+            
+            <!-- 加载更多评论按钮（仅当显示全部评论且还有更多时显示） -->
             <n-button
-              v-if="hasMoreComments"
+              v-if="showAllComments && hasMoreComments"
               ghost
               block
               class="load-more-comments"
@@ -210,11 +347,11 @@
         </n-grid-item>
 
         <!-- 右侧边栏 -->
-        <n-grid-item span="8" class="sidebar">
+        <n-grid-item span="5" class="sidebar">
           <!-- 作者信息卡片 -->
           <n-card bordered class="author-card">
             <div class="author-card-header">
-              <n-avatar :src="article.authorAvatar" class="author-card-avatar" />
+              <n-avatar :src="article.authorAvatar" class="author-card-avatar" round />
               <div class="author-card-name">{{ article.authorName }}</div>
               <div class="author-card-identity">{{ article.authorIdentity }}</div>
             </div>
@@ -268,7 +405,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { useMessage } from 'naive-ui';
 import { ref, onMounted, computed,watch } from 'vue';
 import axios from '@/utils/axios';
-import { getArticleComments } from '@/api/article'; 
+import { getArticleComments, addComment } from '@/api/article'; 
 
 // 图标
 import {
@@ -335,10 +472,15 @@ const comments = ref([]);
 const newComment = ref('');
 const hasMoreComments = ref(true);
 const commentPage = ref(1);
+const totalComments = ref(0);
+const showAllComments = ref(false);
 const relatedPosts = ref([]);
 const isFollowing = ref(false);
 const searchQuery = ref('');
 const loading = ref(true);
+// 回复评论相关状态
+const replyingToCommentId = ref(null);
+const replyingToUsername = ref('');
 
 // 分类文本映射
 const categoryMap = {
@@ -377,13 +519,34 @@ const fetchArticleDetail = async () => {
     const response = await axios.get(`/posts/${articleId.value}/`);
     const data = response.data;
     
+    // 处理头像URL，添加localhost:8000前缀（如果是相对路径）
+    const rawAvatar = data.user_avatar || data.avatar || data.user?.avatar;
+    const userAvatar = rawAvatar ? (rawAvatar.startsWith('http') ? rawAvatar : `http://localhost:8000${rawAvatar}`) : 'https://picsum.photos/id/237/40/40';
+    
+    // 处理昵称，优先使用data.nickname或data.user.nickname
+    let authorName;
+    if (data.nickname && data.nickname.trim()) {
+      authorName = data.nickname;
+    } else if (data.user?.nickname && data.user.nickname.trim()) {
+      authorName = data.user.nickname;
+    } else {
+      // 如果没有昵称，使用用户名，并确保不显示'匿名用户'
+      const rawUsername = data.username || data.user?.username || '用户';
+      const namePart = rawUsername.replace(/\d+/g, '');
+      if (namePart) {
+        authorName = namePart.charAt(0).toUpperCase() + namePart.slice(1) + '同学';
+      } else {
+        authorName = '用户' + rawUsername;
+      }
+    }
+    
     article.value = {
       id: data.id,
       title: data.title,
       authorId: data.user_id, 
       content: data.content,
-      authorName: data.user?.username || '匿名用户',
-      authorAvatar: data.user?.avatar || 'https://picsum.photos/id/237/40/40',
+      authorName: authorName,
+      authorAvatar: userAvatar,
       authorIdentity: data.user?.profile?.identity || '职场前辈',
       publishTime: formatTimeAgo(data.created_at),
       category: data.category,
@@ -412,19 +575,34 @@ const fetchArticleDetail = async () => {
 };
 
 // 获取评论
+// 格式化单个评论
+const formatComment = (comment) => {
+  const formattedComment = {
+    id: comment.id,
+    username: comment.nickname || comment.username || '匿名用户',
+    userAvatar: comment.avatar ? (comment.avatar.startsWith('http') ? comment.avatar : `http://localhost:8000${comment.avatar}`) : 'https://picsum.photos/id/237/40/40',
+    content: comment.content,
+    createdAt: comment.created_at,
+    likeCount: comment.like_count,
+    isLiked: comment.is_liked || false,
+    replies: []
+  };
+  
+  // 递归格式化回复
+  if (comment.replies && comment.replies.length > 0) {
+    formattedComment.replies = comment.replies.map(reply => formatComment(reply));
+  }
+  
+  return formattedComment;
+};
+
 const fetchComments = async (page = 1, loadMore = false) => {
   try {
-    const response = await getArticleComments(articleId.value, page, 10);
+    // 根据是否显示全部评论决定每页加载数量
+    const pageSize = showAllComments.value ? 10 : 5;
+    const response = await getArticleComments(articleId.value, page, pageSize);
     
-    const formattedComments = response.data.map(comment => ({
-      id: comment.id,
-      username: comment.user?.username || '匿名用户',
-      userAvatar: comment.user?.avatar || 'https://picsum.photos/id/237/40/40',
-      content: comment.content,
-      createdAt: comment.created_at,
-      likeCount: comment.like_count,
-      isLiked: comment.is_liked || false
-    }));
+    const formattedComments = response.data.results.map(comment => formatComment(comment));
     
     if (loadMore) {
       comments.value = [...comments.value, ...formattedComments];
@@ -433,6 +611,7 @@ const fetchComments = async (page = 1, loadMore = false) => {
     }
     
     hasMoreComments.value = response.data.next !== null;
+    totalComments.value = response.data.count;
   } catch (error) {
     console.error('获取评论失败:', error);
     message.error('加载评论失败，请重试');
@@ -466,14 +645,26 @@ const fetchRelatedPosts = async () => {
 // 点赞文章
 const handleLike = async () => {
   try {
+    let response;
     if (article.value.isLiked) {
-      await axios.delete(`/posts/${articleId.value}/like/`);
-      article.value.likeCount--;
+      response = await axios.delete(`/posts/${articleId.value}/like/`);
     } else {
-      await axios.post(`/posts/${articleId.value}/like/`);
-      article.value.likeCount++;
+      response = await axios.post(`/posts/${articleId.value}/like/`);
     }
-    article.value.isLiked = !article.value.isLiked;
+    
+    // 根据后端返回的最新数据更新状态
+    if (response.data) {
+      article.value.isLiked = response.data.is_liked || false;
+      article.value.likeCount = response.data.count || 0;
+    } else {
+      // 如果没有返回数据，手动更新状态
+      article.value.isLiked = !article.value.isLiked;
+      if (article.value.isLiked) {
+        article.value.likeCount++;
+      } else {
+        article.value.likeCount--;
+      }
+    }
   } catch (error) {
     console.error('点赞失败:', error);
     message.error('操作失败，请重试');
@@ -497,7 +688,7 @@ const handleCollect = async () => {
     if (response.data) {
       // 根据后端返回的最新数据更新状态
       article.value.isCollected = response.data.is_collected || false;
-      article.value.collectCount = response.data.star_count || 0;
+      article.value.collectCount = response.data.count || 0;
       
       message.success(article.value.isCollected ? '收藏成功' : '取消收藏成功');
     } else {
@@ -564,10 +755,25 @@ const submitComment = async () => {
   if (!content) return;
   
   try {
+    // 准备评论数据
+    const commentData = {
+      content: content
+    };
+    
+    // 如果是回复评论，添加parent_id
+    if (replyingToCommentId.value) {
+      commentData.parent_id = replyingToCommentId.value;
+    }
+    
     // 使用更新后的addComment方法
-    await addComment(articleId.value, { content });
+    await addComment(articleId.value, commentData);
     fetchComments(1);  // 重新加载评论
     newComment.value = '';
+    
+    // 提交成功后取消回复状态
+    if (replyingToCommentId.value) {
+      cancelReply();
+    }
   } catch (error) {
     console.error('提交评论失败:', error);
   }
@@ -593,8 +799,22 @@ const likeComment = async (commentId) => {
 
 // 回复评论
 const replyToComment = (commentId) => {
-  // 实际项目中可以实现回复功能
-  message.info('回复功能待实现');
+  // 查找要回复的评论
+  const commentToReply = comments.value.find(c => c.id === commentId);
+  if (commentToReply) {
+    replyingToCommentId.value = commentId;
+    replyingToUsername.value = commentToReply.username;
+    // 聚焦到评论输入框
+    setTimeout(() => {
+      document.querySelector('.comment-input textarea')?.focus();
+    }, 100);
+  }
+};
+
+// 取消回复
+const cancelReply = () => {
+  replyingToCommentId.value = null;
+  replyingToUsername.value = '';
 };
 
 // 加载更多评论
@@ -688,21 +908,21 @@ watch(
 }
 
 .main-content {
-  padding: 24px;
+  padding: 16px 8px;
 }
 
 .content-grid {
-  max-width: 1440px;
+  max-width: 1600px;
   margin: 0 auto;
 }
 
 .article-content {
-  padding: 16px;
+  padding: 8px;
 }
 
 .article-card {
-  padding: 24px;
-  margin-bottom: 24px;
+  padding: 16px;
+  margin-bottom: 16px;
 }
 
 .article-title {
@@ -807,7 +1027,7 @@ watch(
 }
 
 .comments-card {
-  padding: 24px;
+  padding: 1px;
 }
 
 .comments-header {
@@ -833,11 +1053,12 @@ watch(
 .comments-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0px;
 }
 
 .comment-item {
-  padding: 16px;
+  padding: 0px;
+  margin-bottom: 0px;
 }
 
 .comment-header {
@@ -863,11 +1084,13 @@ watch(
 .comment-content {
   margin-bottom: 8px;
   line-height: 1.6;
+  padding-left: 48px;
 }
 
 .comment-actions {
   display: flex;
-  gap: 16px;
+  gap: 10px;
+  padding-left: 48px;
 }
 
 .comment-action-btn {
@@ -883,17 +1106,56 @@ watch(
   color: #f53f3f;
 }
 
+.reply-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f2f3f5;
+}
+
+.reply-to {
+  color: #86909c;
+  font-size: 14px;
+}
+
+.reply-username {
+  color: #2d8cf0;
+  font-weight: 500;
+}
+
+.cancel-reply-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.comment-container {
+  margin-bottom: 16px;
+}
+
+.comment-replies {
+  margin-left: 40px;
+  margin-top: 8px;
+}
+
+.comment-reply-item {
+  margin-bottom: 8px;
+  padding: 6px;
+  border-left: 2px solid #e8e8e8;
+}
+
 .load-more-comments {
   margin-top: 16px;
 }
 
 .sidebar {
-  padding: 16px;
+  padding: 8px;
 }
 
 .author-card {
-  margin-bottom: 24px;
-  padding: 24px;
+  margin-bottom: 16px;
+  padding: 16px;
   text-align: center;
 }
 
@@ -937,7 +1199,7 @@ watch(
 }
 
 .related-posts {
-  padding: 16px;
+  padding: 12px;
 }
 
 .related-posts-header {

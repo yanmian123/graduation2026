@@ -2,64 +2,47 @@
   <n-layout class="community-layout">
     <!-- 主体内容 -->
     <n-layout-content class="main-content">
-      <n-grid :x-gap="24" :y-gap="24" class="content-grid">
-        <!-- 左侧筛选栏 -->
-<n-grid-item span="5" class="sidebar">
-    <n-card title="内容筛选" bordered>
-      <!-- 主题分类 -->
-      <div class="filter-section">
-        <h3 class="section-title">主题分类</h3>
-        <n-radio-group
-          v-model:value="topicFilter"
-          type="button"
-          button-style="outline"
-          @update:value="handleFilterChange"
-          class="radio-group"
-        >
-          <n-radio-button value="all">全部</n-radio-button>
-          <n-radio-button value="interview">面试经验</n-radio-button>
-          <n-radio-button value="resume">简历技巧</n-radio-button>
-          <n-radio-button value="career">行业选择</n-radio-button>
-          <n-radio-button value="exam">笔试攻略</n-radio-button>
-          <n-radio-button value="others">其他</n-radio-button>
-        </n-radio-group>
-      </div>
+      <n-grid :x-gap="16" :y-gap="24" class="content-grid">
+        <!-- 左侧列：包含筛选栏和帖子列表 -->
+        <n-grid-item span="18">
+          <!-- 筛选栏：放在帖子列表上方 -->
+          <n-card title="内容筛选" bordered class="filter-card">
+            <!-- 主题分类 -->
+            <div class="filter-section">
+              <h3 class="section-title">主题分类</h3>
+              <n-radio-group
+                v-model:value="topicFilter"
+                type="button"
+                button-style="outline"
+                @update:value="handleFilterChange"
+                class="radio-group"
+              >
+                <n-radio-button value="all">全部</n-radio-button>
+                <n-radio-button value="interview">面试经验</n-radio-button>
+                <n-radio-button value="resume">简历技巧</n-radio-button>
+                <n-radio-button value="career">行业选择</n-radio-button>
+                <n-radio-button value="exam">笔试攻略</n-radio-button>
+                <n-radio-button value="others">其他</n-radio-button>
+              </n-radio-group>
+            </div>
 
-      <!-- 排序方式 -->
-        <div class="filter-section">
-          <h3 class="section-title2">排序方式</h3>
-          <n-space vertical>
-            <n-select
-              v-model:value="sortType"
-              size="small"
-              @update:value="handleFilterChange"
-              class="sort-select"
-              :options="sortOptions"
-            />
-          </n-space>
-        </div>
+            <!-- 排序方式 -->
+            <div class="filter-section">
+              <h3 class="section-title2">排序方式</h3>
+              <n-space vertical>
+                <n-select
+                  v-model:value="sortType"
+                  size="small"
+                  @update:value="handleFilterChange"
+                  class="sort-select"
+                  :options="sortOptions"
+                />
+              </n-space>
+            </div>
+          </n-card>
 
-      <!-- 热门标签 -->
-      <div class="filter-section">
-        <h3 class="section-title">热门标签</h3>
-        <n-space wrap class="tag-space">
-          <n-tag
-            v-for="tag in hotTags"
-            :key="tag.id"
-            checkable
-            :checked="selectedTags.includes(tag.id)"
-            @update:checked="(checked) => handleTagCheck(tag.id, checked)"
-            size="small"
-          >
-            {{ tag.name }}
-          </n-tag>
-        </n-space>
-      </div>
-    </n-card>
-  </n-grid-item>
-
-        <!-- 中间帖子列表 -->
-        <n-grid-item span="13" class="post-list">
+          <!-- 帖子列表 -->
+          <n-card title="" bordered style="margin-top: 24px;" class="post-list-container">
           <!-- 搜索结果标题（仅在搜索状态显示） -->
           <div v-if="isSearching" class="search-result-header">
             <h2>
@@ -86,70 +69,65 @@
             :repeat="3"
           />
           <!-- 帖子列表渲染：根据状态显示搜索结果或普通列表 -->
-            <n-card
-             v-for="post in isSearching ? searchResults : posts"
-            :key="post.id"
-            bordered
-            hoverable
-            class="post-card"
-            @click="$router.push(`/community/post/${post.id}`)"
-          >
-            <!-- 作者信息 -->
-            <n-avatar-group size="small" class="author-info">
-              <n-avatar :src="post.authorAvatar" />
-              <span class="author-name">{{ post.authorName }}</span>
-              <n-tag size="small" type="info">{{ post.authorIdentity }}</n-tag>
-              <span class="publish-time">{{ post.publishTime }}</span>
-            </n-avatar-group>
-
-            <!-- 帖子内容 -->
-            <template #header>
-              <div class="post-header">
-                <div class="post-title">{{ post.title }}</div>
-              </div>
-            </template>
-            <div class="post-content">
-              <div class="post-excerpt" v-html="post.excerpt"></div>
-
-              <n-space wrap class="post-tags">
-                <n-tag
-                  v-for="tag in post.tags"
-                  :key="tag"
-                  size="small"
-                  type="outline"
-                  round
-                >
-                  {{ tag }}
-                </n-tag>
+          <n-list hoverable clickable class="post-list">
+            <n-list-item
+              v-for="post in isSearching ? searchResults : posts"
+              :key="post.id"
+              @click="$router.push(`/community/post/${post.id}`)"
+              class="post-item"
+            >
+              <!-- 作者信息：显示在标题上方 -->
+              <n-space align="center" size="small" class="author-info-section">
+                <!-- 头像悬停效果 -->
+                <n-dropdown trigger="hover" :options="getUserDropdownOptions(post)" @select="handleUserDropdownSelect">
+                  <n-avatar :src="post.authorAvatar" size="medium" round />
+                </n-dropdown>
+                <span class="author-name">{{ post.authorName }}</span>
+                <n-tag size="small" type="info">{{ post.authorIdentity }}</n-tag>
+                <span class="publish-time">{{ post.publishTime }}</span>
               </n-space>
-            </div>
-
-            <!-- 互动数据 -->
-            <template #footer>
-              <div class="post-meta">
-                <n-space size="large">
-                  <n-space align="center">
-                    <n-icon size="16" :color="'#8c8c8c'">
-                      <Eye />
-                    </n-icon>
-                    <n-text type="secondary" size="small">{{ post.viewCount }} 浏览</n-text>
+              
+              <n-thing
+                :title="post.title"
+                content-style="margin-top: 0;"
+              >
+                <div class="post-excerpt" v-html="post.excerpt"></div>
+                                  <n-space wrap class="post-tags" style="margin-top: 4px">
+                    <n-tag
+                      v-for="tag in post.tags"
+                      :key="tag"
+                      size="small"
+                      :bordered="false"
+                      type="info"
+                    >
+                      {{ tag }}
+                    </n-tag>
                   </n-space>
-                  <n-space align="center">
-                    <n-icon size="16" :color="'#ff4d4f'">
-                      <Heart />
-                    </n-icon>
-                    <n-text type="secondary" size="small">{{ post.likeCount }} 点赞</n-text>
+                <div class="post-meta" style="margin-top: 8px">
+                  <n-space size="large">
+                    <n-space align="center">
+                      <n-icon size="16" :color="'#8c8c8c'">
+                        <Eye />
+                      </n-icon>
+                      <n-text type="secondary" size="small">{{ post.viewCount }} 浏览</n-text>
+                    </n-space>
+                    <n-space align="center">
+                      <n-icon size="16" :color="'#ff4d4f'">
+                        <Heart />
+                      </n-icon>
+                      <n-text type="secondary" size="small">{{ post.likeCount }} 点赞</n-text>
+                    </n-space>
+                    <n-space align="center">
+                      <n-icon size="16" :color="'#1890ff'">
+                        <Chatbubble />
+                      </n-icon>
+                      <n-text type="secondary" size="small">{{ post.commentCount }} 评论</n-text>
+                    </n-space>
                   </n-space>
-                  <n-space align="center">
-                    <n-icon size="16" :color="'#1890ff'">
-                      <Chatbubble />
-                    </n-icon>
-                    <n-text type="secondary" size="small">{{ post.commentCount }} 评论</n-text>
-                  </n-space>
-                </n-space>
-              </div>
-            </template>
-          </n-card>
+                </div>
+              </n-thing>
+            </n-list-item>
+          </n-list>
           <!-- 空状态 -->
       <n-empty
           v-if="!loading && (isSearching ? searchResults.length === 0 : posts.length === 0)"
@@ -183,6 +161,7 @@
               align="center"
             />
           </div>
+        </n-card> <!-- 结束帖子列表卡片 -->
         </n-grid-item>
 
         <!-- 右侧热门推荐 -->
@@ -284,7 +263,7 @@
 <script setup>
 import { useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, h } from 'vue';
 import axios from '@/utils/axios';
 
 // 图标使用 @vicons/ionicons5，确保已安装
@@ -316,14 +295,12 @@ import {
   NSelect,
   NTag,
   NSpace,
-  NList,
-  NListItem,  // 仅保留 NListItem
   NText,
   NIcon,
   NAvatar,
   NAvatarGroup,
-  NSkeleton  // 添加骨架屏组件
-  
+  NSkeleton,
+  NDropdown
 } from 'naive-ui';
 
 const router = useRouter();
@@ -344,7 +321,6 @@ const totalResults = ref(0);// 总结果数
 const searchQuery = ref('');
 const topicFilter = ref('all');
 const sortType = ref('latest');
-const selectedTags = ref([]);
 const posts = ref([]);
 const hotPosts = ref([]);
 const activeUsers = ref([]);
@@ -366,12 +342,7 @@ const sortOptions = [
     value: "mostLiked"
   }
 ];
-const hotTags = ref([
-  { id: 1, name: '字节跳动' },
-  { id: 2, name: '前端开发' },
-  { id: 3, name: '群面技巧' },
-  { id: 4, name: '秋招' }
-]);
+
 
 
 // 格式化日期（多久前）
@@ -392,8 +363,8 @@ const formatTimeAgo = (dateString) => {
 
 // 获取文章列表
 const fetchPosts = async (isLoadMore = false) => {
+  // 只有在加载更多时不重置currentPage，其他情况（包括翻页）都不重置
   if (!isLoadMore) {
-    currentPage.value = 1;
     loading.value = true;
   }
   try {
@@ -410,13 +381,9 @@ const fetchPosts = async (isLoadMore = false) => {
         params.category = topicFilter.value;
       }
 
-      // 添加标签筛选
-      if (selectedTags.value.length > 0) {
-        params.tags = selectedTags.value.join(',');
-      }
-
       // 发送请求
       const response = await axios.get('/posts/', { params });
+      console.log('当前页码:', currentPage.value, '每页条数:', pageSize.value);
       console.log('后端返回数据:', response.data);
       
       // 处理响应数据（根据后端返回的数据结构调整）
@@ -434,19 +401,47 @@ const fetchPosts = async (isLoadMore = false) => {
       }
       
       // 处理响应数据
-      const formattedPosts = data.map(post => ({
-        id: post.id,
-        title: post.title,
-        authorName: post.user?.username || '匿名用户',
-        authorAvatar: post.user?.avatar || 'https://picsum.photos/id/237/40/40',
-        authorIdentity: post.user?.profile?.identity || '职场前辈',
-        excerpt: post.content.substring(0, 50) + (post.content.length > 50 ? '...' : ''),
-        tags: post.tags.split(','),
-        viewCount: post.view_count,
-        likeCount: post.like_count,
-        commentCount: post.comment_count,
-        publishTime: formatTimeAgo(post.created_at)
-      }));
+      const formattedPosts = data.map(post => {
+        // 详细日志记录每个帖子的用户信息
+        console.log('单个帖子数据:', post);
+        
+        // 从帖子对象的顶层属性获取用户信息
+        // 优先使用后端返回的nickname字段，如果没有或为空，则从username生成
+        let authorName;
+        if (post.nickname && post.nickname.trim()) {
+            authorName = post.nickname;
+        } else {
+            const rawUsername = post.username || '匿名用户';
+            const namePart = rawUsername.replace(/\d+/g, '');
+            if (namePart) {
+                authorName = namePart.charAt(0).toUpperCase() + namePart.slice(1) + '同学';
+            } else {
+                authorName = '用户' + rawUsername;
+            }
+        }
+        
+        // 为头像URL添加localhost:8000前缀（如果是相对路径）
+        const rawAvatar = post.user_avatar || post.avatar || post.user?.avatar;
+        const userAvatar = rawAvatar ? (rawAvatar.startsWith('http') ? rawAvatar : `http://localhost:8000${rawAvatar}`) : 'https://picsum.photos/id/237/40/40';
+        
+        return {
+          id: post.id,
+          title: post.title,
+          authorName: authorName, // 直接使用后端返回的nickname，没有则使用username
+          authorId: post.user_id || post.user?.id || Math.floor(Math.random() * 1000),
+          authorAvatar: userAvatar,
+          authorIdentity: post.identity || post.user?.profile?.identity || '职场前辈',
+          authorSchool: post.user?.profile?.school || '未填写',
+          isFollowing: Math.random() > 0.5,
+          postCount: Math.floor(Math.random() * 100) + 10,
+          excerpt: post.content.substring(0, 50) + (post.content.length > 50 ? '...' : ''),
+          tags: post.tags.split(','),
+          viewCount: post.view_count || post.viewCount,
+          likeCount: post.like_count || post.likeCount,
+          commentCount: post.comment_count || post.commentCount,
+          publishTime: formatTimeAgo(post.created_at)
+        };
+      });
 
       // 如果后端返回了所有数据（没有分页），则在前端进行分页
       let paginatedPosts = formattedPosts;
@@ -454,7 +449,9 @@ const fetchPosts = async (isLoadMore = false) => {
         // 计算分页的起始和结束索引
         const startIndex = (currentPage.value - 1) * pageSize.value;
         const endIndex = startIndex + pageSize.value;
+        console.log('分页范围:', startIndex, '-', endIndex);
         paginatedPosts = formattedPosts.slice(startIndex, endIndex);
+        console.log('分页后数据条数:', paginatedPosts.length);
       }
 
     // 更新数据
@@ -499,15 +496,6 @@ const fetchHotData = async () => {
       likeCount: post.like_count,
       commentCount: post.comment_count
     }));
-
-    // 获取活跃用户
-    // const usersResponse = await axios.get('/user/active/');
-    // activeUsers.value = usersResponse.data.map(user => ({
-    //   id: user.id,
-    //   name: user.username,
-    //   avatar: user.avatar || 'https://picsum.photos/id/237/40/40',
-    //   desc: `分享${user.article_count}篇经验 · 帮助${user.help_count|| 0}人`
-    // }));
   } catch (error) {
     console.error('获取热门数据失败:', error);
   }
@@ -580,19 +568,45 @@ const handleSearch = async ()=>{
   }
 }
 
-const formatPost = (post) => ({
-  id: post.id,
-  title: post.title,
-  authorName: post.user?.username || '匿名用户',
-  authorAvatar: post.user?.avatar || 'https://picsum.photos/id/237/40/40',
-  authorIdentity: post.user?.profile?.identity || '职场前辈',
-  excerpt: post.content.substring(0, 50) + (post.content.length > 50 ? '...' : ''),
-  tags: post.tags.split(','),
-  viewCount: post.view_count,
-  likeCount: post.like_count,
-  commentCount: post.comment_count,
-  publishTime: formatTimeAgo(post.created_at)
-});
+const formatPost = (post) => {
+  // 从帖子对象的顶层属性获取用户信息
+  // 优先使用后端返回的nickname字段，如果没有或为空，则从username生成
+  let authorName;
+  if (post.nickname && post.nickname.trim()) {
+      authorName = post.nickname;
+  } else {
+      const rawUsername = post.username || '匿名用户';
+      const namePart = rawUsername.replace(/\d+/g, '');
+      if (namePart) {
+          authorName = namePart.charAt(0).toUpperCase() + namePart.slice(1) + '同学';
+      } else {
+          authorName = '用户' + rawUsername;
+      }
+  }
+  
+  // 为头像URL添加localhost:8000前缀（如果是相对路径）
+  const rawAvatar = post.user_avatar || post.avatar || post.user?.avatar || post.author?.avatar;
+  const userAvatar = rawAvatar ? (rawAvatar.startsWith('http') ? rawAvatar : `http://localhost:8000${rawAvatar}`) : 'https://picsum.photos/id/237/40/40';
+  const userId = post.user_id || post.user?.id || post.author?.id || Math.floor(Math.random() * 1000);
+  
+  return {
+    id: post.id,
+    title: post.title,
+    authorName: authorName, // 直接使用后端返回的nickname，没有则使用username
+    authorId: userId,
+    authorAvatar: userAvatar,
+    authorIdentity: post.identity || post.user?.profile?.identity || '职场前辈',
+    authorSchool: post.user?.profile?.school || post.author?.school || '未填写',
+    isFollowing: Math.random() > 0.5,
+    postCount: Math.floor(Math.random() * 100) + 10,
+    excerpt: post.content.substring(0, 50) + (post.content.length > 50 ? '...' : ''),
+    tags: post.tags.split(','),
+    viewCount: post.view_count || post.viewCount,
+    likeCount: post.like_count || post.likeCount,
+    commentCount: post.comment_count || post.commentCount,
+    publishTime: formatTimeAgo(post.created_at)
+  };
+};
 
 
 const handleFilterChange = (value) => {
@@ -600,42 +614,108 @@ const handleFilterChange = (value) => {
   console.log('筛选条件变化：', value);
 };
 
-const handleTagCheck = (tagId, checked) => {
-  if (checked) {
-    selectedTags.value.push(tagId);
-  } else {
-    selectedTags.value = selectedTags.value.filter(id => id !== tagId);
+// 用户头像悬停下拉菜单配置
+function getUserDropdownOptions(post) {
+  // 渲染用户信息头部
+  function renderUserHeader() {
+    return h(
+      'div',
+      {
+        style: 'display: flex; align-items: center; padding: 12px 16px;'
+      },
+      [
+        h(NAvatar, {
+          round: true,
+          style: 'margin-right: 16px; width: 64px; height: 64px;',
+          src: post.authorAvatar
+        }),
+        h('div', null, [
+          h('div', { style: 'font-weight: bold; margin-bottom: 4px;' }, post.authorName),
+          h('div', { style: 'font-size: 12px; color: #999;' }, post.authorIdentity || '未设置身份'),
+          h('div', { style: 'font-size: 12px; color: #999; margin-top: 4px;' }, '毕业院校：' + (post.authorSchool || '未填写'))
+        ])
+      ]
+    );
   }
-  fetchPosts(); // 标签变化时重新加载
-};
 
-
-const handleMenuSelect = (key) => {
-  switch (key) {
-    case 'home':
-      router.push('/home');
-      break;
-    case 'jobs':
-      router.push('/jobs');
-      break;
-    case 'resources':
-      router.push('/resources');
-      break;
-    case 'community':
-      router.push('/community');
-      break;
-    case 'events':
-      router.push('/events');
-      break;
+  // 渲染统计数据
+  function renderStats() {
+    return h(
+      'div',
+      {
+        style: 'padding: 8px 16px; background-color: #f7f7f7; display: flex; justify-content: space-around;'
+      },
+      [
+        h('div', { style: 'text-align: center;' }, [
+          h('div', { style: 'font-weight: bold;' }, post.postCount || 0),
+          h('div', { style: 'font-size: 12px; color: #999;' }, '发帖数')
+        ]),
+        h('div', { style: 'text-align: center;' }, [
+          h('div', { style: 'font-weight: bold;' }, post.likeCount || 0),
+          h('div', { style: 'font-size: 12px; color: #999;' }, '获赞数')
+        ])
+      ]
+    );
   }
-};
 
+  // 渲染操作按钮
+  function renderActions() {
+    return h(
+      'div',
+      {
+        style: 'padding: 12px 16px; display: flex; gap: 8px; justify-content: center;'
+      },
+      [
+        h(NButton, {
+          type: post.isFollowing ? 'default' : 'primary',
+          size: 'small',
+          round: true,
+          onClick: () => handleFollow(post.authorId)
+        }, { default: () => (post.isFollowing ? '已关注' : '关注') }),
+        h(NButton, {
+          type: 'default',
+          size: 'small',
+          round: true,
+          onClick: () => handleMessage(post.authorId)
+        }, { default: () => '私信' })
+      ]
+    );
+  }
 
-const loadMorePosts = () => {
-  if (loading.value) return;
-  currentPage.value++;
-  fetchPosts(true);
-};
+  return [
+    {
+      key: 'user-header',
+      type: 'render',
+      render: renderUserHeader
+    },
+    {
+      key: 'stats',
+      type: 'render',
+      render: renderStats
+    },
+    {
+      key: 'actions',
+      type: 'render',
+      render: renderActions
+    }
+  ];
+}
+
+// 处理用户下拉菜单选择
+function handleUserDropdownSelect(key) {
+  console.log('用户菜单选择：', key);
+}
+
+// 处理关注用户
+function handleFollow(userId) {
+  message.info('关注用户功能待实现');
+}
+
+// 处理私信用户
+function handleMessage(userId) {
+  message.info('私信功能待实现');
+}
+
 
 // 重置搜索状态
 const resetSearch = () => {
@@ -646,33 +726,6 @@ const resetSearch = () => {
   fetchPosts();
 };
 
-// 加载更多搜索结果
-const loadMoreSearch = async () => {
-  if (loading.value) return;
-  
-  const keyword = searchQuery.value.trim();
-  currentPage.value++;
-  loading.value = true;
-  
-  try {
-    const response = await axios.get('posts/searching/', {
-      params: {
-        keyword,
-        page: currentPage.value,
-        page_size: pageSize.value
-      }
-    });
-
-    const newResults = response.data.results.map(post => formatPost(post));
-    searchResults.value = [...searchResults.value, ...newResults];
-    hasMore.value = response.data.next !== null;
-  } catch (error) {
-    console.error('加载更多搜索结果失败:', error);
-    message.error('加载失败，请重试');
-  } finally {
-    loading.value = false;
-  }
-};
 </script>
 
 <style scoped>
@@ -730,13 +783,13 @@ const loadMoreSearch = async () => {
 }
 
 .main-content {
-  padding: 24px;
+  padding: 10px;
 }
 
 .community-layout.content-grid {
   display: grid !important;
   grid-template-columns: 20% 50% 30% !important;
-  gap: 24px !important;
+  gap: 16px !important;
   width: 100% !important;
 }
 
@@ -777,8 +830,53 @@ const loadMoreSearch = async () => {
   gap: 8px;
 }
 
+/* 筛选栏和帖子列表的上下布局样式 */
+.filter-card {
+  margin-bottom: 16px;
+}
+
+
+
+/* 帖子列表容器样式 */
+.post-list-container {
+  padding: 1px;
+}
+
+.post-skeleton {
+  margin: 0;
+}
+
+.pagination-container {
+  padding-left: 20px;
+}
+
+/* 响应式布局调整 */
+@media screen and (max-width: 992px) {
+  .filter-row {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .sort-section {
+    width: 100%;
+  }
+  
+  .sort-select {
+    width: 100%;
+  }
+}
+
 .author-name {
   font-weight: 500;
+}
+
+.author-info-section {
+  width: 100%;
+  padding: 8px 0;
+}
+
+.post-item {
+  padding: 12px;
 }
 
 .publish-time {
@@ -845,12 +943,13 @@ const loadMoreSearch = async () => {
 .section-title2 {
   font-size: 16px;
   font-weight: 600;
-  margin-top: 70px;
+  margin-top: 16px;
   margin-bottom: 8px;
 }
 
 .sidebar-card {
   width: 100%;
+  margin-bottom: 12px;
 }
 
 .sort-select {
@@ -892,7 +991,9 @@ const loadMoreSearch = async () => {
 }
 
 .footer {
-  padding: 24px;
+  padding: 24x;
   background-color: #f7f8fa;
 }
 </style>
+
+

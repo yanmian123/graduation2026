@@ -23,6 +23,7 @@ import Enterpriselogin from '@/views/Enterpriselogin.vue'; //企业登录
 import ApplicationList from '@/views/ApplicationList.vue';//应聘者简历接收列表
 import ChatView from '@/views/ChatView.vue'; //聊天页面
 import NotificationCenter from '@/views/NotificationCenter.vue'; //通知中心页面
+import JobDetail from '@/views/JobDetail.vue'; //职位详情页面
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -38,6 +39,7 @@ const router = createRouter({
     {path:'/home',name:'Home',component:Home, meta: { requiresAuth: true,layout: 'default'  }},
     {path: '/home1',name: 'Home1',component: Home1},
     {path: '/jobs',name: 'jobs',component: Jobs ,meta: { requiresAuth: true ,layout: 'default'  }},
+    {path: '/jobs/:id',name: 'JobDetail',component: JobDetail,meta: { requiresAuth: true ,layout: 'default'  }},
     {path:'/community',name:'CommunityIndex',component:CommunityIndex, meta: { requiresAuth: true,layout:'default' }},
     {path:'/community/articlescreate',name:'CommunityCreate',component:CommunityCreate, meta: { requiresAuth: true,layout:'default' }},
     {path:'/community/post/:id',name: 'ArticlesDetail',component: () => import('@/views/ArticlesDetail.vue'),meta: { requiresAuth: true,layout:'default' }},

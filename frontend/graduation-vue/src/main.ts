@@ -49,7 +49,9 @@ import {
   NUpload,       // 保留：上传组件
   NPagination,   // 新增：分页组件
   NGrid,         // 新增：网格布局组件
-  NGridItem,     // 新增：网格布局项组件
+  NGridItem,     // 新增：网格布局项组件   // 新增：列表项组件
+  NThing,        // 新增：内容项组件
+      // 新增：空状态组件
   // 新增离散API
   createDiscreteApi
 } from 'naive-ui'
@@ -90,14 +92,16 @@ const naive = create({
     NText,
     NDataTable,
     NUpload,
-    NList,         // 新增
-    NListItem,     // 新增
     NBadge,        // 新增
     NScrollbar,    // 新增
     NSkeleton,     // 新增：骨架屏组件
     NPagination,   // 新增：分页组件
     NGrid,         // 新增：网格布局组件
     NGridItem,     // 新增：网格布局项组件
+    NList,         // 列表组件
+    NListItem,     // 列表项组件
+    NThing,        // 内容项组件
+    NEmpty,        // 空状态组件
   ]
 })
 

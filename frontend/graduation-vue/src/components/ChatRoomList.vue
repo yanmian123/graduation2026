@@ -38,12 +38,22 @@
           @click="selectRoom(room)"
         >
           <template #prefix>
+            <!-- 有头像时只显示图片 -->
             <n-avatar
-              round
-              :size="48"
-              :src="getOppositeUser(room).avatar"
+                v-if="getOppositeUser(room).avatar"
+                round
+                :size="48"
+                :src="getOppositeUser(room).avatar"
+                @error="handleAvatarError"
+            />
+            
+            <!-- 无头像时显示文字 -->
+            <n-avatar
+                v-else
+                round
+                :size="48"
             >
-              {{ getOppositeUser(room).nickname?.charAt(0) || 'U' }}
+                {{ getOppositeUser(room).nickname?.charAt(0) || 'U' }}
             </n-avatar>
           </template>
           
@@ -81,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted,onUnmounted  } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { NList, NListItem, NAvatar, NSpace, NButton, NBadge, NInput, NScrollbar, NIcon, NTag } from 'naive-ui'
 import { Refresh as RefreshIcon, Search as SearchIcon } from '@vicons/ionicons5'
 import { useChatStore } from '@/stores/chatStore'
@@ -135,9 +145,56 @@ const getOppositeUser = (room: ChatRoom): User => {
   const currentUser = chatStore.currentUser
   if (!currentUser) return {} as User
   
-  return currentUser.id === room.enterprise_user 
-    ? room.job_seeker_user_info 
-    : room.enterprise_user_info
+  // 修复：如果是企业用户，优先使用企业信息而不是企业用户信息
+  if (currentUser.id === room.enterprise_user) {
+    return room.job_seeker_user_info
+  } else {
+    // 当前用户是求职者，对方是企业
+    if (room.enterprise_info) {
+      // console.log('🔍 企业信息:', room.enterprise_info)
+      // console.log('🔍 企业logo:', room.enterprise_info.logo)
+      // console.log('🔍 企业用户信息:', room.enterprise_user_info)
+      // console.log('🔍 企业用户头像:', room.enterprise_info.logo)
+      
+      const avatarUrl = room.enterprise_info.logo
+      // console.log('🔍 最终使用的头像URL:', avatarUrl)
+      
+      return {
+        id: room.enterprise_user,
+        username: room.enterprise_info.name, // 使用企业名称作为username
+        nickname: room.enterprise_info.name,
+        avatar: avatarUrl, // 优先使用企业logo，后备使用企业用户头像
+        is_enterprise: true
+      }
+    } else {
+      return room.enterprise_user_info
+    }
+  }
+}
+
+// 辅助函数：获取完整的头像URL
+const getFullAvatarUrl = (avatarPath: string | undefined | null): string | undefined => {
+  console.log('🔍 getFullAvatarUrl被调用，参数:', avatarPath)
+  if (!avatarPath) {
+    console.log('🔍 参数为空，返回undefined')
+    return undefined
+  }
+  
+  // 确保avatarPath是字符串，避免Vue Proxy对象的影响
+  const pathStr = String(avatarPath)
+  console.log('🔍 转换为字符串后:', pathStr)
+  
+  // 检查是否已经是完整URL
+  if (pathStr.startsWith('http://') || pathStr.startsWith('https://')) {
+    console.log('🔍 已经是完整URL，返回:', pathStr)
+    return pathStr
+  }
+  
+  // 如果是相对路径，添加baseURL
+  const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+  const fullUrl = `${baseURL}${pathStr.startsWith('/') ? pathStr : `/${pathStr}`}`
+  console.log('🔍 生成完整URL:', fullUrl)
+  return fullUrl
 }
 
 const formatTime = (time: string) => {
@@ -163,6 +220,14 @@ const refresh = () => {
   fetchChatRooms()
 }
 
+// 处理头像加载错误
+const handleAvatarError = (e: Event) => {
+  console.error('❌ 头像加载错误:', {
+    target: e.target,
+    src: (e.target as HTMLImageElement)?.src
+  })
+}
+
 // 添加定时刷新
 let refreshInterval: number
 
@@ -172,13 +237,12 @@ onMounted(() => {
   // 立即刷新一次
   refresh()
   
-  // 每30秒自动刷新一次
+  // 每5秒自动刷新一次（实现准实时更新）
   refreshInterval = window.setInterval(() => {
     if (!loading.value) {
-      console.log('⏰ 定时刷新聊天室列表')
       refresh()
     }
-  }, 30000)
+  }, 5000)
 })
 
 onUnmounted(() => {

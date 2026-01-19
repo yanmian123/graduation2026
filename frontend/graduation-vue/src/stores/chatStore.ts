@@ -26,6 +26,11 @@ export const useChatStore = defineStore('chat', () => {
     return userStr ? JSON.parse(userStr) : null
   })
 
+  const isCurrentUserEnterprise = computed(() => {
+    if (!currentRoom.value || !currentUser.value) return false
+    return currentUser.value.id === currentRoom.value.enterprise_user
+  })
+
   const oppositeUser = computed(() => {
     if (!currentRoom.value || !currentUser.value) return null
     
@@ -42,6 +47,7 @@ export const useChatStore = defineStore('chat', () => {
       if (room.enterprise_info) {
         return {
           id: room.enterprise_user,
+          username: room.enterprise_info.name,  // 使用企业名称作为username
           nickname: room.enterprise_info.name,  // 使用企业名称
           avatar: room.enterprise_info.logo,   // 使用企业logo
           is_enterprise: true
@@ -66,7 +72,11 @@ export const useChatStore = defineStore('chat', () => {
       })
       
       chatRooms.value = response.data
-      unreadTotal.value = chatRooms.value.reduce((total, room) => total + (room.unread_count || 0), 0)
+      
+      // 计算总未读计数
+      unreadTotal.value = response.data.reduce((sum: number, room: ChatRoom) => {
+        return sum + (room.unread_count || 0)
+      }, 0)
       
     } catch (error) {
       console.error('❌ 获取聊天室列表失败:', error)
@@ -185,10 +195,28 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  const setCurrentRoom = (room: ChatRoom | null) => {
+  const setCurrentRoom = async (room: ChatRoom | null) => {
+    // 先获取之前的聊天室
+    const previousRoom = currentRoom.value
+    
     currentRoom.value = room
+    
     if (room) {
       fetchMessages(room.id)
+      
+      // 调用后端 API 将所有未读消息标记为已读
+      try {
+        await chatApi.markAllAsRead(room.id)
+        console.log('✅ 标记所有消息为已读成功')
+      } catch (error) {
+        console.error('❌ 标记所有消息为已读失败:', error)
+      }
+      
+      // 点击聊天室时，将未读计数设置为0
+      if (room.unread_count && room.unread_count > 0) {
+        unreadTotal.value -= room.unread_count
+        room.unread_count = 0
+      }
     } else {
       messages.value = []
     }
@@ -212,6 +240,9 @@ export const useChatStore = defineStore('chat', () => {
         room.unread_count = (room.unread_count || 0) + 1
         unreadTotal.value++
       }
+      
+      // 创建新的数组来触发Vue的响应式更新
+      chatRooms.value = [...chatRooms.value]
     }
   }
 
@@ -240,6 +271,7 @@ export const useChatStore = defineStore('chat', () => {
     sortedChatRooms,
     currentUser,
     oppositeUser,
+    isCurrentUserEnterprise,
     
     // 方法
     fetchChatRooms,

@@ -164,10 +164,18 @@
               
               <!-- 自己头像 -->
               <n-avatar
-                v-if="currentUserAvatar"
+                v-if="chatStore.isCurrentUserEnterprise && chatStore.currentRoom?.enterprise_info?.logo"
                 round
                 :size="36"
-                :src="getFullAvatarUrl(currentUserAvatar)"
+                :src="getFullAvatarUrl(chatStore.currentRoom?.enterprise_info?.logo)"
+                class="message-avatar"
+                @error="handleAvatarError"
+              />
+              <n-avatar
+                v-else-if="currentUser?.avatar"
+                round
+                :size="36"
+                :src="getFullAvatarUrl(currentUser?.avatar)"
                 class="message-avatar"
                 @error="handleAvatarError"
               />
@@ -405,8 +413,9 @@ const handleEmojiSelect = (emoji: string) => {
   showEmojiPicker.value = false
 }
 
-const defaultAvatar = ref('/images/default-avatar.png')
-const defaultCompanyLogo = ref('/images/default-company-logo.png')
+// 使用在线默认头像URL，避免依赖本地文件
+const defaultAvatar = ref('https://picsum.photos/id/237/100/100')
+const defaultCompanyLogo = ref('https://picsum.photos/id/1005/100/100')
 
 // 添加一个处理头像URL的函数
 const getFullAvatarUrl = (avatarPath: string | undefined): string | undefined => {
@@ -415,22 +424,28 @@ const getFullAvatarUrl = (avatarPath: string | undefined): string | undefined =>
     return undefined
   }
   
+  // 显式转换为字符串，避免Vue Proxy对象的影响
+  const path = String(avatarPath)
+  // console.log('🔍 原始avatarPath:', avatarPath)
+  // console.log('🔍 转换为字符串后:', path)
+  
   // 如果已经是完整URL，直接返回
-  if (avatarPath.startsWith('http')) {
-    console.log('✅ 已经是完整URL:', avatarPath)
-    return avatarPath
+  if (path.startsWith('http')) {
+    // console.log('✅ 已经是完整URL:', path)
+    return path
   }
   
-  // 处理相对路径
+  // 处理相对路径，特别是企业logo的/media路径
   const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
   
   // 确保路径格式正确
-  let normalizedPath = avatarPath
-  if (!avatarPath.startsWith('/')) {
-    normalizedPath = `/${avatarPath}`
+  let normalizedPath = path
+  if (!path.startsWith('/')) {
+    normalizedPath = `/${path}`
   }
   
   const fullUrl = `${baseUrl}${normalizedPath}`
+  console.log('✅ 生成完整URL:', fullUrl)
   return fullUrl
 }
 
@@ -439,9 +454,9 @@ const displayUser = computed(() => {
   const room = chatStore.currentRoom
   const currentUser = chatStore.currentUser
   
-  console.log('🔍🔍🔍🔍 当前聊天室数据:', room)
-  console.log('🔍🔍🔍🔍 企业信息:', room?.enterprise_info)
-  console.log('🔍🔍🔍🔍 企业logo:', room?.enterprise_info?.logo)
+  // console.log('🔍🔍🔍🔍 当前聊天室数据:', room)
+  // console.log('🔍🔍🔍🔍 企业信息:', room?.enterprise_info)
+  // console.log('🔍🔍🔍🔍 企业logo:', room?.enterprise_info?.logo)
   
   if (!room || !currentUser) {
     return {
@@ -452,12 +467,16 @@ const displayUser = computed(() => {
   }
   
   const isCurrentUserEnterprise = currentUser.id === room.enterprise_user
+  // console.log('🔍🔍🔍🔍 当前用户ID:', currentUser.id)
+  // console.log('🔍🔍🔍🔍 企业用户ID:', room.enterprise_user)
+  // console.log('🔍🔍🔍🔍 是否企业用户:', isCurrentUserEnterprise)
   
   if (isCurrentUserEnterprise) {
     // 当前用户是企业，显示求职者
     const jobSeekerInfo = room.job_seeker_user_info
     return {
       id: room.job_seeker_user,
+      username: jobSeekerInfo?.username || `user_${room.job_seeker_user}`,
       nickname: jobSeekerInfo?.nickname || jobSeekerInfo?.username || '求职者',
       avatar: jobSeekerInfo?.avatar || defaultAvatar.value,
       is_enterprise: false
@@ -466,9 +485,10 @@ const displayUser = computed(() => {
     // 当前用户是求职者，显示企业
     if (room.enterprise_info && room.enterprise_info.logo) {
       const logoUrl = room.enterprise_info.logo
-      console.log('✅ 使用企业logo:', logoUrl)
+      // console.log('✅ 使用企业logo:', logoUrl)
       return {
         id: room.enterprise_user,
+        username: room.enterprise_info.name || `enterprise_${room.enterprise_user}`,
         nickname: room.enterprise_info.name || '企业用户',
         avatar: logoUrl,
         is_enterprise: true
@@ -477,6 +497,7 @@ const displayUser = computed(() => {
       console.log('⚠️ 没有企业信息，使用企业用户信息')
       return {
         id: room.enterprise_user,
+        username: room.enterprise_user_info.username || `enterprise_${room.enterprise_user}`,
         nickname: room.enterprise_user_info.nickname || room.enterprise_user_info.username || '企业用户',
         avatar: defaultCompanyLogo.value,
         is_enterprise: true
@@ -485,6 +506,7 @@ const displayUser = computed(() => {
       console.log('❌❌ 无任何企业信息，使用默认')
       return {
         id: room.enterprise_user,
+        username: `enterprise_${room.enterprise_user}`,
         nickname: '企业用户',
         avatar: defaultCompanyLogo.value,
         is_enterprise: true

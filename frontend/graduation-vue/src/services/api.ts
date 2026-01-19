@@ -58,6 +58,8 @@ export const chatApi = {
   startChat: (params: any) => api.post('api/chat/chatrooms/start_chat/', params),
   markAsRead: (roomId: number, messageId: number) => 
     api.post(`api/chat/chatrooms/${roomId}/messages/${messageId}/mark_as_read/`),
+  markAllAsRead: (roomId: number) => 
+    api.post(`api/chat/chatrooms/${roomId}/mark_all_as_read/`),
   uploadFile: (roomId: number, file: File) => {
     const formData = new FormData()
     formData.append('file', file)

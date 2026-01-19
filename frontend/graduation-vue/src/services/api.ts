@@ -86,4 +86,20 @@ export const notificationApi = {
   markAllAsRead: () => api.patch('api/notifications/mark_all_as_read/')
 }
 
+// 文章相关API
+export const articleApi = {
+  // 获取当前用户的文章
+  getMyArticles: () => api.get('api/posts/', { params: { user_only: 'true' } }),
+  // 获取当前用户的评论
+  getMyComments: () => api.get('api/comments/', { params: { user_only: 'true' } }),
+  // 获取当前用户的收藏
+  getMyCollections: () => api.get('api/posts/collections/')
+}
+
+// 投递记录相关API
+export const applicationApi = {
+  // 获取当前用户的投递记录
+  getMyApplications: () => api.get('api/enterprise/applications/')
+}
+
 export { api }; 

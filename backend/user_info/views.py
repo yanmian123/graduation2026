@@ -21,14 +21,14 @@ class UserInfoView(APIView):
     def get(self, request):
         """获取当前登录用户的信息"""
         user = request.user
-        serializer = UserInfoSerializer(user)
+        serializer = UserInfoSerializer(user, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def put(self, request):
         """更新当前登录用户的信息"""
         user = request.user
         #传入用户实例和请求数据，partial=True允许部分更新
-        serializer = UserInfoUpdateSerializer(user, data=request.data, partial=True)
+        serializer = UserInfoUpdateSerializer(user, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -41,7 +41,7 @@ class UserInfoView(APIView):
         if 'avatar' in request.FILES:
             user.avatar = request.FILES['avatar']
             user.save()
-            serializer = UserInfoSerializer(user)
+            serializer = UserInfoSerializer(user, context={'request': request})
             return Response({
                 'message': '头像上传成功',
                 'avatar': serializer.data['avatar']

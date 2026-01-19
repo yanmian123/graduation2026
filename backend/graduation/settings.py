@@ -39,7 +39,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework", #DRF
     "corsheaders", #CORS
-    "api", #我的应用
     "register", #注册功能
     'rest_framework_simplejwt',  # JWT认证
     "user_info", #用户信息

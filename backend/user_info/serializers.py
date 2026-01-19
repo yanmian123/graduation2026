@@ -7,6 +7,14 @@ User=get_user_model()
 class UserInfoSerializer(serializers.ModelSerializer):
     """用于查看用户信息的序列化器（只返回需要的字段）"""
     
+    avatar = serializers.SerializerMethodField()
+    
+    def get_avatar(self, obj):
+        """返回完整的头像URL"""
+        if obj.avatar and hasattr(obj.avatar, 'url'):
+            return self.context['request'].build_absolute_uri(obj.avatar.url)
+        return None
+    
     class Meta:
         model = User
         # 包含需要的字段（排除password等敏感信息）

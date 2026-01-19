@@ -2,6 +2,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q
+from django.utils import timezone
 from .models import ChatRoom, Message
 from .serializers import ChatRoomSerializer, MessageSerializer
 from enterprise.models import Recruitment
@@ -39,6 +40,23 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
+    
+    @action(detail=True, methods=['post'])
+    def mark_all_as_read(self, request, pk=None):
+        """标记聊天室中所有未读消息为已读"""
+        chat_room = self.get_object()
+        
+        # 只标记接收到的消息为已读（不包括自己发送的）
+        unread_messages = chat_room.messages.filter(
+            is_read=False
+        ).exclude(sender=request.user)
+        
+        count = unread_messages.update(is_read=True, read_at=timezone.now())
+        
+        return Response({
+            'success': True,
+            'marked_count': count
+        })
 
 # 在ChatRoomViewSet中修改start_chat方法
     @action(detail=False, methods=['post'])
@@ -122,6 +140,12 @@ class MessageViewSet(viewsets.ModelViewSet):
         room_id = self.kwargs.get('room_id')
         return Message.objects.filter(chat_room_id=room_id).select_related('sender')
     
+    def get_serializer_context(self):
+        """添加request到serializer context"""
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+    
     def perform_create(self, serializer):
         room_id = self.kwargs.get('room_id')
         chat_room = ChatRoom.objects.get(id=room_id)
@@ -159,13 +183,12 @@ class MessageViewSet(viewsets.ModelViewSet):
         # 通过WebSocket广播消息
         from channels.layers import get_channel_layer
         from asgiref.sync import async_to_sync
-        from .serializers import MessageSerializer
         
         channel_layer = get_channel_layer()
         room_group_name = f'chat_{room_id}'
         
-        # 序列化消息
-        serializer = MessageSerializer(message)
+        # 序列化消息并传递context
+        serializer = MessageSerializer(message, context={'request': self.request})
         message_data = serializer.data
         
         # 广播消息
@@ -216,7 +239,7 @@ def upload_file(request, room_id):
             file_size=file_obj.size
         )
         
-        serializer = MessageSerializer(message)
+        serializer = MessageSerializer(message, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
         
     except ChatRoom.DoesNotExist:

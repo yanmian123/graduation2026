@@ -5,9 +5,22 @@ from enterprise.models import Enterprise
 
 class UserSimpleSerializer(serializers.ModelSerializer):
     """简化用户序列化器"""
+    # 添加完整头像URL字段
+    avatar = serializers.SerializerMethodField()
+    
+    def get_avatar(self, obj):
+        """生成完整的头像URL"""
+        if obj.avatar:
+            # 如果是完整URL，直接返回
+            if obj.avatar.url.startswith('http'):
+                return obj.avatar.url
+            # 否则生成完整URL
+            return self.context['request'].build_absolute_uri(obj.avatar.url)
+        return None
+    
     class Meta:
         model = User
-        fields = ['id', 'username', 'nickname', 'is_enterprise']
+        fields = ['id', 'username', 'nickname', 'is_enterprise', 'avatar']
 
 class MessageSerializer(serializers.ModelSerializer):
     """消息序列化器"""
@@ -24,6 +37,19 @@ class MessageSerializer(serializers.ModelSerializer):
 
 class EnterpriseSimpleSerializer(serializers.ModelSerializer):
     """简化企业信息序列化器"""
+    # 添加完整logo URL字段
+    logo = serializers.SerializerMethodField()
+    
+    def get_logo(self, obj):
+        """生成完整的logo URL"""
+        if obj.logo:
+            # 如果是完整URL，直接返回
+            if obj.logo.url.startswith('http'):
+                return obj.logo.url
+            # 否则生成完整URL
+            return self.context['request'].build_absolute_uri(obj.logo.url)
+        return None
+    
     class Meta:
         model = Enterprise
         fields = ['id', 'name', 'logo', 'industry']  # 企业名称、logo、行业
@@ -50,7 +76,7 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         """获取最后一条消息"""
         last_message = obj.messages.last()
         if last_message:
-            return MessageSerializer(last_message).data
+            return MessageSerializer(last_message, context=self.context).data
         return None
     
     def get_unread_count(self, obj):
@@ -65,6 +91,9 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         try:
             # 获取企业用户的关联企业信息
             enterprise = obj.enterprise_user.enterprise_profile
-            return EnterpriseSimpleSerializer(enterprise).data
-        except Enterprise.DoesNotExist:
+            # 传递context参数，确保能生成完整的logo URL
+            return EnterpriseSimpleSerializer(enterprise, context=self.context).data
+        except Exception as e:
+            # 捕获所有可能的异常，包括RelatedObjectDoesNotExist
+            print(f"❌ 获取企业信息时发生错误: {e}")
             return None

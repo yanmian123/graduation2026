@@ -216,7 +216,7 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
                 recruitment__enterprise=enterprise
             ).select_related('applicant', 'recruitment','recruitment__enterprise')
         else:
-            return JobApplication.objects.filter(applicant=user)
+            return JobApplication.objects.filter(applicant=user).select_related('recruitment', 'recruitment__enterprise')
 
     def get_serializer_context(self):
         """为序列化器提供额外的上下文"""

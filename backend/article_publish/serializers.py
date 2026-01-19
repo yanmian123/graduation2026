@@ -114,9 +114,14 @@ class CommentSerializer(serializers.ModelSerializer):
         )
 
 # 收藏状态序列化器
-class CollectionStatusSerializer(serializers.Serializer):
-    is_collected = serializers.BooleanField()
-    count = serializers.IntegerField()
+class CollectionStatusSerializer(serializers.ModelSerializer):
+    article_title = serializers.ReadOnlyField(source='article.title')
+    article_content = serializers.ReadOnlyField(source='article.content')
+    article_id = serializers.ReadOnlyField(source='article.id')
+    
+    class Meta:
+        model = Collection
+        fields = ['id', 'article_id', 'article_title', 'article_content', 'created_at']
 
 # 点赞状态序列化器
 class LikeStatusSerializer(serializers.Serializer):

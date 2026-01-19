@@ -57,6 +57,11 @@ class ArticleViewSet(viewsets.ModelViewSet):
         tag=self.request.query_params.get('tag')
         keyword=self.request.query_params.get('keyword')
         ordering=self.request.query_params.get('ordering')
+        user_only=self.request.query_params.get('user_only')
+        
+        # 如果请求参数 user_only=true，只返回当前用户的文章
+        if user_only == 'true' and self.request.user.is_authenticated:
+            queryset = queryset.filter(user=self.request.user)
         
         if category and category != 'all':
             queryset=queryset.filter(category=category)
@@ -258,6 +263,13 @@ class ArticleViewSet(viewsets.ModelViewSet):
         
         # 返回分页数据
         return paginator.get_paginated_response(serializer.data)
+    
+    # 获取当前用户的收藏
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def collections(self, request):
+        collections = Collection.objects.filter(user=request.user).order_by('-created_at')
+        serializer = CollectionStatusSerializer(collections, many=True)
+        return Response(serializer.data)
 
     # 发表评论
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
@@ -310,6 +322,17 @@ class ArticleViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.GenericViewSet):
     queryset = Comment.objects.all()
     permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        '''获取当前用户的评论'''
+        queryset = Comment.objects.all()
+        user_only = self.request.query_params.get('user_only')
+        
+        # 如果请求参数 user_only=true，只返回当前用户的评论
+        if user_only == 'true' and self.request.user.is_authenticated:
+            queryset = queryset.filter(user=self.request.user)
+        
+        return queryset.order_by('-created_at')
 
     # 评论点赞/取消点赞
     @action(detail=True, methods=['post', 'delete'],permission_classes=[IsAuthenticated])

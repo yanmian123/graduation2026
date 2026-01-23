@@ -42,7 +42,7 @@
       </div>
 
       <!-- 企业信息 -->
-      <div class="company-section">
+      <div class="company-section" @click="handleCompanyClick">
         <div class="company-header">
           <n-avatar
             :src="job.enterprise_logo"
@@ -135,6 +135,7 @@
 
       <!-- 简历选择模态框 -->
       <ResumeSelectModal
+        v-if="job.id"
         v-model:show="showResumeModal"
         :job-id="job.id"
         @success="handleApplySuccess"
@@ -241,6 +242,13 @@ const fetchJobDetail = async () => {
 // 返回上一页
 const goBack = () => {
   router.back()
+}
+
+// 点击企业信息跳转到企业主页
+const handleCompanyClick = () => {
+  if (job.value.enterprise_user_id) {
+    router.push(`/enterprise/${job.value.enterprise_user_id}`)
+  }
 }
 
 // 申请职位
@@ -369,6 +377,12 @@ onMounted(() => {
   background-color: #f3f4f6;
   border-radius: 8px;
   margin-bottom: 30px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.company-section:hover {
+  background-color: #e5e7eb;
 }
 
 .company-header {

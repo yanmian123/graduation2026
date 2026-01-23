@@ -708,7 +708,43 @@ function handleUserDropdownSelect(key) {
 
 // 处理关注用户
 function handleFollow(userId) {
-  message.info('关注用户功能待实现');
+  const isLogin = !!localStorage.getItem('accessToken')
+  if (!isLogin) {
+    message.warning('请先登录后再关注用户')
+    router.push('/login')
+    return
+  }
+
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+  if (currentUser.id === userId) {
+    message.error('不能关注自己')
+    return
+  }
+
+  const post = posts.value.find(p => p.authorId === userId)
+  if (!post) return
+
+  if (post.isFollowing) {
+    axios.delete(`/users/${userId}/follow/`)
+      .then(() => {
+        post.isFollowing = false
+        message.success('已取消关注')
+      })
+      .catch(error => {
+        console.error('取消关注失败:', error)
+        message.error('操作失败，请稍后重试')
+      })
+  } else {
+    axios.post(`/users/${userId}/follow/`)
+      .then(() => {
+        post.isFollowing = true
+        message.success('关注成功')
+      })
+      .catch(error => {
+        console.error('关注失败:', error)
+        message.error('操作失败，请稍后重试')
+      })
+  }
 }
 
 // 处理私信用户

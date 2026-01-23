@@ -76,11 +76,17 @@ class Collection(models.Model):
         ordering=['-created_at'] 
         
 class Follow(models.Model):
+    FOLLOW_TYPE_CHOICES = [
+        ('user', '关注用户'),
+        ('enterprise', '关注企业'),
+    ]
+    
     follower = models.ForeignKey(User, on_delete=models.CASCADE, related_name='following',verbose_name="关注用户")
     followed = models.ForeignKey(User, on_delete=models.CASCADE, related_name='followers',verbose_name="被关注用户")
+    follow_type = models.CharField(max_length=20, choices=FOLLOW_TYPE_CHOICES, default='user', verbose_name="关注类型")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="关注时间")
 
     class Meta:
-        unique_together = ['follower', 'followed']  # 防止重复关注
+        unique_together = ['follower', 'followed', 'follow_type']  # 防止重复关注
         verbose_name="关注记录"
         ordering=['-created_at'] 

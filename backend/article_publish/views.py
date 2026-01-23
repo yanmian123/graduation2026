@@ -358,26 +358,52 @@ class UserViewSet(viewsets.GenericViewSet):
     queryset = User.objects.all()
     permission_classes = [IsAuthenticated]
 
-    # 关注/取消关注作者
-    @action(detail=True, methods=['post', 'delete'],permission_classes=[IsAuthenticated])
+    # 获取关注状态
+    @action(detail=True, methods=['get'])
+    def follow_status(self, request, pk=None):
+        followed_user = self.get_object()
+        is_following = Follow.objects.filter(
+            follower=request.user,
+            followed=followed_user
+        ).exists()
+        return Response({'is_following': is_following})
+
+    # 关注/取消关注用户或企业
+    @action(detail=True, methods=['post', 'delete'])
     def follow(self, request, pk=None):
-        logger.info(f"关注操作 - 用户: {request.user.id}, 目标用户: {pk}, 方法: {request.method}")
+        followed_user = self.get_object()
+        
         logger.info(f"请求头认证信息: {request.headers.get('Authorization')}")
         logger.info(f"用户是否认证: {request.user.is_authenticated}")
-        followed_user = self.get_object()
+        
         # 防止用户关注自己
         if request.user == followed_user:
             return Response(
                 {"message": "不能关注自己"}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        # 判断关注类型：用户还是企业
+        follow_type = 'enterprise' if followed_user.is_enterprise else 'user'
+        
         follow, created = Follow.objects.get_or_create(
             follower=request.user,
-            followed=followed_user
+            followed=followed_user,
+            defaults={'follow_type': follow_type}
         )
         
         if request.method == 'POST':
             if created:
+                # 只有关注用户时才发送通知，关注企业不发送通知
+                if follow_type == 'user':
+                    create_notification(
+                        recipient=followed_user,
+                        notification_type='user_followed',
+                        title='新粉丝关注',
+                        message=f'{request.user.nickname or request.user.username}关注了你',
+                        related_object_id=request.user.id,
+                        related_object_type='user'
+                    )
                 return Response(
                     FollowStatusSerializer({'is_following': True}).data,
                     status=status.HTTP_201_CREATED

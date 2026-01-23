@@ -58,6 +58,11 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
         # 只能查询自己的企业信息
         return Enterprise.objects.filter(user=self.request.user)
 
+    def get_permissions(self):
+        if self.action == 'by_user':
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated(), IsEnterpriseOwner()]
+
     def perform_create(self, serializer):
         # 创建时自动绑定当前登录用户
         serializer.save(user=self.request.user)
@@ -77,6 +82,19 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
             {'error': '未提供logo文件'}, 
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    # 根据用户ID获取企业信息
+    @action(detail=False, methods=['get'], url_path='user/(?P<user_id>[^/.]+)', permission_classes=[permissions.AllowAny])
+    def by_user(self, request, user_id=None):
+        try:
+            enterprise = Enterprise.objects.get(user_id=user_id)
+            serializer = EnterpriseSerializer(enterprise)
+            return Response(serializer.data)
+        except Enterprise.DoesNotExist:
+            return Response(
+                {'error': '企业信息不存在'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 # 招聘信息视图集
 class RecruitmentViewSet(viewsets.ModelViewSet):

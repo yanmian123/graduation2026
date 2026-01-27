@@ -23,9 +23,9 @@ class UserInfoSerializer(serializers.ModelSerializer):
             'graduation_school', 'education_level', 'major', 
             'graduation_year', 'phone_number', 'current_status',
             'intended_position', 'intended_salary', 'address',
-            'intended_city', 'personal_profile', 'avatar'
+            'intended_city', 'personal_profile', 'avatar', 'is_enterprise'
         ]
-        read_only_fields = ['id', 'username']  # 只读字段
+        read_only_fields = ['id', 'username', 'is_enterprise']  # 只读字段
 
 class UserInfoUpdateSerializer(serializers.ModelSerializer):
     """用于更新用户信息的序列化器(添加特定字段的验证)"""

@@ -57,6 +57,7 @@ class Message(models.Model):
         choices=[
             ('text', '文本'),
             ('file', '文件'),
+            ('image', '图片'),
             ('system', '系统消息'),
         ],
         default='text',

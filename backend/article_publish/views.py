@@ -291,6 +291,10 @@ class ArticleViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             comment = serializer.save(article=article, parent=parent_comment)
             
+            # 更新文章的评论数
+            article.comment_count += 1
+            article.save()
+            
             # 生成通知
             from notification.utils import create_notification
             
@@ -322,6 +326,34 @@ class ArticleViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.GenericViewSet):
     queryset = Comment.objects.all()
     permission_classes = [IsAuthenticated]
+    serializer_class = CommentSerializer
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    def destroy(self, request, *args, **kwargs):
+        comment = self.get_object()
+        
+        # 检查是否是评论作者
+        if comment.user != request.user:
+            return Response(
+                {'error': '只能删除自己的评论'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # 获取关联的文章
+        article = comment.article
+        
+        # 删除评论
+        comment.delete()
+        
+        # 减少文章的评论数
+        article.comment_count -= 1
+        article.save()
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
     
     def get_queryset(self):
         '''获取当前用户的评论'''

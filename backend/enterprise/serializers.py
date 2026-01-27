@@ -10,7 +10,7 @@ class EnterpriseSerializer(serializers.ModelSerializer):
         fields = [
             "id", "user", "username", "name", "logo", "description",
             "industry", "scale", "contact_person", "contact_phone", 
-            "contact_email", "address", "is_verified",
+            "contact_email", "address", "website", "is_verified",
             "created_at", "updated_at"
         ]
         read_only_fields = ["user"] # 用户自动关联，前端无需传递
@@ -28,7 +28,7 @@ class RecruitmentSerializer(serializers.ModelSerializer):
         model = Recruitment
         fields = [
             "id", "enterprise", "enterprise_name", "enterprise_id", "enterprise_logo",
-            "title","job", "job_type", "work_location", "salary","enterprise_industry","enterprise_user_id", 
+            "title","job", "job_type", "recruit_type", "job_category", "work_location", "salary","enterprise_industry","enterprise_user_id", 
             "number_of_recruits", "experience", "education",
             "job_desc", "job_require", "status","is_published", "is_urgent",
             "deadline", "created_at", "updated_at"

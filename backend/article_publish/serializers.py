@@ -90,6 +90,7 @@ class CommentSerializer(serializers.ModelSerializer):
     username = serializers.ReadOnlyField(source='user.username')
     nickname = serializers.ReadOnlyField(source='user.nickname')
     avatar = serializers.SerializerMethodField()
+    user_id = serializers.ReadOnlyField(source='user.id')
     replies = serializers.SerializerMethodField()
     parent = serializers.PrimaryKeyRelatedField(read_only=True)
     
@@ -104,8 +105,8 @@ class CommentSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Comment
-        fields = ['id', 'content', 'created_at', 'like_count', 'username', 'nickname', 'avatar', 'parent', 'replies']
-        read_only_fields = ['id', 'created_at', 'like_count', 'username', 'nickname', 'avatar', 'parent', 'replies']
+        fields = ['id', 'content', 'created_at', 'like_count', 'username', 'nickname', 'avatar', 'parent', 'replies', 'user_id']
+        read_only_fields = ['id', 'created_at', 'like_count', 'username', 'nickname', 'avatar', 'parent', 'replies', 'user_id']
 
     def create(self, validated_data):
         return Comment.objects.create(

@@ -153,6 +153,9 @@ class MessageViewSet(viewsets.ModelViewSet):
         # 保存消息
         message = serializer.save(chat_room=chat_room, sender=self.request.user)
         
+        # 手动更新聊天室的 updated_at，确保聊天列表排序正确
+        chat_room.save()
+        
         # 确定接收者和通知类型
         sender = self.request.user
         recipient = None
@@ -228,16 +231,35 @@ def upload_file(request, room_id):
         
         file_obj = request.FILES['file']
         
+        # 打印调试信息
+        print(f"📤 上传文件信息:")
+        print(f"  - 文件名: {file_obj.name}")
+        print(f"  - 文件大小: {file_obj.size}")
+        print(f"  - MIME类型: {file_obj.content_type}")
+        
+        # 判断是否为图片 - 使用MIME类型更可靠
+        image_mime_types = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp', 'image/jpg']
+        is_image = file_obj.content_type in image_mime_types
+        
+        print(f"  - 是否为图片: {is_image}")
+        
+        # 确定消息类型
+        message_type = 'image' if is_image else 'file'
+        
         # 创建文件消息
         message = Message.objects.create(
             chat_room=chat_room,
             sender=request.user,
-            content=f"文件: {file_obj.name}",
-            message_type='file',
+            content=f"{'图片' if is_image else '文件'}: {file_obj.name}",
+            message_type=message_type,
             file=file_obj,
             file_name=file_obj.name,
             file_size=file_obj.size
         )
+        
+        print(f"✅ 消息创建成功:")
+        print(f"  - 消息ID: {message.id}")
+        print(f"  - 消息类型: {message.message_type}")
         
         serializer = MessageSerializer(message, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -245,4 +267,5 @@ def upload_file(request, room_id):
     except ChatRoom.DoesNotExist:
         return Response({"error": "聊天室不存在"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
+        print(f"❌ 上传文件失败: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

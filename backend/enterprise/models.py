@@ -28,6 +28,28 @@ JOB_TYPE_CHOICES = [
     ("INTERNSHIP", "实习")
 ]
 
+RECRUIT_TYPE_CHOICES = [
+    ("CAMPUS", "校招"),
+    ("SOCIAL", "社招"),
+    ("INTERNSHIP", "实习")
+]
+
+JOB_CATEGORY_CHOICES = [
+    ("SOFTWARE", "软件开发"),
+    ("BACKEND", "后端开发"),
+    ("FRONTEND", "前端开发"),
+    ("MOBILE", "移动开发"),
+    ("TEST", "测试"),
+    ("DEVOPS", "运维"),
+    ("PRODUCT", "产品"),
+    ("DESIGN", "设计"),
+    ("MARKETING", "市场"),
+    ("SALES", "销售"),
+    ("HR", "人力资源"),
+    ("FINANCE", "财务"),
+    ("OTHER", "其他")
+]
+
 EDUCATION_CHOICES = [
     ("HIGH_SCHOOL", "高中及以下"),
     ("ASSOCIATE", "专科"),
@@ -93,10 +115,10 @@ class Enterprise(models.Model):
         max_length=20, 
         verbose_name="联系电话",
         validators=[RegexValidator(
-            r'^1[3-9]\d{9}$', 
-            "请输入有效的手机号码"
+            r'^[\d\-\+\s\(\)]{7,20}$', 
+            "请输入有效的电话号码"
         )],
-        help_text="请填写有效的手机号码"
+        help_text="请填写有效的电话号码（支持手机号、固定电话、400/800等客服电话）"
     )
     contact_email = models.EmailField(
         verbose_name="联系邮箱",
@@ -106,6 +128,12 @@ class Enterprise(models.Model):
         max_length=500, 
         verbose_name="企业地址",
         help_text="请填写详细办公地址"
+    )
+    website = models.URLField(
+        verbose_name="企业官网",
+        help_text="请填写企业官方网站链接",
+        null=True,
+        blank=True
     )
     is_verified = models.BooleanField(
         default=False, 
@@ -132,12 +160,26 @@ class Recruitment(models.Model):
         verbose_name="所属企业"
     )
     title = models.CharField(max_length=200, verbose_name="招聘标题",help_text="例如：【急聘】资深Python开发工程师")
+    recruit_type = models.CharField(
+        max_length=20,
+        choices=RECRUIT_TYPE_CHOICES,
+        verbose_name="招聘类型",
+        help_text="选择校招/社招/实习",
+        default="CAMPUS"
+    )
+    job_category = models.CharField(
+        max_length=20,
+        choices=JOB_CATEGORY_CHOICES,
+        verbose_name="职位类别",
+        help_text="选择职位所属类别",
+        default="OTHER"
+    )
     job_type = models.CharField(
         max_length=20,
         choices=JOB_TYPE_CHOICES,
         verbose_name="工作类型",
         help_text="选择全职/兼职/实习",
-        default="全职"
+        default="FULL_TIME"
     )
     work_location = models.CharField(
         max_length=200, 

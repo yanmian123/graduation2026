@@ -1,30 +1,30 @@
 <!-- src/components/enterprise/EnterpriseHeader.vue -->
 <template>
-  <header class="enterprise-header">
+  <header class="enterprise-header" :class="{ 'header-scrolled': isScrolled }">
     <div class="enterprise-header-content">
-      <!-- 企业品牌标识 -->
       <div class="enterprise-brand" @click="$router.push('/enterprise')">
-        <n-icon size="32" class="brand-icon">
-          <Business />
-        </n-icon>
+        <div class="brand-icon-wrapper">
+          <n-icon size="32" class="brand-icon">
+            <Business />
+          </n-icon>
+        </div>
         <span class="brand-text">企业服务中心</span>
       </div>
 
-      <!-- 企业专属导航菜单 -->
       <n-menu 
         mode="horizontal" 
         :options="enterpriseMenuOptions" 
         class="enterprise-nav-menu"
         @update-value="handleMenuSelect"
-
+        responsive
       />
 
-      <!-- 企业用户功能区 -->
       <div class="enterprise-actions">
         <n-button 
           type="primary" 
-          size="small" 
+          size="medium" 
           @click="handlePublishJob"
+          round
         >
           <template #icon>
             <n-icon><Add /></n-icon>
@@ -32,20 +32,15 @@
           发布招聘
         </n-button>
         
-        <!-- 通知中心 - 原生实现 -->
         <div class="notification-container" @mouseenter="openNotificationDropdown" @mouseleave="closeNotificationDropdown">
-          <!-- 通知图标触发器 -->
           <div class="notification-trigger">
-            <n-icon size="20">
-              <Notifications />  
-            </n-icon>
-            <!-- 未读通知数量 -->
-            <span v-if="unreadCount > 0" class="notification-badge">
-              {{ unreadCount > 99 ? '99+' : unreadCount }}
-            </span>
+            <n-badge :value="unreadCount" :max="99" :show="unreadCount > 0">
+              <n-icon size="20" class="notification-icon">
+                <Notifications />  
+              </n-icon>
+            </n-badge>
           </div>
           
-          <!-- 通知下拉菜单 -->
           <div v-if="showNotification" class="notification-dropdown">
             <div class="notification-header">
               <h3>通知中心</h3>
@@ -54,11 +49,15 @@
             
             <div class="notification-list">
               <div v-if="notificationStore.isLoading" class="notification-loading">
-                加载中...
+                <n-spin size="small" />
+                <span>加载中...</span>
               </div>
               
               <div v-else-if="notifications.length === 0" class="notification-empty">
-                暂无通知
+                <n-icon size="48" class="empty-icon">
+                  <NotificationsOutline />
+                </n-icon>
+                <p>暂无通知</p>
               </div>
               
               <div 
@@ -90,7 +89,8 @@
               size="small" 
               :src="userAvatar"
               class="user-avatar"
-              :round="false"
+              round
+              bordered
             >
               <template #fallback>
                 <n-icon><Business /></n-icon>
@@ -102,53 +102,50 @@
       </div>
     </div>
   </header>
+  
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   NMenu, NButton, NIcon, NAvatar, NDropdown, NBadge, NSpin 
 } from 'naive-ui'
-import {  Add, PersonCircle, Settings, LogOut, Business, Notifications, NotificationsOutline } from '@vicons/ionicons5'
+import { Add, PersonCircle, Settings, LogOut, Business, Notifications, NotificationsOutline } from '@vicons/ionicons5'
 import { useNotificationStore } from '@/stores/notificationStore'
 import axios from '@/utils/axios'
-// Building,
+
 const router = useRouter()
 
-// 企业用户信息
 const userAvatar = ref('')
 const userName = ref('企业用户')
+const isScrolled = ref(false)
 
-// 通知相关
 const notificationStore = useNotificationStore()
 const unreadCount = computed(() => notificationStore.unreadCount)
-const notifications = computed(() => notificationStore.sortedNotifications.slice(0, 5)) // 只显示最近5条通知
+const notifications = computed(() => notificationStore.sortedNotifications.slice(0, 5))
 const showNotification = ref(false)
 
-// 打开通知下拉菜单
 const openNotificationDropdown = () => {
   showNotification.value = true
   notificationStore.fetchNotifications()
 }
 
-// 关闭通知下拉菜单
 const closeNotificationDropdown = () => {
-  // 添加一个小延迟，确保用户有时间将鼠标从触发器移动到下拉菜单
   setTimeout(() => {
     showNotification.value = false
   }, 200)
 }
 
-// 企业专属菜单
 const enterpriseMenuOptions = ref([
-  { key: 'recruitments', label: '招聘管理'},
-  { key: 'applications', label: '简历库' },
-  { key: 'analytics', label: '数据统计' },
-  { key: 'company', label: '企业信息' }
+  {key:'home', label:'首页'},
+  { key: 'recruitments', label: '招聘管理' },
+  { key: 'applications', label: '简历库', },
+  {key:'talent-pool', label:'人才库'},
+  { key: 'analytics', label: '数据统计', },
+  { key: 'company', label: '企业信息',}
 ])
 
-// 用户下拉菜单
 const userDropdownOptions = ref([
   { key: 'profile', label: '企业资料', icon: Settings },
   { key: 'settings', label: '账户设置', icon: Settings },
@@ -157,7 +154,18 @@ const userDropdownOptions = ref([
 ])
 
 const handleMenuSelect = (key) => {
-  router.push(`/enterprise/${key}`)
+  if (key === 'company') {
+    const enterpriseInfo = JSON.parse(localStorage.getItem('enterpriseInfo') || '{}')
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+    const userId = userInfo.id
+    if (userId) {
+      router.push(`/enterprise/${userId}`)
+    } else {
+      router.push('/enterprise/edit')
+    }
+  } else {
+    router.push(`/enterprise/${key}`)
+  }
 }
 
 const handlePublishJob = () => {
@@ -183,57 +191,53 @@ const handleLogout = () => {
   router.push('/login?type=enterprise')
 }
 
+const handleScroll = () => {
+  isScrolled.value = window.scrollY > 50
+}
+
 onMounted(() => {
-  // 初始化企业用户信息
   initializeEnterpriseUser()
-  // 注册实时通知处理程序
   notificationStore.registerNotificationHandler()
+  window.addEventListener('scroll', handleScroll)
 })
 
 onUnmounted(() => {
-  // 移除实时通知处理程序
   notificationStore.unregisterNotificationHandler()
+  window.removeEventListener('scroll', handleScroll)
 })
 
 const initializeEnterpriseUser = async () => {
   try {
-    // 先从API获取最新的企业信息
     const response = await axios.get('/enterprises/')
     let enterpriseData = response.data
     
-    // 处理不同的响应格式
     if (Array.isArray(enterpriseData) && enterpriseData.length > 0) {
       enterpriseData = enterpriseData[0]
     } else if (!enterpriseData || typeof enterpriseData !== 'object') {
       enterpriseData = {}
     }
     
-    // 更新本地存储
     const enterpriseInfo = {
       id: enterpriseData.id,
       name: enterpriseData.name,
       logo: enterpriseData.logo,
-      avatar: enterpriseData.logo // 保持兼容性
+      avatar: enterpriseData.logo
     }
     localStorage.setItem('enterpriseInfo', JSON.stringify(enterpriseInfo))
     
-    // 更新UI
     userAvatar.value = enterpriseInfo.logo || enterpriseInfo.avatar || ''
     userName.value = enterpriseInfo.name || '企业用户'
     
   } catch (error) {
     console.error('获取企业信息失败:', error)
-    // 从本地存储获取作为备用
     const enterpriseInfo = JSON.parse(localStorage.getItem('enterpriseInfo') || '{}')
     userAvatar.value = enterpriseInfo.logo || enterpriseInfo.avatar || ''
     userName.value = enterpriseInfo.name || '企业用户'
   } finally {
-    // 初始化通知功能
     await notificationStore.init()
   }
 }
 
-// 通知相关方法
 const formatTime = (timeString) => {
   const date = new Date(timeString)
   const now = new Date()
@@ -262,17 +266,34 @@ const markAllAsRead = () => {
 }
 
 const showAllNotifications = () => {
-  // 这里可以跳转到通知列表页面
   console.log('跳转到通知列表页面')
 }
 </script>
 
 <style scoped>
 .enterprise-header {
-  background: linear-gradient(135deg, #e5e5ed 0%, #e5e5ed 0%);
-  color: rgb(69, 44, 44);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.562);
+  background: linear-gradient(135deg, #bad2ce 0%, #9ddcd0 100%);
+  color: rgb(48, 35, 35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  transition: all 0.3s ease;
 }
+
+.header-scrolled {
+  background: linear-gradient(135deg,  #bad2ce 0%, #9ddcd0 100%);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* .header-placeholder {
+  height: 64px;
+  transition: height 0.3s ease;
+}
+
+.header-scrolled + .header-placeholder {
+  height: 56px;
+} */
 
 .enterprise-header-content {
   max-width: 1200px;
@@ -282,6 +303,11 @@ const showAllNotifications = () => {
   align-items: center;
   justify-content: space-between;
   height: 64px;
+  transition: all 0.3s ease;
+}
+
+.header-scrolled .enterprise-header-content {
+  height: 56px;
 }
 
 .enterprise-brand {
@@ -290,22 +316,59 @@ const showAllNotifications = () => {
   cursor: pointer;
   font-weight: 600;
   font-size: 18px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.enterprise-brand:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.brand-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border-radius: 10px;
+  margin-right: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .brand-icon {
-  margin-right: 8px;
+  color: rgb(26, 25, 25);
+}
+
+.brand-text {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 
 .enterprise-nav-menu {
   flex: 1;
   margin: 0 40px;
-  :deep(.n-menu-item) {
-    color: rgba(255, 255, 255, 0.9) !important;
-  }
-  :deep(.n-menu-item.n-menu-item--selected) {
-    color: white !important;
-    background: rgba(255, 255, 255, 0.925);
-  }
+}
+
+.enterprise-nav-menu :deep(.n-menu-item) {
+  color: rgba(255, 255, 255, 0.9) !important;
+  border-radius: 8px;
+  margin: 0 4px;
+  transition: all 0.2s ease;
+}
+
+.enterprise-nav-menu :deep(.n-menu-item:hover) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.enterprise-nav-menu :deep(.n-menu-item.n-menu-item--selected) {
+  background: rgba(255, 255, 255, 0.2);
+  color: white !important;
+  font-weight: 600;
 }
 
 .enterprise-actions {
@@ -319,8 +382,8 @@ const showAllNotifications = () => {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 4px 12px;
+  border-radius: 8px;
   transition: background-color 0.2s;
 }
 
@@ -330,10 +393,10 @@ const showAllNotifications = () => {
 
 .user-name {
   font-size: 14px;
-  color: #000000;
+  color: white;
+  font-weight: 500;
 }
 
-/* 通知相关样式 */
 .notification-container {
   position: relative;
   display: inline-block;
@@ -354,142 +417,243 @@ const showAllNotifications = () => {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-.notification-badge {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  background-color: #ff4d4f;
+.notification-icon {
+  color: rgba(255, 255, 255, 0.9);
+  transition: color 0.2s ease;
+}
+
+.notification-trigger:hover .notification-icon {
   color: white;
-  font-size: 12px;
-  font-weight: bold;
-  min-width: 20px;
-  height: 20px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 4px;
 }
 
 .notification-dropdown {
   position: absolute;
-  top: calc(100% - 1px); /* 减少与触发器之间的间隙 */
+  top: calc(100% + 8px);
   right: 0;
   width: 380px;
   background-color: white;
   border: 1px solid #e8e8e8;
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   z-index: 10000;
-  margin-top: 1px; /* 最小化间隙 */
+  overflow: hidden;
+  animation: slideDown 0.2s ease;
 }
 
-.notification-mark-all,
-.notification-view-all {
-  background: none;
-  border: none;
-  color: #2d8cf0;
-  font-size: 12px;
-  cursor: pointer;
-  padding: 0;
-}
-
-.notification-dropdown {
-  width: 380px;
-  max-height: 500px;
-  padding: 8px 0;
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .notification-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 16px 8px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
 }
 
 .notification-header h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
+  color: #1d2129;
+}
+
+.notification-mark-all {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: none;
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.notification-mark-all:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
 }
 
 .notification-list {
-  max-height: 360px;
+  max-height: 400px;
   overflow-y: auto;
 }
 
+.notification-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notification-list::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+.notification-list::-webkit-scrollbar-thumb {
+  background: #d9d9d9;
+  border-radius: 3px;
+}
+
+.notification-list::-webkit-scrollbar-thumb:hover {
+  background: #bfbfbf;
+}
+
 .notification-loading {
-  padding: 20px;
+  padding: 40px 20px;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #999;
 }
 
 .notification-empty {
-  padding: 40px 20px;
-  text-align: center;
-  color: rgba(0, 0, 0, 0.4);
+  padding: 60px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+}
+
+.empty-icon {
+  color: #d9d9d9;
+  margin-bottom: 16px;
 }
 
 .notification-empty p {
-  margin: 12px 0 0;
+  margin: 0;
   font-size: 14px;
 }
 
 .notification-item {
-  padding: 12px 16px;
+  padding: 16px 20px;
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
   cursor: pointer;
-  transition: background-color 0.2s;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f5f5f5;
 }
 
 .notification-item:hover {
-  background-color: rgba(0, 0, 0, 0.02);
+  background-color: #f0fdf4;
+  transform: translateX(4px);
 }
 
 .notification-item.unread {
-  background-color: rgba(45, 140, 240, 0.05);
-}
-
-.notification-icon {
-  font-size: 24px;
-  margin-right: 12px;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.notification-content {
-  flex: 1;
-  min-width: 0;
+  background-color: rgba(16, 185, 129, 0.05);
+  border-left: 3px solid #10b981;
 }
 
 .notification-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #1d2129;
   font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 4px;
-  color: rgba(0, 0, 0, 0.9);
 }
 
 .notification-message {
   font-size: 13px;
-  color: rgba(0, 0, 0, 0.6);
-  margin-bottom: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: #666;
+  margin-bottom: 6px;
+  line-height: 1.5;
 }
 
 .notification-time {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.4);
+  color: #999;
 }
 
 .notification-footer {
-  padding: 8px 16px;
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 12px 20px;
+  border-top: 1px solid #f0f0f0;
   text-align: center;
+  background-color: #fafafa;
+}
+
+.notification-view-all {
+  background: none;
+  border: none;
+  color: #10b981;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 16px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.notification-view-all:hover {
+  background-color: rgba(16, 185, 129, 0.1);
+}
+
+.user-avatar {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.user-avatar:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 768px) {
+  .enterprise-header-content {
+    flex-wrap: wrap;
+    padding: 8px 20px;
+  }
+  
+  .enterprise-brand {
+    order: 1;
+  }
+  
+  .enterprise-nav-menu {
+    order: 3;
+    width: 100%;
+    margin: 8px 0 0 0;
+  }
+  
+  .enterprise-actions {
+    order: 2;
+    margin-left: auto;
+  }
+  
+  .notification-dropdown {
+    width: 320px;
+    right: -20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .enterprise-header-content {
+    padding: 8px 16px;
+  }
+  
+  .brand-icon-wrapper {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .brand-icon-wrapper .n-icon {
+    font-size: 24px;
+  }
+  
+  .brand-text {
+    font-size: 16px;
+  }
+  
+  .notification-dropdown {
+    width: 280px;
+  }
 }
 </style>

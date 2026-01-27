@@ -64,6 +64,42 @@
                 </n-form-item>
               </div>
             </div>
+
+            <div class="form-row">
+              <div class="form-col">
+                <n-form-item path="industry" label="所属行业">
+                  <n-select 
+                    v-model:value="formData.industry" 
+                    :options="industryOptions"
+                    placeholder="请选择所属行业"
+                    class="form-input"
+                  />
+                </n-form-item>
+              </div>
+              
+              <div class="form-col">
+                <n-form-item path="scale" label="企业规模">
+                  <n-select 
+                    v-model:value="formData.scale" 
+                    :options="scaleOptions"
+                    placeholder="请选择企业规模"
+                    class="form-input"
+                  />
+                </n-form-item>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-col">
+                <n-form-item path="website" label="企业官网">
+                  <n-input 
+                    v-model:value="formData.website" 
+                    placeholder="请输入企业官网链接"
+                    class="form-input"
+                  />
+                </n-form-item>
+              </div>
+            </div>
           </div>
 
           <!-- 联系方式区域 -->
@@ -137,14 +173,18 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMessage,NForm, NFormItem, NInput, NButton, NCard, NUpload, NImage } from 'naive-ui'
+import { useMessage, NForm, NFormItem, NInput, NButton, NCard, NUpload, NImage, NSelect } from 'naive-ui'
 import axios from '@/utils/axios'
 
+const message = useMessage();
 const formData = ref({
   id: null,
   name: '',
   logo: '',
   description: '',
+  industry: 'OTHER',
+  scale: 'SMALL',
+  website: '',
   contact_person: '',
   contact_phone: '',
   contact_email: '',
@@ -165,11 +205,25 @@ const rules = {
   description: [
     { required: true, message: '请输入企业简介', trigger: 'blur' }
   ],
+  industry: [
+    { required: true, message: '请选择所属行业', trigger: 'change' }
+  ],
+  scale: [
+    { required: true, message: '请选择企业规模', trigger: 'change' }
+  ],
+  website: [
+    { type: 'url', message: '请输入正确的网址格式', trigger: 'blur' }
+  ],
   contact_person: [
     { required: true, message: '请输入联系人', trigger: 'blur' }
   ],
   contact_phone: [
-    { required: true, message: '请输入联系电话', trigger: 'blur' }
+    { required: true, message: '请输入联系电话', trigger: 'blur' },
+    { 
+      pattern: /^[\d\-\+\s\(\)]{7,20}$/, 
+      message: '请输入有效的电话号码', 
+      trigger: 'blur' 
+    }
   ],
   contact_email: [
     { required: true, message: '请输入联系邮箱', trigger: 'blur' },
@@ -196,6 +250,9 @@ const fetchEnterpriseInfo = async () => {
         name: '',
         logo: '',
         description: '',
+        industry: 'OTHER',
+        scale: 'SMALL',
+        website: '',
         contact_person: '',
         contact_phone: '',
         contact_email: '',
@@ -218,7 +275,24 @@ const fetchEnterpriseInfo = async () => {
   }
 }
 
-const message = useMessage();
+
+const industryOptions = [
+  { label: '信息技术', value: 'IT' },
+  { label: '金融', value: 'FINANCE' },
+  { label: '教育', value: 'EDUCATION' },
+  { label: '传媒', value: 'MEDIA' },
+  { label: '制造业', value: 'MANUFACTURING' },
+  { label: '服务业', value: 'SERVICE' },
+  { label: '其他', value: 'OTHER' }
+]
+
+const scaleOptions = [
+  { label: '微型企业（<10人）', value: 'MICRO' },
+  { label: '小型企业（10-99人）', value: 'SMALL' },
+  { label: '中型企业（100-999人）', value: 'MEDIUM' },
+  { label: '大型企业（1000人以上）', value: 'LARGE' }
+]
+
 // 处理文件上传
 // 提交表单 - 简化版
 const handleSubmit = async () => {
@@ -263,7 +337,10 @@ const handleSubmit = async () => {
       id: formData.value.id,
       name: formData.value.name,
       logo: formData.value.logo,
-      avatar: formData.value.logo // 保持兼容性
+      avatar: formData.value.logo, // 保持兼容性
+      industry: formData.value.industry,
+      scale: formData.value.scale,
+      website: formData.value.website
     }
     localStorage.setItem('enterpriseInfo', JSON.stringify(enterpriseInfo))
     

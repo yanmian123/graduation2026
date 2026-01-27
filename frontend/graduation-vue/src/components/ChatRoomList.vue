@@ -28,7 +28,7 @@
       </template>
     </n-input>
 
-    <n-scrollbar class="room-scrollbar">
+    <n-scrollbar class="room-scrollbar" :use-native-scrollbar="true">
       <n-list>
         <n-list-item
           v-for="room in filteredRooms"

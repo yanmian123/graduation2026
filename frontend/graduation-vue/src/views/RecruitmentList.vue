@@ -57,6 +57,42 @@ const columns = ref([
     ellipsis: { tooltip: true }
   },
   {
+    title: '招聘类型',
+    key: 'recruit_type',
+    width: 100,
+    render: (row) => {
+      const typeMap = {
+        'CAMPUS': '校招',
+        'SOCIAL': '社招',
+        'INTERNSHIP': '实习'
+      }
+      return typeMap[row.recruit_type] || row.recruit_type
+    }
+  },
+  {
+    title: '职位类别',
+    key: 'job_category',
+    width: 120,
+    render: (row) => {
+      const categoryMap = {
+        'SOFTWARE': '软件开发',
+        'BACKEND': '后端开发',
+        'FRONTEND': '前端开发',
+        'MOBILE': '移动开发',
+        'TEST': '测试',
+        'DEVOPS': '运维',
+        'PRODUCT': '产品',
+        'DESIGN': '设计',
+        'MARKETING': '市场',
+        'SALES': '销售',
+        'HR': '人力资源',
+        'FINANCE': '财务',
+        'OTHER': '其他'
+      }
+      return categoryMap[row.job_category] || row.job_category
+    }
+  },
+  {
     title: '岗位名称',
     key: 'job',
     ellipsis: { tooltip: true }

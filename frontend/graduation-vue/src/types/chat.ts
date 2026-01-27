@@ -15,7 +15,7 @@ export interface Message {
   sender: number
   sender_info: User
   content: string
-  message_type: 'text' | 'file' | 'system'
+  message_type: 'text' | 'file' | 'image' | 'system'
   file?: string
   file_name?: string
   file_size?: number

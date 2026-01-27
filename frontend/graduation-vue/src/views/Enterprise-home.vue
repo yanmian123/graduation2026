@@ -49,9 +49,6 @@
                 </n-dropdown>
               </n-space>
             </template>
-            <template #footer>
-              {{ enterpriseDesc || '请完善企业信息以提升曝光率' }}
-            </template>
           </n-page-header>
         </n-card>
       </section>
@@ -129,7 +126,7 @@
           >
             <div class="action-icon">
               <n-icon size="32" color="#722ed1">
-                <People /> <!-- 需要导入 People 图标 -->
+                <People />
               </n-icon>
             </div>
             <div class="action-info">
@@ -137,8 +134,48 @@
               <p>管理企业潜在人才资源</p>
             </div>
           </n-card>
+          
+          <n-card 
+            class="action-card" 
+            hoverable
+            @click="$router.push('/chat')"
+          >
+            <div class="action-icon">
+              <n-icon size="32" color="#8b5cf6">
+                <Chatbubbles />
+              </n-icon>
+            </div>
+            <div class="action-info">
+              <h3>沟通列表</h3>
+              <p>查看和管理聊天对话</p>
+            </div>
+          </n-card>
         </div>
       </section>
+  
+      <!-- 最近招聘信息 -->
+      <section class="recent-jobs-section">
+        <div class="section-header">
+          <h2>最近发布的招聘</h2>
+          <n-button text @click="$router.push('/enterprise/recruitments')">查看全部</n-button>
+        </div>
+        
+        <n-card>
+
+                <!-- 添加调试信息 -->
+      <div v-if="debug" style="background: #f0f0f0; padding: 10px; margin-bottom: 10px;">
+        数据调试: {{ recentRecruitments.length }} 条记录
+        <pre>{{ JSON.stringify(recentRecruitments, null, 2) }}</pre>
+      </div>
+          <n-data-table 
+            :data="recentRecruitments" 
+            :columns="recentColumns"
+            :bordered="true"
+            :row-key="rowKey"
+          />
+        </n-card>
+      </section>
+
       <section class="applications-section" >
         <div class="section-header">
           <h2>最近收到的简历申请</h2>
@@ -149,12 +186,6 @@
           <n-list v-if="!applicationsLoading">
 <!-- 修改申请列表项的显示 -->
               <n-list-item v-for="application in applications" :key="application.id">
-                <template #prefix>
-                  <n-avatar round :size="40" :src="application.job_seeker?.avatar">
-                    <!-- 显示求职者姓名的首字母 -->
-                    {{ (application.applicant_name || application.job_seeker?.nickname || application.job_seeker?.username || 'J').charAt(0) }}
-                  </n-avatar>
-                </template>
                 
                 <div class="application-content">
                   <div class="application-header">
@@ -192,28 +223,7 @@
       </section>
 
 
-      <!-- 最近招聘信息 -->
-      <section class="recent-jobs-section">
-        <div class="section-header">
-          <h2>最近发布的招聘</h2>
-          <n-button text @click="$router.push('/enterprise/recruitments')">查看全部</n-button>
-        </div>
-        
-        <n-card>
 
-                <!-- 添加调试信息 -->
-      <div v-if="debug" style="background: #f0f0f0; padding: 10px; margin-bottom: 10px;">
-        数据调试: {{ recentRecruitments.length }} 条记录
-        <pre>{{ JSON.stringify(recentRecruitments, null, 2) }}</pre>
-      </div>
-          <n-data-table 
-            :data="recentRecruitments" 
-            :columns="recentColumns"
-            :bordered="true"
-            :row-key="rowKey"
-          />
-        </n-card>
-      </section>
     </main>
 
     <!-- 底部信息栏 -->
@@ -245,6 +255,7 @@ import {
   LogOut,
   Settings,
   People,
+  Chatbubbles,
 } from '@vicons/ionicons5';
 import {  
   NButton, 
@@ -833,7 +844,6 @@ const options = [
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
-  padding: 20px;
 }
 
 .overview-section {

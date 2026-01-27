@@ -204,6 +204,16 @@
                       >
                         回复
                       </n-button>
+                      <n-button
+                        v-if="getCurrentUserId() === comment.userId || getCurrentUserId() === article.authorId"
+                        ghost
+                        size="tiny"
+                        class="comment-action-btn"
+                        type="error"
+                        @click="deleteComment(comment.id)"
+                      >
+                        删除
+                      </n-button>
                     </div>
                   </n-card>
                   
@@ -251,6 +261,16 @@
                           >
                             回复
                           </n-button>
+                          <n-button
+                            v-if="getCurrentUserId() === reply.userId || getCurrentUserId() === article.authorId"
+                            ghost
+                            size="tiny"
+                            class="comment-action-btn"
+                            type="error"
+                            @click="deleteComment(reply.id)"
+                          >
+                            删除
+                          </n-button>
                         </div>
                       </n-card>
                       
@@ -297,6 +317,16 @@
                                 @click="replyToComment(nestedReply.id)"
                               >
                                 回复
+                              </n-button>
+                              <n-button
+                                v-if="getCurrentUserId() === nestedReply.userId || getCurrentUserId() === article.authorId"
+                                ghost
+                                size="tiny"
+                                class="comment-action-btn"
+                                type="error"
+                                @click="deleteComment(nestedReply.id)"
+                              >
+                                删除
                               </n-button>
                             </div>
                           </n-card>
@@ -579,6 +609,7 @@ const fetchArticleDetail = async () => {
 const formatComment = (comment) => {
   const formattedComment = {
     id: comment.id,
+    userId: comment.user_id,
     username: comment.nickname || comment.username || '匿名用户',
     userAvatar: comment.avatar ? (comment.avatar.startsWith('http') ? comment.avatar : `http://localhost:8000${comment.avatar}`) : 'https://picsum.photos/id/237/40/40',
     content: comment.content,
@@ -794,6 +825,55 @@ const likeComment = async (commentId) => {
   } catch (error) {
     console.error('评论点赞失败:', error);
     message.error('操作失败，请重试');
+  }
+};
+
+// 获取当前用户ID
+const getCurrentUserId = () => {
+  const userInfo = localStorage.getItem('userInfo');
+  if (userInfo) {
+    try {
+      const user = JSON.parse(userInfo);
+      return user.id;
+    } catch (e) {
+      console.error('解析用户信息失败:', e);
+    }
+  }
+  return null;
+};
+
+// 删除评论
+const deleteComment = async (commentId) => {
+  try {
+    await axios.delete(`/comments/${commentId}/`);
+    
+    // 从评论列表中移除该评论
+    const removeComment = (commentsList) => {
+      const index = commentsList.findIndex(c => c.id === commentId);
+      if (index !== -1) {
+        commentsList.splice(index, 1);
+        return true;
+      }
+      for (let comment of commentsList) {
+        if (comment.replies && comment.replies.length > 0) {
+          if (removeComment(comment.replies)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+    
+    removeComment(comments.value);
+    totalComments.value--;
+    message.success('删除成功');
+  } catch (error) {
+    console.error('删除评论失败:', error);
+    if (error.response?.status === 403) {
+      message.error('只能删除自己的评论');
+    } else {
+      message.error('删除失败，请重试');
+    }
   }
 };
 

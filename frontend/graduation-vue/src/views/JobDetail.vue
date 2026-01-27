@@ -31,12 +31,12 @@
             急聘
           </n-tag>
           <n-tag
-            :type="getJobTypeTag(job.job_type)"
+            :type="getRecruitTypeTag(job.recruit_type)"
             size="small"
             class="type-tag"
             round
           >
-            {{ getJobTypeText(job.job_type) }}
+            {{ getRecruitTypeText(job.recruit_type) }}
           </n-tag>
         </div>
       </div>
@@ -102,6 +102,10 @@
         <div class="job-description">{{ job.job_desc }}</div>
       </div>
 
+      <div class="job-description-section">
+              <h2 class="section-title">职位要求</h2>
+              <div class="job-requirement">{{ job.job_require }}</div>
+            </div>
       <!-- 投递按钮 -->
       <div class="apply-section">
         <n-button
@@ -208,14 +212,25 @@ const educationMap = {
   'DOCTOR': '博士及以上'
 }
 
-// 方法
-const getJobTypeTag = (type) => {
-  return jobTypeMap[type]?.type || 'default'
+// 招聘类型映射
+const recruitTypeMap = {
+  'CAMPUS': { text: '校招', type: 'success' },
+  'SOCIAL': { text: '社招', type: 'info' },
 }
 
-const getJobTypeText = (type) => {
-  return jobTypeMap[type]?.text || type
+// 方法
+
+
+
+const getRecruitTypeTag = (type) => {
+  return recruitTypeMap[type]?.type || 'default'
 }
+
+const getRecruitTypeText = (type) => {
+  return recruitTypeMap[type]?.text || type
+}
+
+
 
 const getExperienceText = (experience) => {
   return experienceMap[experience] || experience

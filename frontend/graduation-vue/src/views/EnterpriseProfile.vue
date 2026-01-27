@@ -17,7 +17,7 @@
       <!-- 企业基本信息 -->
       <div class="enterprise-header">
         <n-avatar
-          :src="enterprise.logo"
+          :src="enterpriseLogoUrl"
           size="large"
           round
           :fallback-src="defaultCompanyLogo"
@@ -33,9 +33,19 @@
         </div>
       </div>
 
-      <!-- 关注按钮 -->
+      <!-- 关注按钮/编辑按钮 -->
       <div class="follow-section">
         <n-button
+          v-if="isOwnEnterprise"
+          type="primary"
+          size="large"
+          round
+          @click="goToEdit"
+        >
+          编辑企业信息
+        </n-button>
+        <n-button
+          v-else
           :type="isFollowing ? 'default' : 'primary'"
           size="large"
           round
@@ -56,18 +66,8 @@
         <h2 class="section-title">联系方式</h2>
         <div class="contact-info">
           <div class="contact-item">
-            <n-icon class="contact-icon"><PersonOutline /></n-icon>
-            <span class="contact-label">联系人：</span>
-            <span class="contact-value">{{ enterprise.contact_person }}</span>
-          </div>
-          <div class="contact-item">
-            <n-icon class="contact-icon"><CallOutline /></n-icon>
-            <span class="contact-label">联系电话：</span>
-            <span class="contact-value">{{ enterprise.contact_phone }}</span>
-          </div>
-          <div class="contact-item">
             <n-icon class="contact-icon"><MailOutline /></n-icon>
-            <span class="contact-label">联系邮箱：</span>
+            <span class="contact-label">招聘邮箱：</span>
             <span class="contact-value">{{ enterprise.contact_email }}</span>
           </div>
           <div class="contact-item">
@@ -75,11 +75,16 @@
             <span class="contact-label">企业地址：</span>
             <span class="contact-value">{{ enterprise.address }}</span>
           </div>
+          <div class="contact-item" v-if="enterprise.website">
+            <n-icon class="contact-icon"><GlobeOutline /></n-icon>
+            <span class="contact-label">企业官网：</span>
+            <a :href="enterprise.website" target="_blank" class="contact-link">{{ enterprise.website }}</a>
+          </div>
         </div>
       </div>
 
       <!-- 企业发布的职位 -->
-      <div class="enterprise-details">
+      <div v-if="!isOwnEnterprise" class="enterprise-details">
         <h2 class="section-title">招聘职位</h2>
         <div v-if="recruitments.length === 0" class="empty-state">
           <n-empty description="暂无招聘职位" />
@@ -121,7 +126,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { NCard, NButton, NAvatar, NIcon, NTag, NEmpty } from 'naive-ui'
@@ -132,6 +137,7 @@ import {
   CallOutline,
   MailOutline,
   LocationOutline,
+  GlobeOutline,
   CashOutline
 } from '@vicons/ionicons5'
 import axios from '@/utils/axios'
@@ -186,7 +192,18 @@ const fetchEnterpriseInfo = async () => {
   try {
     loading.value = true
     const response = await axios.get(`/enterprises/user/${enterpriseUserId.value}/`)
-    enterprise.value = response.data
+    const data = response.data
+    
+    // 处理logo URL，添加localhost:8000前缀（如果是相对路径）
+    if (data.logo) {
+      data.logo = data.logo.startsWith('http') ? data.logo : `http://localhost:8000${data.logo}`
+    } else if (data.company_logo) {
+      data.logo = data.company_logo.startsWith('http') ? data.company_logo : `http://localhost:8000${data.company_logo}`
+    }
+    
+    enterprise.value = data
+    console.log('企业信息:', data)
+    console.log('企业logo:', data.logo)
   } catch (error) {
     console.error('获取企业信息失败:', error)
     message.error('获取企业信息失败，请稍后重试')
@@ -205,8 +222,35 @@ const fetchEnterpriseRecruitments = async () => {
   }
 }
 
+// 检查是否为企业用户查看自己的企业信息
+const isOwnEnterprise = computed(() => {
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+  return userInfo.is_enterprise && userInfo.id === parseInt(enterpriseUserId.value)
+})
+
+// 计算企业logo URL
+const enterpriseLogoUrl = computed(() => {
+  if (!enterprise.value) return defaultCompanyLogo.value
+  
+  const logo = enterprise.value.logo || enterprise.value.company_logo
+  if (!logo) return defaultCompanyLogo.value
+  
+  // 如果已经是完整URL，直接返回
+  if (logo.startsWith('http://') || logo.startsWith('https://')) {
+    return logo
+  }
+  
+  // 否则添加localhost:8000前缀
+  return `http://localhost:8000${logo}`
+})
+
 // 检查是否已关注
 const checkFollowStatus = async () => {
+  // 如果是企业用户查看自己的企业信息，不检查关注状态
+  if (isOwnEnterprise.value) {
+    return
+  }
+  
   try {
     const response = await axios.get(`/users/${enterpriseUserId.value}/follow_status/`)
     isFollowing.value = response.data.is_following
@@ -224,8 +268,8 @@ const handleFollow = async () => {
     return
   }
 
-  const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-  if (currentUser.is_enterprise) {
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+  if (userInfo.is_enterprise) {
     message.error('企业用户不能关注其他企业')
     return
   }
@@ -247,6 +291,11 @@ const handleFollow = async () => {
   } finally {
     following.value = false
   }
+}
+
+// 跳转到编辑页面
+const goToEdit = () => {
+  router.push('/enterprise/edit')
 }
 
 // 跳转到职位详情
@@ -361,6 +410,18 @@ onMounted(() => {
 .contact-value {
   color: #374151;
   font-weight: 500;
+}
+
+.contact-link {
+  color: #059669;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.contact-link:hover {
+  color: #047857;
+  text-decoration: underline;
 }
 
 .empty-state {

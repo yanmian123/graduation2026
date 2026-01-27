@@ -14,18 +14,26 @@
           />
         </n-form-item>
 
+        <n-form-item path="recruit_type" label="招聘类型">
+          <n-select 
+            v-model:value="formData.recruit_type" 
+            :options="recruitTypes"
+            placeholder="请选择招聘类型"
+          />
+        </n-form-item>
+
+        <n-form-item path="job_category" label="职位类别">
+          <n-select 
+            v-model:value="formData.job_category" 
+            :options="jobCategories"
+            placeholder="请选择职位类别"
+          />
+        </n-form-item>
+
         <n-form-item path="job" label="岗位名称">
           <n-input 
             v-model:value="formData.job" 
             placeholder="请输入岗位名称，如“软件工程师”"
-          />
-        </n-form-item>
-
-        <n-form-item path="job_type" label="工作类型">
-          <n-select 
-            v-model:value="formData.job_type" 
-            :options="jobTypes"
-            placeholder="请选择工作类型"
           />
         </n-form-item>
 
@@ -132,16 +140,33 @@ const educationOptions = [
   { label: '博士及以上', value: 'DOCTOR' }
 ]
 
-const jobTypes = [
-  { label: '全职', value: 'FULL_TIME' },
-  { label: '兼职', value: 'PART_TIME' },
+const recruitTypes = [
+  { label: '校招', value: 'CAMPUS' },
+  { label: '社招', value: 'SOCIAL' },
   { label: '实习', value: 'INTERNSHIP' }
+]
+
+const jobCategories = [
+  { label: '软件开发', value: 'SOFTWARE' },
+  { label: '后端开发', value: 'BACKEND' },
+  { label: '前端开发', value: 'FRONTEND' },
+  { label: '移动开发', value: 'MOBILE' },
+  { label: '测试', value: 'TEST' },
+  { label: '运维', value: 'DEVOPS' },
+  { label: '产品', value: 'PRODUCT' },
+  { label: '设计', value: 'DESIGN' },
+  { label: '市场', value: 'MARKETING' },
+  { label: '销售', value: 'SALES' },
+  { label: '人力资源', value: 'HR' },
+  { label: '财务', value: 'FINANCE' },
+  { label: '其他', value: 'OTHER' }
 ]
 
 const formData = ref({
   title: '',
   job: '',
-  job_type: 'FULL_TIME',
+  recruit_type: 'SOCIAL',
+  job_category: 'OTHER',
   work_location: '',
   salary: '',
   experience: 'FRESH',
@@ -159,11 +184,14 @@ const rules = {
   title: [
     { required: true, message: '请输入招聘标题', trigger: 'blur' }
   ],
+  recruit_type: [
+    { required: true, message: '请选择招聘类型', trigger: 'blur' }
+  ],
+  job_category: [
+    { required: true, message: '请选择职位类别', trigger: 'blur' }
+  ],
   job: [
     { required: true, message: '请输入岗位名称', trigger: 'blur' }
-  ],
-  job_type:[
-    { required: true, message: '请选择工作类型', trigger: 'blur' }
   ],
   work_location: [
     { required: true, message: '请输入工作地点', trigger: 'blur' }

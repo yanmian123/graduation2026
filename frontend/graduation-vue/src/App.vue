@@ -1,6 +1,6 @@
 <!-- src/App.vue -->
 <template>
-  <n-config-provider>
+  <n-config-provider :scrollbar-props="{ useNativeScrollbar: true }">
     <n-message-provider>
       <!-- 布局切换器 -->
       <component :is="currentLayout">
@@ -19,16 +19,27 @@ import { NConfigProvider, NMessageProvider } from 'naive-ui'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import EnterpriseLayout from '@/layouts/EnterpriseLayout.vue'
 import EmptyLayout from '@/layouts/EmptyLayout.vue'
+
 const route = useRoute()
 
 // 根据路由元信息动态选择布局
 const currentLayout = computed(() => {
   const layout = route.meta?.layout || 'empty'
   
+  // 对于EnterpriseProfile页面，根据用户类型动态选择布局
+  if (route.name === 'EnterpriseProfile') {
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+    if (userInfo.is_enterprise) {
+      return EnterpriseLayout
+    } else {
+      return DefaultLayout
+    }
+  }
+  
   const layoutMap = {
     default: DefaultLayout,
     enterprise: EnterpriseLayout,
-    empty:EmptyLayout
+    empty: EmptyLayout
   }
   
   return layoutMap[layout] || DefaultLayout

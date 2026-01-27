@@ -11,8 +11,9 @@
           ref="formRef"
           :model="formData"
           :rules="formRules"
-          label-placement="left"
-          label-width="100"
+          label-placement="top"
+          label-width="auto"
+          label-align="left"
         >
           <!-- 标题输入 -->
           <n-form-item label="帖子标题" path="title" required>
@@ -21,42 +22,43 @@
               placeholder="请输入标题（如“我的秋招面试全记录”）"
               :maxlength="80"
               show-count
+              size="large"
+              class="title-input"
             />
           </n-form-item>
 
-          <!-- 分类选择 -->
-          <n-form-item label="内容分类" path="category" required>
-              <n-space vertical>
-                <n-select
-                  v-model:value="formData.category"
-                  placeholder="选择分类"
-                  clearable
-                  :options="categoryOptions"
-                />
-              </n-space>
-          </n-form-item>
+          <!-- 分类和标签一行显示 -->
+          <div class="form-row">
+            <n-form-item label="内容分类" path="category" required class="form-item-inline">
+              <n-select
+                v-model:value="formData.category"
+                placeholder="选择分类"
+                clearable
+                :options="categoryOptions"
+                size="large"
+              />
+            </n-form-item>
 
-          <!-- 标签输入 -->
-          <n-form-item label="标签" path="tags">
-            <!-- 使用 NDynamicInput 替代 NTagInput -->
-            <n-dynamic-input
-              v-model:value="formData.tags"
-              placeholder="输入标签后按回车/点击+号添加（如“字节跳动”“前端”）"
-              :min="0"  
-              :max="5"  
-              :autocomplete-options="tagOptions"  
-              @search="handleTagSearch"  
-            />
-            <n-text type="secondary" class="tips" size="small">
-              最多添加5个标签，有助于内容曝光
-            </n-text>
-          </n-form-item>
+            <n-form-item label="标签" path="tags" class="form-item-inline">
+              <n-dynamic-input
+                v-model:value="formData.tags"
+                placeholder="输入标签后按回车/点击+号添加"
+                :min="0"  
+                :max="5"  
+                :autocomplete-options="tagOptions"  
+                @search="handleTagSearch"
+                size="large"
+              />
+            </n-form-item>
+          </div>
+
+          <n-text type="secondary" class="tips" depth="3" size="small">
+            最多添加5个标签，有助于内容曝光
+          </n-text>
 
           <!-- 富文本编辑 -->
           <n-form-item label="经验内容" path="content" required>
             <div class="editor-container">
-              <!-- 引入富文本编辑器（如TinyMCE/Quill） -->
-               
               <quill-editor
                 ref="quillRef"  
                 v-model:content="formData.content"
@@ -76,23 +78,39 @@
               :on-error="handleFileError"
               :file-list="fileList"
               @remove="handleFileRemove"
+              multiple
             >
-              <n-button>选择文件上传</n-button>
+              <n-button>
+                <template #icon>
+                  <n-icon><Document /></n-icon>
+                </template>
+                选择文件上传
+              </n-button>
             </n-upload>
-            <n-text type="secondary" size="small" style="margin-top: 8px;">
+            <n-text type="secondary" depth="3" size="small" style="margin-top: 8px;">
               支持上传面经文档、笔试题库等（最大10MB）
             </n-text>
           </n-form-item>
 
           <!-- 操作按钮 -->
-          <n-form-item>
-            <n-button @click="handlePreview">预览</n-button>
-            <n-button type="primary" @click="handleSubmit" style="margin-left: 12px;">
-              发布
-            </n-button>
-            <n-button @click="$router.push('/community')" style="margin-left: 12px;">
-              取消
-            </n-button>
+          <n-form-item :show-label="false">
+            <n-space size="large">
+              <n-button size="large" @click="handlePreview">
+                <template #icon>
+                  <n-icon><Eye /></n-icon>
+                </template>
+                预览
+              </n-button>
+              <n-button type="primary" size="large" @click="handleSubmit">
+                <template #icon>
+                  <n-icon><Send /></n-icon>
+                </template>
+                发布
+              </n-button>
+              <n-button size="large" @click="$router.push('/community')">
+                取消
+              </n-button>
+            </n-space>
           </n-form-item>
         </n-form>
       </n-card>
@@ -120,8 +138,11 @@ import {
   NUpload,
   NButton,
   NText,
-  NDynamicInput
+  NDynamicInput,
+  NSpace,
+  NIcon
 } from 'naive-ui';
+import { Document, Eye, Send } from '@vicons/ionicons5';
 // 接口请求
 import axios from '@/utils/axios';
 
@@ -189,11 +210,13 @@ const formRules = {
 const editorOptions = {
   modules: {
     toolbar: [
+      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+      [{ 'size': ['small', false, 'large', 'huge'] }],
       ['bold', 'italic', 'underline', 'strike'],
-      [{ 'header': [1, 2, 3, false] }],
+      [{ 'color': [] }, { 'background': [] }],
+      [{ 'align': [] }],
       [{ 'list': 'ordered' }, { 'list': 'bullet' }],
       [{ 'indent': '-1' }, { 'indent': '+1' }],
-      [{ 'align': [] }],
       ['link', 'image'],
       ['clean']
     ]
@@ -305,6 +328,7 @@ const submitForm = async () => {
 <style scoped>
 .create-layout {
   min-height: 100vh;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
 }
 
 .main-content {
@@ -314,18 +338,104 @@ const submitForm = async () => {
 }
 
 .create-card {
-  padding: 24px;
+  padding: 32px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.create-card :deep(.n-card__header) {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  padding: 20px 24px;
+  border-radius: 16px 16px 0 0;
+}
+
+.title-input {
+  border-radius: 12px;
+}
+
+.title-input :deep(.n-input__border) {
+  border: 2px solid #e8e8e8;
+  transition: all 0.3s ease;
+}
+
+.title-input:focus-within :deep(.n-input__border) {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.form-row {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 8px;
+}
+
+.form-item-inline {
+  flex: 1;
+}
+
+.form-item-inline :deep(.n-form-item-label) {
+  min-width: 80px;
 }
 
 .editor-container {
-  height: 400px;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
+  height: 500px;
+  border: 2px solid #e8e8e8;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.editor-container :deep(.ql-toolbar) {
+  border: 2px solid #e8e8e8;
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  background: #fafafa;
+  padding: 12px;
+}
+
+.editor-container :deep(.ql-editor) {
+  font-size: 16px;
+  line-height: 1.8;
+  padding: 20px;
+}
+
+.editor-container :deep(.ql-editor.ql-blank::before) {
+  color: #999;
+  font-style: italic;
 }
 
 .tips {
-  color: rgb(78, 94, 94);
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
+  color: #666;
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: inline-block;
+  margin-top: 4px;
+}
+
+@media screen and (max-width: 768px) {
+  .main-content {
+    padding: 16px;
+  }
+
+  .create-card {
+    padding: 20px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .form-item-inline {
+    width: 100%;
+  }
+
+  .editor-container {
+    height: 400px;
+  }
 }
 </style>

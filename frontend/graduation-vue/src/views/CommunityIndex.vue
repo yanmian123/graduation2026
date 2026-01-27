@@ -3,19 +3,15 @@
     <!-- 主体内容 -->
     <n-layout-content class="main-content">
       <n-grid :x-gap="16" :y-gap="24" class="content-grid">
-        <!-- 左侧列：包含筛选栏和帖子列表 -->
         <n-grid-item span="18">
-          <!-- 筛选栏：放在帖子列表上方 -->
           <n-card title="内容筛选" bordered class="filter-card">
-            <!-- 主题分类 -->
-            <div class="filter-section">
-              <h3 class="section-title">主题分类</h3>
+            <div class="filter-layout-inline">
               <n-radio-group
                 v-model:value="topicFilter"
                 type="button"
                 button-style="outline"
                 @update:value="handleFilterChange"
-                class="radio-group"
+                class="radio-group-inline"
               >
                 <n-radio-button value="all">全部</n-radio-button>
                 <n-radio-button value="interview">面试经验</n-radio-button>
@@ -24,20 +20,13 @@
                 <n-radio-button value="exam">笔试攻略</n-radio-button>
                 <n-radio-button value="others">其他</n-radio-button>
               </n-radio-group>
-            </div>
-
-            <!-- 排序方式 -->
-            <div class="filter-section">
-              <h3 class="section-title2">排序方式</h3>
-              <n-space vertical>
-                <n-select
-                  v-model:value="sortType"
-                  size="small"
-                  @update:value="handleFilterChange"
-                  class="sort-select"
-                  :options="sortOptions"
-                />
-              </n-space>
+              <n-select
+                v-model:value="sortType"
+                size="medium"
+                @update:value="handleFilterChange"
+                class="sort-select-inline"
+                :options="sortOptions"
+              />
             </div>
           </n-card>
 
@@ -83,7 +72,7 @@
                   <n-avatar :src="post.authorAvatar" size="medium" round />
                 </n-dropdown>
                 <span class="author-name">{{ post.authorName }}</span>
-                <n-tag size="small" type="info">{{ post.authorIdentity }}</n-tag>
+                <n-tag size="small" type="info">{{ post.category }}</n-tag>
                 <span class="publish-time">{{ post.publishTime }}</span>
               </n-space>
               
@@ -105,23 +94,23 @@
                   </n-space>
                 <div class="post-meta" style="margin-top: 8px">
                   <n-space size="large">
-                    <n-space align="center">
-                      <n-icon size="16" :color="'#8c8c8c'">
-                        <Eye />
-                      </n-icon>
-                      <n-text type="secondary" size="small">{{ post.viewCount }} 浏览</n-text>
-                    </n-space>
-                    <n-space align="center">
+                    <n-space align="center" class="meta-item">
                       <n-icon size="16" :color="'#ff4d4f'">
                         <Heart />
                       </n-icon>
-                      <n-text type="secondary" size="small">{{ post.likeCount }} 点赞</n-text>
+                      <n-text type="secondary" size="small">{{ post.likeCount }}</n-text>
                     </n-space>
-                    <n-space align="center">
+                    <n-space align="center" class="meta-item">
                       <n-icon size="16" :color="'#1890ff'">
                         <Chatbubble />
                       </n-icon>
-                      <n-text type="secondary" size="small">{{ post.commentCount }} 评论</n-text>
+                      <n-text type="secondary" size="small">{{ post.commentCount }}</n-text>
+                    </n-space>
+                    <n-space align="center" class="meta-item">
+                      <n-icon size="16" :color="'#faad14'">
+                        <Star />
+                      </n-icon>
+                      <n-text type="secondary" size="small">{{ post.collectionCount || 0 }}</n-text>
                     </n-space>
                   </n-space>
                 </div>
@@ -190,16 +179,22 @@
                   <n-text strong class="hot-post-title">{{ hotPost.title }}</n-text>
                   <n-space size="small" class="hot-post-meta">
                     <n-space size="small" align="center">
-                      <n-icon size="12">
+                      <n-icon size="12" :color="'#ff4d4f'">
                         <Heart />
                       </n-icon>
                       <n-text type="secondary" size="small">{{ hotPost.likeCount }}</n-text>
                     </n-space>
                     <n-space size="small" align="center">
-                      <n-icon size="12">
+                      <n-icon size="12" :color="'#1890ff'">
                         <Chatbubble />
                       </n-icon>
                       <n-text type="secondary" size="small">{{ hotPost.commentCount }}</n-text>
+                    </n-space>
+                    <n-space size="small" align="center">
+                      <n-icon size="12" :color="'#faad14'">
+                        <Star />
+                      </n-icon>
+                      <n-text type="secondary" size="small">{{ hotPost.collectionCount || 0 }}</n-text>
                     </n-space>
                   </n-space>
                 </div>
@@ -251,12 +246,6 @@
       </n-grid>
     </n-layout-content>
 
-    <!-- 页脚 -->
-    <n-layout-footer class="footer">
-      <n-text type="secondary" align="center">
-        © 2024 职享圈 - 大学生就业经验社区
-      </n-text>
-    </n-layout-footer>
   </n-layout>
 </template>
 
@@ -270,11 +259,9 @@ import axios from '@/utils/axios';
 import {
   Briefcase,
   Search,
-//   Pen,
-  Eye,
   Heart,
   Chatbubble,
-  
+  Star
 } from '@vicons/ionicons5';
 // Naive UI 组件导入（移除 NListItemMain 等废弃组件）
 import {
@@ -306,13 +293,6 @@ import {
 const router = useRouter();
 const message = useMessage();
 
-// 导航菜单
-const menuOptions = [
-  { key: 'home', label: '首页' },
-  { key: 'jobs', label: '招聘信息' },
-  { key: 'community', label: '经验社区', disabled: true },
-  { key: 'resources', label: '就业资源' }
-];
 
 // 搜索与筛选状态
 const isSearching = ref(false);// 搜索状态
@@ -386,6 +366,14 @@ const fetchPosts = async (isLoadMore = false) => {
       console.log('当前页码:', currentPage.value, '每页条数:', pageSize.value);
       console.log('后端返回数据:', response.data);
       
+      const firstPost = Array.isArray(response.data) ? response.data[0] : (response.data.results ? response.data.results[0] : null);
+      if (firstPost) {
+        console.log('第一条帖子数据:', firstPost);
+        console.log('comment_count:', firstPost.comment_count);
+        console.log('like_count:', firstPost.like_count);
+        console.log('star_count:', firstPost.star_count);
+      }
+      
       // 处理响应数据（根据后端返回的数据结构调整）
       let data = response.data;
       let total = 0;
@@ -427,19 +415,20 @@ const fetchPosts = async (isLoadMore = false) => {
         return {
           id: post.id,
           title: post.title,
-          authorName: authorName, // 直接使用后端返回的nickname，没有则使用username
+          authorName: authorName,
           authorId: post.user_id || post.user?.id || Math.floor(Math.random() * 1000),
           authorAvatar: userAvatar,
-          authorIdentity: post.identity || post.user?.profile?.identity || '职场前辈',
+          // authorIdentity: post.identity || post.user?.profile?.identity || '职场前辈',
+          category: post.category || '其他',
           authorSchool: post.user?.profile?.school || '未填写',
           isFollowing: Math.random() > 0.5,
           postCount: Math.floor(Math.random() * 100) + 10,
-          excerpt: post.content.substring(0, 50) + (post.content.length > 50 ? '...' : ''),
-          tags: post.tags.split(','),
-          viewCount: post.view_count || post.viewCount,
-          likeCount: post.like_count || post.likeCount,
-          commentCount: post.comment_count || post.commentCount,
-          publishTime: formatTimeAgo(post.created_at)
+          excerpt: post.content ? post.content.substring(0, 50) + (post.content.length > 50 ? '...' : '') : '',
+          tags: post.tags ? post.tags.split(',') : [],
+          likeCount: post.like_count || 0,
+          commentCount: post.comment_count || 0,
+          collectionCount: post.star_count || 0,
+          publishTime: post.created_at ? formatTimeAgo(post.created_at) : ''
         };
       });
 
@@ -494,7 +483,8 @@ const fetchHotData = async () => {
       id: post.id,
       title: post.title,
       likeCount: post.like_count,
-      commentCount: post.comment_count
+      commentCount: post.comment_count,
+      collectionCount: post.star_count || 0
     }));
   } catch (error) {
     console.error('获取热门数据失败:', error);
@@ -520,93 +510,76 @@ onMounted(() => {
 });
 
 
-const value = ref(null);
-const options = [
-  {
-    label: "最新",
-    value: "latest",
-    disabled: true
-  },
-  {
-    label: "最热",
-    value: "hot"
-  },
-  {
-    label: "最多点赞",
-    value: "mostLiked"
-  },
-  
-];
 
+// const handleSearch = async ()=>{
+//   const keyword = searchQuery.value.trim(); // 提前处理关键词，代码更简洁
+//   if (!keyword) {
+//     message.warning('请输入搜索关键词~'); // 提示用户输入
+//     return;
+//   }
+  
+//   isSearching.value = true; // 设置搜索状态
+//   loading.value = true; // 显示加载状态 
+//   try {
+//     const response = await axios.get('/posts/searching/', {
+//       params: { keyword,
+//        page: 1, 
+//        page_size: pageSize.value } 
+//     });
+//      // 格式化搜索结果（复用已有的格式化逻辑）
+//     searchResults.value = response.data.results.map(post => formatPost(post)); 
+//     totalResults.value = response.data.count; // 假设返回的结果数组
+//     hasMore.value = response.data.next !== null; // 根据后端分页判断
+//   } catch (error) {
+//         console.error('搜索请求失败:', error);
+//     console.error('错误状态码:', error.response?.status);
+//     console.error('请求的完整 URL:', error.config?.url);
+//     message.error('搜索失败，请重试');
+//   } finally {
+//     loading.value = false; // 隐藏加载状态
+//   }
+// }
 
-const handleSearch = async ()=>{
-  const keyword = searchQuery.value.trim(); // 提前处理关键词，代码更简洁
-  if (!keyword) {
-    message.warning('请输入搜索关键词~'); // 提示用户输入
-    return;
-  }
+// const formatPost = (post) => {
+//   // 从帖子对象的顶层属性获取用户信息
+//   // 优先使用后端返回的nickname字段，如果没有或为空，则从username生成
+//   let authorName;
+//   if (post.nickname && post.nickname.trim()) {
+//       authorName = post.nickname;
+//   } else {
+//       const rawUsername = post.username || '匿名用户';
+//       const namePart = rawUsername.replace(/\d+/g, '');
+//       if (namePart) {
+//           authorName = namePart.charAt(0).toUpperCase() + namePart.slice(1) + '同学';
+//       } else {
+//           authorName = '用户' + rawUsername;
+//       }
+//   }
   
-  isSearching.value = true; // 设置搜索状态
-  loading.value = true; // 显示加载状态 
-  try {
-    const response = await axios.get('/posts/searching/', {
-      params: { keyword,
-       page: 1, 
-       page_size: pageSize.value } 
-    });
-     // 格式化搜索结果（复用已有的格式化逻辑）
-    searchResults.value = response.data.results.map(post => formatPost(post)); 
-    totalResults.value = response.data.count; // 假设返回的结果数组
-    hasMore.value = response.data.next !== null; // 根据后端分页判断
-  } catch (error) {
-        console.error('搜索请求失败:', error);
-    console.error('错误状态码:', error.response?.status);
-    console.error('请求的完整 URL:', error.config?.url);
-    message.error('搜索失败，请重试');
-  } finally {
-    loading.value = false; // 隐藏加载状态
-  }
-}
-
-const formatPost = (post) => {
-  // 从帖子对象的顶层属性获取用户信息
-  // 优先使用后端返回的nickname字段，如果没有或为空，则从username生成
-  let authorName;
-  if (post.nickname && post.nickname.trim()) {
-      authorName = post.nickname;
-  } else {
-      const rawUsername = post.username || '匿名用户';
-      const namePart = rawUsername.replace(/\d+/g, '');
-      if (namePart) {
-          authorName = namePart.charAt(0).toUpperCase() + namePart.slice(1) + '同学';
-      } else {
-          authorName = '用户' + rawUsername;
-      }
-  }
+//   // 为头像URL添加localhost:8000前缀（如果是相对路径）
+//   const rawAvatar = post.user_avatar || post.avatar || post.user?.avatar || post.author?.avatar;
+//   const userAvatar = rawAvatar ? (rawAvatar.startsWith('http') ? rawAvatar : `http://localhost:8000${rawAvatar}`) : 'https://picsum.photos/id/237/40/40';
+//   const userId = post.user_id || post.user?.id || post.author?.id || Math.floor(Math.random() * 1000);
   
-  // 为头像URL添加localhost:8000前缀（如果是相对路径）
-  const rawAvatar = post.user_avatar || post.avatar || post.user?.avatar || post.author?.avatar;
-  const userAvatar = rawAvatar ? (rawAvatar.startsWith('http') ? rawAvatar : `http://localhost:8000${rawAvatar}`) : 'https://picsum.photos/id/237/40/40';
-  const userId = post.user_id || post.user?.id || post.author?.id || Math.floor(Math.random() * 1000);
-  
-  return {
-    id: post.id,
-    title: post.title,
-    authorName: authorName, // 直接使用后端返回的nickname，没有则使用username
-    authorId: userId,
-    authorAvatar: userAvatar,
-    authorIdentity: post.identity || post.user?.profile?.identity || '职场前辈',
-    authorSchool: post.user?.profile?.school || post.author?.school || '未填写',
-    isFollowing: Math.random() > 0.5,
-    postCount: Math.floor(Math.random() * 100) + 10,
-    excerpt: post.content.substring(0, 50) + (post.content.length > 50 ? '...' : ''),
-    tags: post.tags.split(','),
-    viewCount: post.view_count || post.viewCount,
-    likeCount: post.like_count || post.likeCount,
-    commentCount: post.comment_count || post.commentCount,
-    publishTime: formatTimeAgo(post.created_at)
-  };
-};
+//   return {
+//     id: post.id,
+//     title: post.title,
+//     authorName: authorName,
+//     authorId: userId,
+//     authorAvatar: userAvatar,
+//     authorIdentity: post.identity || post.user?.profile?.identity || '职场前辈',
+//    category: post.category || '其他',
+//     authorSchool: post.user?.profile?.school || post.author?.school || '未填写',
+//     isFollowing: Math.random() > 0.5,
+//     postCount: Math.floor(Math.random() * 100) + 10,
+//     excerpt: post.content ? post.content.substring(0, 50) + (post.content.length > 50 ? '...' : '') : '',
+//     tags: post.tags ? post.tags.split(',') : [],
+//     likeCount: post.like_count || 0,
+//     commentCount: post.comment_count || 0,
+//     collectionCount: post.star_count || 0,
+//     publishTime: post.created_at ? formatTimeAgo(post.created_at) : ''
+//   };
+// };
 
 
 const handleFilterChange = (value) => {
@@ -631,7 +604,7 @@ function getUserDropdownOptions(post) {
         }),
         h('div', null, [
           h('div', { style: 'font-weight: bold; margin-bottom: 4px;' }, post.authorName),
-          h('div', { style: 'font-size: 12px; color: #999;' }, post.authorIdentity || '未设置身份'),
+          h('div', { style: 'font-size: 12px; color: #999;' }, post.category || '其他'),
           h('div', { style: 'font-size: 12px; color: #999; margin-top: 4px;' }, '毕业院校：' + (post.authorSchool || '未填写'))
         ])
       ]
@@ -822,143 +795,111 @@ const resetSearch = () => {
   padding: 10px;
 }
 
-.community-layout.content-grid {
-  display: grid !important;
-  grid-template-columns: 20% 50% 30% !important;
-  gap: 16px !important;
-  width: 100% !important;
+.community-layout {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
 }
 
-/* 确保网格项不被压缩 */
-.community-layout .n-grid-item {
-  min-width: 0 !important; /* 允许内容收缩 */
-  width: 100% !important;
+.main-content {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
-/* 侧边栏最小宽度保护 */
-.community-layout .sidebar {
-  min-width: 250px !important;
-  max-width: 300px !important;
-}
-
-.filter-group {
-  margin-bottom: 16px;
-}
-
-.community-layout .post-list {
-  min-width: 400px !important;
-  flex: 1 !important;
-}
-
-.post-card {
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.post-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.author-info {
-  padding: 8px 16px;
-  align-items: center;
-  gap: 8px;
-}
-
-/* 筛选栏和帖子列表的上下布局样式 */
-.filter-card {
-  margin-bottom: 16px;
-}
-
-
-
-/* 帖子列表容器样式 */
-.post-list-container {
-  padding: 1px;
-}
-
-.post-skeleton {
-  margin: 0;
-}
-
-.pagination-container {
-  padding-left: 20px;
-}
-
-/* 响应式布局调整 */
-@media screen and (max-width: 992px) {
-  .filter-row {
-    flex-direction: column;
-    gap: 16px;
-  }
-  
-  .sort-section {
-    width: 100%;
-  }
-  
-  .sort-select {
-    width: 100%;
-  }
-}
-
-.author-name {
-  font-weight: 500;
-}
-
-.author-info-section {
+.content-grid {
   width: 100%;
-  padding: 8px 0;
 }
 
-.post-item {
-  padding: 12px;
-}
-
-.publish-time {
-  margin-left: auto;
-  color: #86909c;
-  font-size: 14px;
-}
-
-.post-title {
-  font-size: 18px;
-  transition: color 0.2s;
-}
-
-.post-card:hover .post-title {
-  color: #2d8cf0;
-}
-
-.post-excerpt {
-  color: #4e5969;
-  display: -webkit-box;
+.filter-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   overflow: hidden;
-  margin-bottom: 12px;
 }
 
-.post-tags {
-  margin-top: 8px;
+.filter-layout {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px;
 }
 
-.load-more-btn {
-  margin-top: 16px;
+.filter-layout-inline {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px;
 }
 
-.community-layout .right-sidebar {
-  min-width: 250px !important;
-  max-width: 300px !important;
+.filter-section {
+  margin-bottom: 20px;
 }
-
 
 .radio-group {
   display: flex;
   flex-wrap: wrap;
+  gap: 8px;
 }
 
+.radio-group-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+}
+
+.radio-group :deep(.n-radio-button) {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  border: 2px solid #e8e8e8;
+  font-weight: 500;
+}
+
+.radio-group :deep(.n-radio-button:hover) {
+  border-color: #10b981;
+  background-color: rgba(16, 185, 129, 0.05);
+}
+
+.radio-group :deep(.n-radio-button.n-radio-button--checked) {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: #10b981;
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.sort-select {
+  width: 100%;
+}
+
+.sort-select-inline {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+.sort-select :deep(.n-base-selection) {
+  border-radius: 10px;
+  border: 2px solid #e8e8e8;
+  transition: all 0.3s ease;
+}
+
+.sort-select :deep(.n-base-selection:hover) {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.post-list-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  margin-top: 24px;
+}
 
 .search-result-header {
-  margin-bottom: 16px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  border-bottom: 2px solid #e8e8e8;
+  margin-bottom: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -968,67 +909,319 @@ const resetSearch = () => {
   font-size: 16px;
   font-weight: 600;
   margin: 0;
+  color: #1d2129;
 }
 
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
+.post-list {
+  padding: 0;
+}
+
+.post-item {
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.post-item:hover {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  transform: translateX(8px);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.08);
+}
+
+.post-item:last-child {
+  border-bottom: none;
+}
+
+.author-info-section {
+  padding: 12px 0;
   margin-bottom: 8px;
 }
 
-.section-title2 {
-  font-size: 16px;
-  font-weight: 600;
-  margin-top: 16px;
-  margin-bottom: 8px;
+.author-info-section .n-avatar {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid #e8e8e8;
 }
 
-.sidebar-card {
-  width: 100%;
+.author-info-section .n-avatar:hover {
+  transform: scale(1.1);
+  border-color: #10b981;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.author-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: #1d2129;
+  transition: color 0.3s ease;
+}
+
+.post-item:hover .author-name {
+  color: #10b981;
+}
+
+.publish-time {
+  margin-left: auto;
+  color: #86909c;
+  font-size: 13px;
+}
+
+.post-excerpt {
+  color: #4e5969;
+  display: -webkit-box;
+  overflow: hidden;
+  margin-bottom: 12px;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+.post-tags {
+  margin-top: 12px;
   margin-bottom: 12px;
 }
 
-.sort-select {
-  width: 100%;
-  max-width: 200px;
+.post-tags :deep(.n-tag) {
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.3s ease;
 }
 
+.post-tags :deep(.n-tag:hover) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
 
-.tag-space {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.post-meta {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #e8e8e8;
+}
+
+.meta-item {
+  transition: all 0.3s ease;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.meta-item:hover {
+  background-color: rgba(16, 185, 129, 0.1);
+  transform: translateY(-2px);
+}
+
+.meta-item .n-icon {
+  transition: transform 0.3s ease;
+}
+
+.meta-item:hover .n-icon {
+  transform: scale(1.2);
+}
+
+.sidebar-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.sidebar-card :deep(.n-card__header) {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 16px 20px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.sidebar-card :deep(.n-card__content) {
+  padding: 16px;
 }
 
 .hot-post-item {
   cursor: pointer;
-  padding: 8px 0;
-  transition: background-color 0.2s;
+  padding: 12px 8px;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .hot-post-item:hover {
-  background-color: #f7f8fa;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+}
+
+.hot-rank {
+  flex-shrink: 0;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.hot-post-item:hover .hot-rank {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+}
+
+.hot-post-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.hot-post-title {
+  font-size: 14px;
+  color: #1d2129;
+  display: -webkit-box;
+  display: box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.5;
+  margin-bottom: 6px;
+  transition: color 0.3s ease;
+}
+
+.hot-post-item:hover .hot-post-title {
+  color: #10b981;
 }
 
 .hot-post-meta {
-  margin-top: 4px;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hot-post-meta .n-space {
+  transition: all 0.3s ease;
+}
+
+.hot-post-item:hover .hot-post-meta .n-space {
+  transform: scale(1.05);
 }
 
 .active-user-item {
   cursor: pointer;
-  padding: 8px 0;
+  padding: 12px;
   display: flex;
   align-items: center;
   gap: 12px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  margin-bottom: 8px;
+}
+
+.active-user-item:hover {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+}
+
+.active-user-item .n-avatar {
+  transition: all 0.3s ease;
+  border: 2px solid #e8e8e8;
+}
+
+.active-user-item:hover .n-avatar {
+  transform: scale(1.1);
+  border-color: #10b981;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .user-info {
   flex: 1;
+  min-width: 0;
+}
+
+.user-info .n-text {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.follow-btn {
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.follow-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.pagination-container {
+  padding: 24px;
+  display: flex;
+  justify-content: center;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  border-top: 2px solid #e8e8e8;
 }
 
 .footer {
-  padding: 24x;
-  background-color: #f7f8fa;
+  padding: 32px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  text-align: center;
+  margin-top: 24px;
+}
+
+.footer .n-text {
+  color: white;
+  font-size: 14px;
+}
+
+@media screen and (max-width: 992px) {
+  .filter-layout-inline {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .sort-select-inline {
+    width: 100%;
+  }
+
+  .main-content {
+    padding: 16px;
+  }
+
+  .post-item {
+    padding: 16px;
+  }
+
+  .hot-post-item {
+    padding: 10px;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .content-grid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .right-sidebar {
+    order: -1;
+  }
+
+  .filter-layout-inline {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .radio-group-inline {
+    width: 100%;
+  }
+
+  .sort-select-inline {
+    width: 100%;
+  }
 }
 </style>
 

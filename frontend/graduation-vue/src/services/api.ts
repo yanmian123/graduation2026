@@ -63,15 +63,19 @@ export const chatApi = {
   uploadFile: (roomId: number, file: File) => {
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('message_type', 'file')
-    formData.append('type', 'file')  // 双重保险
-    // 🔥 添加content字段，有些后端需要
     formData.append('content', file.name)
     
-    return api.post(`api/chat/chatrooms/${roomId}/messages/`, formData, {
+    console.log('📤 上传文件信息:', {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      roomId: roomId
+    })
+    
+    // 使用正确的上传路由，让后端自动判断文件类型
+    return api.post(`api/chat/chatrooms/${roomId}/upload/`, formData, {
       headers: { 
         'Content-Type': 'multipart/form-data',
-        // 🔥 确保token正确传递
         'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
       }
     })
@@ -99,7 +103,7 @@ export const articleApi = {
 // 投递记录相关API
 export const applicationApi = {
   // 获取当前用户的投递记录
-  getMyApplications: () => api.get('api/enterprise/applications/')
+  getMyApplications: () => api.get('api/applications/')
 }
 
 export { api }; 

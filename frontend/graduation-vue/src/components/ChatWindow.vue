@@ -28,11 +28,11 @@
 
         <div class="user-info">
           <div class="username">{{ displayUser?.nickname }}</div>
-          <div class="debug-info" style="font-size: 10px; color: #999;">
+          <!-- <div class="debug-info" style="font-size: 10px; color: #999;">
             ID: {{ displayUser?.id }} | 
             类型: {{ displayUser?.is_enterprise ? '企业' : '个人' }} |
             头像URL: {{ displayUser?.avatar }}
-          </div>
+          </div> -->
           
           <div class="status">
             <n-tag v-if="displayUser?.id !== undefined && isUserOnline(displayUser.id)" type="success" size="small" round>
@@ -58,7 +58,7 @@
 
     <!-- 消息区域 -->
     <div class="messages-container" ref="messagesContainer">
-      <n-scrollbar>
+      <n-scrollbar :use-native-scrollbar="true">
         <div v-for="message in messages" :key="message.id" class="message-wrapper">
           <!-- 系统消息 -->
           <div v-if="message.message_type === 'system'" class="system-message">
@@ -87,8 +87,20 @@
                 {{ displayUser?.nickname?.charAt(0) || 'U' }}
               </n-avatar>
               
-              <!-- 消息内容 -->
-              <div class="message-bubble other-bubble">
+              <!-- 图片消息 - 直接显示，不带气泡 -->
+              <div v-if="message.message_type === 'image'" class="image-message-wrapper">
+                <n-image
+                  :src="getFullAvatarUrl(message.file)"
+                  :alt="message.file_name || '图片'"
+                  :preview-src="getFullAvatarUrl(message.file)"
+                  width="200"
+                  object-fit="contain"
+                  class="chat-image"
+                />
+              </div>
+              
+              <!-- 其他消息（文本和文件）- 带气泡 -->
+              <div v-else class="message-bubble other-bubble">
                 <!-- 文件消息 -->
                 <div v-if="message.message_type === 'file'" class="file-message">
                   <n-space align="center" :size="12">
@@ -118,8 +130,20 @@
             
             <!-- 自己的消息（右侧显示） -->
             <div v-else class="own-message">
-              <!-- 消息内容 -->
-              <div class="message-bubble own-bubble">
+              <!-- 图片消息 - 直接显示，不带气泡 -->
+              <div v-if="message.message_type === 'image'" class="image-message-wrapper">
+                <n-image
+                  :src="getFullAvatarUrl(message.file)"
+                  :alt="message.file_name || '图片'"
+                  :preview-src="getFullAvatarUrl(message.file)"
+                  width="200"
+                  object-fit="contain"
+                  class="chat-image"
+                />
+              </div>
+              
+              <!-- 其他消息（文本和文件）- 带气泡 -->
+              <div v-else class="message-bubble own-bubble">
                 <!-- 文件消息 -->
                 <div v-if="message.message_type === 'file'" class="file-message">
                   <n-space align="center" :size="12">
@@ -199,6 +223,16 @@
         <n-upload
           :multiple="false"
           :show-file-list="false"
+          :custom-request="handleImageUpload"
+          accept="image/*"
+        >
+          <n-button quaternary circle>
+            <n-icon><ImageIcon /></n-icon>
+          </n-button>
+        </n-upload>
+        <n-upload
+          :multiple="false"
+          :show-file-list="false"
           :custom-request="handleFileUpload"
         >
           <n-button quaternary circle>
@@ -244,14 +278,15 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { 
   NAvatar, NButton, NSpace, NIcon, NTag, NText, NScrollbar, 
-  NInput, NUpload, NDropdown 
+  NInput, NUpload, NDropdown, NImage
 } from 'naive-ui'
 import { 
   HappyOutline as HappyOutlineIcon,
   EllipsisHorizontal as MoreIcon,
   Document as DocumentIcon,
   Attach as AttachIcon,
-  Happy as HappyIcon
+  Happy as HappyIcon,
+  Image as ImageIcon
 } from '@vicons/ionicons5'
 import { useChatStore } from '@/stores/chatStore'
 import { webSocketService } from '@/services/websocket'
@@ -325,7 +360,35 @@ const handleFileUpload = async (options: UploadCustomRequestOptions) => {
     options.onFinish?.()
   } catch (error) {
     console.error('上传文件失败详情:', error)
-    // 🔥 显示具体错误信息
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'response' in error &&
+      (error as any).response?.data
+    ) {
+      console.error('服务器错误响应:', (error as any).response.data)
+    }
+    options.onError?.()
+  }
+}
+
+// 处理图片上传
+const handleImageUpload = async (options: UploadCustomRequestOptions) => {
+  if (!currentRoom.value) return
+
+  const rawFile = options.file.file as File
+  console.log('� 上传图片信息:', {
+    name: rawFile.name,
+    size: rawFile.size,
+    type: rawFile.type,
+    roomId: currentRoom.value.id
+  })
+
+  try {
+    await uploadFile(currentRoom.value.id, rawFile)
+    options.onFinish?.()
+  } catch (error) {
+    console.error('上传图片失败详情:', error)
     if (
       typeof error === 'object' &&
       error !== null &&
@@ -537,7 +600,9 @@ onMounted(() => {
     webSocketService.onMessage(handleNewMessage)
     webSocketService.onReadReceipt(handleReadReceipt)
     
-    scrollToBottom()
+    setTimeout(() => {
+      scrollToBottom()
+    }, 300)
   }
 })
 
@@ -553,10 +618,21 @@ watch(currentRoom, (newRoom) => {
     webSocketService.connect(newRoom.id)
     webSocketService.onMessage(handleNewMessage)
     webSocketService.onReadReceipt(handleReadReceipt)
-    scrollToBottom()
+    
+    // 延迟滚动，确保消息加载完成
+    setTimeout(() => {
+      scrollToBottom()
+    }, 300)
   } else {
     webSocketService.disconnect()
   }
+})
+
+// 监听消息变化，当消息加载完成后自动滚动到底部
+watch(messages, () => {
+  nextTick(() => {
+    scrollToBottom()
+  })
 })
 </script>
 
@@ -671,7 +747,7 @@ watch(currentRoom, (newRoom) => {
 
 /* 自己消息气泡（右侧，蓝色） */
 .own-bubble {
-  background: #409eff;
+  background: #75cba3;
   color: white;
   margin-left: 8px;
 }
@@ -680,6 +756,32 @@ watch(currentRoom, (newRoom) => {
 .text-message {
   line-height: 1.5;
   word-break: break-word;
+}
+
+/* 图片消息样式 */
+.image-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.image-message-wrapper {
+  display: inline-block;
+  margin: 4px 0;
+}
+
+.chat-image {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.chat-image:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* 文件消息样式 */

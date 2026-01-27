@@ -18,12 +18,12 @@
             急聘
           </n-tag>
           <n-tag 
-            :type="getJobTypeTag(job.job_type)" 
+            :type="getRecruitTypeTag(job.recruit_type)"  
             size="small"
             class="type-tag"
             round
           >
-            {{ getJobTypeText(job.job_type) }}
+            {{ getRecruitTypeText(job.recruit_type) }}
           </n-tag>
         </div>
       </div>
@@ -68,7 +68,7 @@
       </div>
     </div>
     
-    <p class="job-description">{{ job.job_desc }}</p>
+    <!-- <p class="job-description">{{ job.job_desc }}</p> -->
     
     <div class="job-footer">
       <div class="publish-info">
@@ -161,10 +161,10 @@ const contacting = ref(false) // 新增联系状态
 // 默认公司Logo
 const defaultCompanyLogo = ref('/images/default-company-logo.png')
 
-// 工作类型映射
-const jobTypeMap = {
-  'FULL_TIME': { text: '全职', type: 'success' },
-  'PART_TIME': { text: '兼职', type: 'info' },
+// 招聘类型映射
+const recruitTypeMap = {
+  'CAMPUS': { text: '校招', type: 'success' },
+  'SOCIAL': { text: '社招', type: 'info' },
   'INTERNSHIP': { text: '实习', type: 'warning' }
 }
 
@@ -198,12 +198,12 @@ const goToDetail = () => {
   window.open(`/jobs/${props.job.id}`, '_blank')
 }
 
-const getJobTypeTag = (type) => {
-  return jobTypeMap[type]?.type || 'default'
+const getRecruitTypeTag = (type) => {
+  return recruitTypeMap[type]?.type || 'default'
 }
 
-const getJobTypeText = (type) => {
-  return jobTypeMap[type]?.text || type
+const getRecruitTypeText = (type) => {
+  return recruitTypeMap[type]?.text || type
 }
 
 const getExperienceText = (experience) => {

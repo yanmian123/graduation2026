@@ -7,6 +7,7 @@ export interface Notification {
   is_read: boolean;
   related_object_id: number | null;
   related_object_type: string | null;
+  comment_id: number | null;
   created_at: string;
 }
 

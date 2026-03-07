@@ -10,12 +10,25 @@
           <n-statistic label="文章获赞数" :value="stats.likeCount" />
         </n-gi>
         <n-gi>
-          <n-statistic label="粉丝数" :value="stats.followerCount" />
+          <n-statistic label="粉丝数" :value="stats.followerCount">
+            <template #suffix>
+              <n-button text type="primary" @click="showFollowersModal = true" style="margin-left: 8px;">查看</n-button>
+            </template>
+          </n-statistic>
         </n-gi>
         <n-gi>
-          <n-statistic label="关注数" :value="stats.followingCount" />
+          <n-statistic label="关注数" :value="stats.followingCount">
+            <template #suffix>
+              <n-button text type="primary" @click="showFollowingModal = true" style="margin-left: 8px;">查看</n-button>
+            </template>
+          </n-statistic>
         </n-gi>
         <n-gi>
+          <n-statistic label="关注的企业" :value="stats.followingEnterpriseCount">
+            <template #suffix>
+              <n-button text type="primary" @click="showFollowingEnterprisesModal = true" style="margin-left: 8px;">查看</n-button>
+            </template>
+          </n-statistic>
         </n-gi>
       </n-grid>
       <template #title>
@@ -322,21 +335,83 @@
         </div>
       </form>
     </n-modal>
+
+    <!-- 粉丝列表弹窗 -->
+    <n-modal v-model:show="showFollowersModal" preset="card" title="粉丝列表" style="width: 600px;">
+      <n-spin :show="loadingFollowers">
+        <n-empty v-if="followers.length === 0 && !loadingFollowers" description="暂无粉丝" />
+        <div v-else class="user-list">
+          <n-card v-for="user in followers" :key="user.id" class="user-card" hoverable @click="goToUserProfile(user.id)">
+            <div class="user-info">
+              <n-avatar :src="user.avatar" :size="40" />
+              <div class="user-details">
+                <div class="user-name">{{ user.username }}</div>
+                <div class="user-nickname">{{ user.nickname || '暂无昵称' }}</div>
+              </div>
+            </div>
+          </n-card>
+        </div>
+      </n-spin>
+    </n-modal>
+
+    <!-- 关注列表弹窗 -->
+    <n-modal v-model:show="showFollowingModal" preset="card" title="关注列表" style="width: 600px;">
+      <n-spin :show="loadingFollowing">
+        <n-empty v-if="following.length === 0 && !loadingFollowing" description="暂无关注" />
+        <div v-else class="user-list">
+          <n-card v-for="user in following" :key="user.id" class="user-card" hoverable @click="goToUserProfile(user.id)">
+            <div class="user-info">
+              <n-avatar :src="user.avatar" :size="40" />
+              <div class="user-details">
+                <div class="user-name">{{ user.username }}</div>
+                <div class="user-nickname">{{ user.nickname || '暂无昵称' }}</div>
+              </div>
+            </div>
+          </n-card>
+        </div>
+      </n-spin>
+    </n-modal>
+
+    <!-- 关注的企业列表弹窗 -->
+    <n-modal v-model:show="showFollowingEnterprisesModal" preset="card" title="关注的企业" style="width: 600px;">
+      <n-spin :show="loadingFollowingEnterprises">
+        <n-empty v-if="followingEnterprises.length === 0 && !loadingFollowingEnterprises" description="暂无关注的企业" />
+        <div v-else class="enterprise-list">
+          <n-card v-for="enterprise in followingEnterprises" :key="enterprise.id" class="enterprise-card" hoverable @click="goToEnterpriseProfile(enterprise.id)">
+            <div class="enterprise-info">
+              <n-avatar :src="enterprise.logo ? `http://localhost:8000${enterprise.logo}` : ''" :size="40" round>
+                <template #fallback>
+                  <n-icon><Business /></n-icon>
+                </template>
+              </n-avatar>
+              <div class="enterprise-details">
+                <div class="enterprise-name">{{ enterprise.name }}</div>
+                <div class="enterprise-meta">
+                  <span>{{ getIndustryText(enterprise.industry) }}</span>
+                  <span>{{ getScaleText(enterprise.scale) }}</span>
+                </div>
+              </div>
+            </div>
+          </n-card>
+        </div>
+      </n-spin>
+    </n-modal>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import axios from '@/utils/axios';
 import { getUserInfo, updateUserInfo, uploadUserAvatar } from '@/api/user';
 import { articleApi, applicationApi } from '@/services/api';
 import { 
   NInput, NSelect, NInputNumber, NButton, NAvatar, NIcon, NUpload, 
   NSpace, useMessage, NImage, NPageHeader, NGrid, NGi, NStatistic, 
   NBreadcrumb, NBreadcrumbItem, NDropdown, NDivider, NTabs, NTabPane, 
-  NEmpty, NCard, NModal 
+  NEmpty, NCard, NModal, NSpin
 } from 'naive-ui';
-import { Person } from '@vicons/ionicons5';
+import { Person, Business } from '@vicons/ionicons5';
 
 const message = useMessage();
 const router = useRouter();
@@ -350,13 +425,24 @@ const stats = ref({
   articleCount: 0,
   likeCount: 0,
   followerCount: 0,
-  followingCount: 0
+  followingCount: 0,
+  followingEnterpriseCount: 0
 });
 
 const publishedArticles = ref([]);
 const comments = ref([]);
 const applications = ref([]);
 const favorites = ref([]);
+
+const showFollowersModal = ref(false);
+const showFollowingModal = ref(false);
+const showFollowingEnterprisesModal = ref(false);
+const followers = ref([]);
+const following = ref([]);
+const followingEnterprises = ref([]);
+const loadingFollowers = ref(false);
+const loadingFollowing = ref(false);
+const loadingFollowingEnterprises = ref(false);
 
 const options = [
   {
@@ -483,6 +569,15 @@ watch(activeTab, (newTab) => {
 
 const loadStats = async () => {
   try {
+    // 重新获取用户信息以获取最新的follower_count和following_count
+    const userResponse = await getUserInfo();
+    const userData = userResponse.data;
+    
+    // 更新form.value中的用户信息
+    form.value.follower_count = userData.follower_count || 0;
+    form.value.following_count = userData.following_count || 0;
+    form.value.following_enterprise_count = userData.following_enterprise_count || 0;
+    
     // 获取我的文章
     const articlesRes = await articleApi.getMyArticles();
     const articles = articlesRes.data;
@@ -492,7 +587,8 @@ const loadStats = async () => {
       articleCount: articles.length,
       likeCount: articles.reduce((sum, article) => sum + (article.like_count || 0), 0),
       followerCount: form.value.follower_count || 0,
-      followingCount: form.value.following_count || 0
+      followingCount: form.value.following_count || 0,
+      followingEnterpriseCount: form.value.following_enterprise_count || 0
     };
     
     // 设置文章数据
@@ -606,6 +702,104 @@ const handleSave = async () => {
     console.error('错误响应:', error.response);
   }
 };
+
+const loadFollowers = async () => {
+  try {
+    loadingFollowers.value = true;
+    const res = await axios.get('/user/followers/');
+    followers.value = res.data.map(user => ({
+      id: user.id,
+      username: user.username,
+      nickname: user.nickname,
+      avatar: user.avatar ? `http://localhost:8000${user.avatar}` : ''
+    }));
+  } catch (error) {
+    console.error('加载粉丝列表失败:', error);
+    followers.value = [];
+  } finally {
+    loadingFollowers.value = false;
+  }
+};
+
+const loadFollowing = async () => {
+  try {
+    loadingFollowing.value = true;
+    const res = await axios.get('/user/following/');
+    following.value = res.data.map(user => ({
+      id: user.id,
+      username: user.username,
+      nickname: user.nickname,
+      avatar: user.avatar ? `http://localhost:8000${user.avatar}` : ''
+    }));
+  } catch (error) {
+    console.error('加载关注列表失败:', error);
+    following.value = [];
+  } finally {
+    loadingFollowing.value = false;
+  }
+};
+
+const loadFollowingEnterprises = async () => {
+  try {
+    loadingFollowingEnterprises.value = true;
+    const res = await axios.get('/user/following-enterprises/');
+    followingEnterprises.value = res.data;
+  } catch (error) {
+    console.error('加载关注企业列表失败:', error);
+    followingEnterprises.value = [];
+  } finally {
+    loadingFollowingEnterprises.value = false;
+  }
+};
+
+const goToUserProfile = (userId) => {
+  router.push(`/user/${userId}`);
+};
+
+const goToEnterpriseProfile = (enterpriseUserId) => {
+  router.push(`/enterprise/${enterpriseUserId}`);
+};
+
+const getIndustryText = (industry) => {
+  const industryMap = {
+    'IT': '信息技术',
+    'FINANCE': '金融',
+    'EDUCATION': '教育',
+    'MEDIA': '传媒',
+    'MANUFACTURING': '制造业',
+    'SERVICE': '服务业',
+    'OTHER': '其他'
+  };
+  return industryMap[industry] || industry;
+};
+
+const getScaleText = (scale) => {
+  const scaleMap = {
+    'MICRO': '微型企业（<10人）',
+    'SMALL': '小型企业（10-99人）',
+    'MEDIUM': '中型企业（100-999人）',
+    'LARGE': '大型企业（1000人以上）'
+  };
+  return scaleMap[scale] || scale;
+};
+
+watch(showFollowersModal, (newVal) => {
+  if (newVal && followers.value.length === 0) {
+    loadFollowers();
+  }
+});
+
+watch(showFollowingModal, (newVal) => {
+  if (newVal && following.value.length === 0) {
+    loadFollowing();
+  }
+});
+
+watch(showFollowingEnterprisesModal, (newVal) => {
+  if (newVal && followingEnterprises.value.length === 0) {
+    loadFollowingEnterprises();
+  }
+});
 </script>
 
 <style scoped>
@@ -692,5 +886,89 @@ label {
   justify-content: space-between;
   font-size: 12px;
   color: #999;
+}
+
+.user-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.user-card {
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-details {
+  flex: 1;
+}
+
+.user-name {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.user-nickname {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.enterprise-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.enterprise-card {
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.enterprise-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.enterprise-details {
+  flex: 1;
+}
+
+.enterprise-name {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.enterprise-meta {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+  display: flex;
+  gap: 8px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-details {
+  flex: 1;
+}
+
+.user-name {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.user-nickname {
+  font-size: 14px;
+  color: #666;
 }
 </style>

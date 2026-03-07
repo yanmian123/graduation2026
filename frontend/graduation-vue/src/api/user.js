@@ -3,7 +3,11 @@ import axios from '@/utils/axios'; // 导入配置好的实例
 
 // 获取当前用户信息
 export const getUserInfo = () => {
-  return axios.get('/user/info/');
+  return axios.get('/user/info/', {
+    params: {
+      _t: Date.now()
+    }
+  });
 };
 
 // 更新用户信息

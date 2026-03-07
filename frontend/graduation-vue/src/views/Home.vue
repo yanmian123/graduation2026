@@ -228,7 +228,7 @@ const banners = [
     title: '2024届秋招专场',
     desc: '名企校招信息实时更新，把握最佳求职时机',
     btnText: '立即查看',
-    imgUrl: 'https://picsum.photos/id/237/1200/400',
+    imgUrl: '/public/images/chinatelecom.jpg',
     link: '/jobs?type=autumn'
   },
   {

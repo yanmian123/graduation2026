@@ -21,10 +21,14 @@ import RecruitmentEdit from '@/views/RecruitmentEdit.vue'; //编辑招聘信息
 import Enterprisehome from '@/views/Enterprise-home.vue'; //企业首页
 import Enterpriselogin from '@/views/Enterpriselogin.vue'; //企业登录
 import ApplicationList from '@/views/ApplicationList.vue';//应聘者简历接收列表
+import MyApplications from '@/views/MyApplications.vue';//我的申请列表
 import ChatView from '@/views/ChatView.vue'; //聊天页面
 import NotificationCenter from '@/views/NotificationCenter.vue'; //通知中心页面
 import JobDetail from '@/views/JobDetail.vue'; //职位详情页面
 import EnterpriseProfile from '@/views/EnterpriseProfile.vue'; //企业主页
+import EnterpriseVerification from '@/views/EnterpriseVerification.vue'; //企业认证页面
+import UserVerification from '@/views/UserVerification.vue'; //个人认证页面
+import AdminVerification from '@/views/AdminVerification.vue'; //管理员认证审核页面
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -32,6 +36,7 @@ const router = createRouter({
     { path: '/login', name: 'Login', component: Login,meta: { requiresAuth: false, layout:'empty' }  },  // 登录页面路由,添加隐藏布局标识(隐藏导航和页脚)
     {path:'/userinfo',name:'UserInfo',component: UserInfo,meta: { requiresAuth: true,layout:'default' }}, //用户信息页面路由(标记需要登录才能访问)
     {path:'/notifications',name:'NotificationCenter',component: NotificationCenter,meta: { requiresAuth: true,layout:'default' }}, //通知中心页面路由
+    {path:'/applications',name:'MyApplications',component: MyApplications,meta: { requiresAuth: true,layout:'default' }}, //我的申请页面路由
     // 新增：简历路由
     { path: '/resumes', name: 'ResumeList', component: ResumeList, meta: { requiresAuth: true,layout:'default' } },
     { path: '/resumes/create', name: 'ResumeCreate', component: ResumeCreate, meta: { requiresAuth: true,layout:'default' } },
@@ -54,6 +59,9 @@ const router = createRouter({
     {path: '/enterprise/home', name: 'Enterprise-home', component:Enterprisehome,meta: { requiresAuth: true ,layout: 'enterprise'}},
     {path: '/enterprise/login', name: 'Enterpriselogin', component:Enterpriselogin,meta: { requiresAuth: false, layout:'empty' }},
     {path: '/enterprise/applications', name: 'ApplicationList', component:ApplicationList,meta: { layout: 'enterprise', requiresAuth: true }},
+    {path: '/enterprise/verification', name: 'EnterpriseVerification', component:EnterpriseVerification,meta: { layout: 'enterprise', requiresAuth: true }},
+    {path: '/user/verification', name: 'UserVerification', component:UserVerification,meta: { layout: 'default', requiresAuth: true }},
+    {path: '/admin/verification', name: 'AdminVerification', component:AdminVerification,meta: { layout: 'default', requiresAuth: true }},
     {
   path: '/enterprise/talent-pool',
   name: 'TalentPool',

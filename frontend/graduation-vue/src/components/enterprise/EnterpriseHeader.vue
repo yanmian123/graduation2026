@@ -143,29 +143,19 @@ const enterpriseMenuOptions = ref([
   { key: 'applications', label: '简历库', },
   {key:'talent-pool', label:'人才库'},
   { key: 'analytics', label: '数据统计', },
-  { key: 'company', label: '企业信息',}
+  { key: 'verification', label: '实名认证', }
 ])
 
 const userDropdownOptions = ref([
   { key: 'profile', label: '企业资料', icon: Settings },
+  { key: 'company', label: '企业信息', icon: Business },
   { key: 'settings', label: '账户设置', icon: Settings },
   { key: 'divider', type: 'divider' },
   { key: 'logout', label: '退出登录', icon: LogOut, type: 'warning' }
 ])
 
 const handleMenuSelect = (key) => {
-  if (key === 'company') {
-    const enterpriseInfo = JSON.parse(localStorage.getItem('enterpriseInfo') || '{}')
-    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-    const userId = userInfo.id
-    if (userId) {
-      router.push(`/enterprise/${userId}`)
-    } else {
-      router.push('/enterprise/edit')
-    }
-  } else {
-    router.push(`/enterprise/${key}`)
-  }
+  router.push(`/enterprise/${key}`)
 }
 
 const handlePublishJob = () => {
@@ -176,6 +166,16 @@ const handleUserAction = (key) => {
   switch (key) {
     case 'profile':
       router.push('/enterprise/edit')
+      break
+    case 'company':
+      const enterpriseInfo = JSON.parse(localStorage.getItem('enterpriseInfo') || '{}')
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const userId = userInfo.id
+      if (userId) {
+        router.push(`/enterprise/${userId}`)
+      } else {
+        router.push('/enterprise/edit')
+      }
       break
     case 'settings':
       router.push('/enterprise/settings')

@@ -756,7 +756,7 @@ const testStartChat = async () => {
       }
     };
 
-    const response = await api.post('/chatrooms/start_chat/', {
+    const response = await api.post('/api/chatrooms/start_chat/', {
       enterprise_user_id: currentUser.value.id,
       job_seeker_user_id: testApplication.job_seeker.id,
       recruitment_id: testApplication.recruitment.id

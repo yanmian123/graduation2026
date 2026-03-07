@@ -215,7 +215,7 @@ import { Briefcase, LogoGithub, LogoWechat } from '@vicons/ionicons5'
 }
 
 .link-group a:hover {
-  color: rgb(47, 181, 159);
+  color: rgb(47, 181, 136);
   transform: translateX(4px);
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
 }

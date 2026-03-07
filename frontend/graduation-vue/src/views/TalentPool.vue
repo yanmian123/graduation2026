@@ -544,7 +544,7 @@ const startChat = async (talent) => {
   })
   
   try {
-    const response = await axios.post('/chat/chatrooms/start_chat/', {
+    const response = await axios.post('chat/chatrooms/start_chat/', {
       job_seeker_user_id: talent.job_seeker,
       enterprise_user_id: currentUser.value.id
     })

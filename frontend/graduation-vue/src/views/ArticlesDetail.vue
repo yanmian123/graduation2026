@@ -159,183 +159,17 @@
             </n-button>
 
             <!-- 评论列表 -->
-            <div class="comments-list">
-              <!-- 递归组件用于渲染评论和回复 -->
-              <template v-for="comment in comments" :key="comment.id">
-                <div class="comment-container">
-                  <n-card
-                    bordered
-                    class="comment-item"
-                  >
-                    <div class="comment-header">
-                      <n-avatar :src="comment.userAvatar" size="large" round/>
-                      <div class="comment-user-info">
-                        <div class="comment-username">{{ comment.username }}</div>
-                        <div class="comment-time">{{ formatTimeAgo(comment.createdAt) }}</div>
-                      </div>
-                    </div>
-                    <div class="comment-content">{{ comment.content }}</div>
-                    <div class="comment-actions">
-                      <n-button
-                        v-if="!comment.isLiked"
-                        ghost
-                        size="tiny"
-                        class="comment-action-btn"
-                        @click="likeComment(comment.id)"
-                      >
-                        <Heart size="14" />
-                        <span>{{ comment.likeCount }}</span>
-                      </n-button>
-                      <n-button
-                        v-else
-                        ghost
-                        size="tiny"
-                        class="comment-action-btn liked"
-                        @click="likeComment(comment.id)"
-                      >
-                        <Heart size="14" />
-                        <span>{{ comment.likeCount }}</span>
-                      </n-button>
-                      <n-button
-                        ghost
-                        size="tiny"
-                        class="comment-action-btn"
-                        @click="replyToComment(comment.id)"
-                      >
-                        回复
-                      </n-button>
-                      <n-button
-                        v-if="getCurrentUserId() === comment.userId || getCurrentUserId() === article.authorId"
-                        ghost
-                        size="tiny"
-                        class="comment-action-btn"
-                        type="error"
-                        @click="deleteComment(comment.id)"
-                      >
-                        删除
-                      </n-button>
-                    </div>
-                  </n-card>
-                  
-                  <!-- 渲染回复 -->
-                  <div class="comment-replies" v-if="comment.replies && comment.replies.length > 0">
-                    <template v-for="reply in comment.replies" :key="reply.id">
-                      <n-card
-                        bordered
-                        class="comment-reply-item"
-                      >
-                        <div class="comment-header">
-                          <n-avatar :src="reply.userAvatar" size="small" round/>
-                          <div class="comment-user-info">
-                            <div class="comment-username">{{ reply.username }}</div>
-                            <div class="comment-time">{{ formatTimeAgo(reply.createdAt) }}</div>
-                          </div>
-                        </div>
-                        <div class="comment-content">{{ reply.content }}</div>
-                        <div class="comment-actions">
-                          <n-button
-                            v-if="!reply.isLiked"
-                            ghost
-                            size="tiny"
-                            class="comment-action-btn"
-                            @click="likeComment(reply.id)"
-                          >
-                            <Heart size="12" />
-                            <span>{{ reply.likeCount }}</span>
-                          </n-button>
-                          <n-button
-                            v-else
-                            ghost
-                            size="tiny"
-                            class="comment-action-btn liked"
-                            @click="likeComment(reply.id)"
-                          >
-                            <Heart size="12" />
-                            <span>{{ reply.likeCount }}</span>
-                          </n-button>
-                          <n-button
-                            ghost
-                            size="tiny"
-                            class="comment-action-btn"
-                            @click="replyToComment(reply.id)"
-                          >
-                            回复
-                          </n-button>
-                          <n-button
-                            v-if="getCurrentUserId() === reply.userId || getCurrentUserId() === article.authorId"
-                            ghost
-                            size="tiny"
-                            class="comment-action-btn"
-                            type="error"
-                            @click="deleteComment(reply.id)"
-                          >
-                            删除
-                          </n-button>
-                        </div>
-                      </n-card>
-                      
-                      <!-- 递归渲染回复的回复 -->
-                      <div class="comment-replies" v-if="reply.replies && reply.replies.length > 0">
-                        <template v-for="nestedReply in reply.replies" :key="nestedReply.id">
-                          <n-card
-                            bordered
-                            class="comment-reply-item"
-                          >
-                            <div class="comment-header">
-                              <n-avatar :src="nestedReply.userAvatar" size="small" round/>
-                              <div class="comment-user-info">
-                                <div class="comment-username">{{ nestedReply.username }}</div>
-                                <div class="comment-time">{{ formatTimeAgo(nestedReply.createdAt) }}</div>
-                              </div>
-                            </div>
-                            <div class="comment-content">{{ nestedReply.content }}</div>
-                            <div class="comment-actions">
-                              <n-button
-                                v-if="!nestedReply.isLiked"
-                                ghost
-                                size="tiny"
-                                class="comment-action-btn"
-                                @click="likeComment(nestedReply.id)"
-                              >
-                                <Heart size="12" />
-                                <span>{{ nestedReply.likeCount }}</span>
-                              </n-button>
-                              <n-button
-                                v-else
-                                ghost
-                                size="tiny"
-                                class="comment-action-btn liked"
-                                @click="likeComment(nestedReply.id)"
-                              >
-                                <Heart size="12" />
-                                <span>{{ nestedReply.likeCount }}</span>
-                              </n-button>
-                              <n-button
-                                ghost
-                                size="tiny"
-                                class="comment-action-btn"
-                                @click="replyToComment(nestedReply.id)"
-                              >
-                                回复
-                              </n-button>
-                              <n-button
-                                v-if="getCurrentUserId() === nestedReply.userId || getCurrentUserId() === article.authorId"
-                                ghost
-                                size="tiny"
-                                class="comment-action-btn"
-                                type="error"
-                                @click="deleteComment(nestedReply.id)"
-                              >
-                                删除
-                              </n-button>
-                            </div>
-                          </n-card>
-                        </template>
-                      </div>
-                    </template>
-                  </div>
-                </div>
-              </template>
+            <div id="comments" class="comments-list">
+              <CommentItem
+                v-for="comment in comments"
+                :key="comment.id"
+                :comment="comment"
+                :article-author-id="article.authorId"
+                :target-comment-id="targetCommentId"
+                @like="likeComment"
+                @reply="replyToComment"
+                @delete="deleteComment"
+              />
             </div>
 
             <!-- 评论控制按钮 -->
@@ -433,9 +267,10 @@
 <script setup>
 import { useRouter, useRoute } from 'vue-router';
 import { useMessage } from 'naive-ui';
-import { ref, onMounted, computed,watch } from 'vue';
+import { ref, onMounted, computed,watch, nextTick } from 'vue';
 import axios from '@/utils/axios';
-import { getArticleComments, addComment } from '@/api/article'; 
+import { getArticleComments, addComment } from '@/api/article';
+import CommentItem from '@/components/CommentItem.vue'; 
 
 // 图标
 import {
@@ -504,8 +339,10 @@ const hasMoreComments = ref(true);
 const commentPage = ref(1);
 const totalComments = ref(0);
 const showAllComments = ref(false);
+const targetCommentId = ref(null);
 const relatedPosts = ref([]);
 const isFollowing = ref(false);
+const currentUserFollowingCount = ref(0);
 const searchQuery = ref('');
 const loading = ref(true);
 // 回复评论相关状态
@@ -586,14 +423,18 @@ const fetchArticleDetail = async () => {
       viewCount: data.view_count,
       isLiked: data.is_liked || false,
       isCollected: data.is_collected || false,
-      authorArticleCount: data.user?.article_count || 0,
-      authorLikeCount: data.user?.total_likes || 0,
-      authorFollowerCount: data.user?.follower_count || 0
+      authorArticleCount: data.author_article_count || 0,
+      authorLikeCount: data.author_total_likes || 0,
+      authorFollowerCount: data.author_follower_count || 0
     };
     
     // 检查是否已关注
-    isFollowing.value = data.user?.is_followed || false;
-    console.log("初始关注状态：", isFollowing.value); 
+    isFollowing.value = data.is_followed || false;
+    console.log("初始关注状态：", isFollowing.value);
+    
+    // 从localStorage同步关注状态
+    syncFollowStateFromStorage();
+    
     // 增加阅读量
     await axios.post(`/posts/${articleId.value}/view/`);
   } catch (error) {
@@ -616,6 +457,8 @@ const formatComment = (comment) => {
     createdAt: comment.created_at,
     likeCount: comment.like_count,
     isLiked: comment.is_liked || false,
+    parentUsername: comment.parent_username || null,
+    parentNickname: comment.parent_nickname || null,
     replies: []
   };
   
@@ -629,8 +472,7 @@ const formatComment = (comment) => {
 
 const fetchComments = async (page = 1, loadMore = false) => {
   try {
-    // 根据是否显示全部评论决定每页加载数量
-    const pageSize = showAllComments.value ? 10 : 5;
+    const pageSize = showAllComments.value ? 100 : 5;
     const response = await getArticleComments(articleId.value, page, pageSize);
     
     const formattedComments = response.data.results.map(comment => formatComment(comment));
@@ -708,6 +550,9 @@ const handleCollect = async () => {
     // 显示加载状态
     loading.value = true;
     
+    // 记录当前操作类型
+    const isCollecting = !article.value.isCollected;
+    
     let response;
     if (article.value.isCollected) {
       response = await axios.delete(`/posts/${articleId.value}/collect/`);
@@ -721,7 +566,8 @@ const handleCollect = async () => {
       article.value.isCollected = response.data.is_collected || false;
       article.value.collectCount = response.data.count || 0;
       
-      message.success(article.value.isCollected ? '收藏成功' : '取消收藏成功');
+      // 根据操作类型显示提示
+      message.success(isCollecting ? '收藏成功' : '取消收藏成功');
     } else {
       // 如果没有返回数据，手动更新状态
       article.value.isCollected = !article.value.isCollected;
@@ -764,19 +610,56 @@ const handleFollow = async () => {
     console.log('关注操作 - 当前用户token:', localStorage.getItem('accessToken'));
     console.log('关注目标ID:', article.value.authorId);
     if (isFollowing.value) {
-      await axios.delete(`/users/${article.value.authorId}/follow/`);
+      await axios.delete(`/user/users/${article.value.authorId}/follow/`);
       message.success('取消关注成功');
-      isFollowing.value = false; // 补充状态更新
+      isFollowing.value = false;
       article.value.authorFollowerCount--;
+      currentUserFollowingCount.value--;
+      
+      // 同步关注状态到localStorage
+      syncFollowState(article.value.authorId, false);
+      
+      // 更新localStorage中的用户信息
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+      if (userInfo.username) {
+        localStorage.setItem('userInfo', JSON.stringify(userInfo));
+      }
     } else {
-      await axios.post(`/users/${article.value.authorId}/follow/`);
+      await axios.post(`/user/users/${article.value.authorId}/follow/`);
       message.success('关注成功');
       isFollowing.value = true;
       article.value.authorFollowerCount++;
+      currentUserFollowingCount.value++;
+      
+      // 同步关注状态到localStorage
+      syncFollowState(article.value.authorId, true);
+      
+      // 更新localStorage中的用户信息
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+      if (userInfo.username) {
+        localStorage.setItem('userInfo', JSON.stringify(userInfo));
+      }
     }
   } catch (error) {
     console.error('关注/取消关注失败:', error);
     message.error('操作失败，请重试');
+  }
+};
+
+// 同步关注状态到localStorage
+const syncFollowState = (userId, isFollowing) => {
+  const followState = JSON.parse(localStorage.getItem('followState') || '{}');
+  followState[userId] = isFollowing;
+  localStorage.setItem('followState', JSON.stringify(followState));
+};
+
+// 从localStorage同步关注状态
+const syncFollowStateFromStorage = () => {
+  if (article.value.authorId) {
+    const followState = JSON.parse(localStorage.getItem('followState') || '{}');
+    if (followState[article.value.authorId] !== undefined) {
+      isFollowing.value = followState[article.value.authorId];
+    }
   }
 };
 
@@ -877,10 +760,24 @@ const deleteComment = async (commentId) => {
   }
 };
 
+// 递归查找评论（包括嵌套回复）
+const findCommentById = (comments, commentId) => {
+  for (const comment of comments) {
+    if (comment.id === commentId) {
+      return comment;
+    }
+    if (comment.replies && comment.replies.length > 0) {
+      const found = findCommentById(comment.replies, commentId);
+      if (found) return found;
+    }
+  }
+  return null;
+};
+
 // 回复评论
 const replyToComment = (commentId) => {
-  // 查找要回复的评论
-  const commentToReply = comments.value.find(c => c.id === commentId);
+  // 递归查找要回复的评论（包括嵌套回复）
+  const commentToReply = findCommentById(comments.value, commentId);
   if (commentToReply) {
     replyingToCommentId.value = commentId;
     replyingToUsername.value = commentToReply.username;
@@ -919,10 +816,48 @@ const handleSearch = async () => {
   }, 100);
 };
 
+// 滚动到评论区
+const scrollToComments = (commentId = null) => {
+  nextTick(() => {
+    if (commentId) {
+      const commentElement = document.getElementById(`comment-${commentId}`);
+      if (commentElement) {
+        commentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        commentElement.classList.add('highlight-comment');
+        setTimeout(() => {
+          commentElement.classList.remove('highlight-comment');
+        }, 3000);
+      }
+    } else {
+      const commentsElement = document.getElementById('comments');
+      if (commentsElement) {
+        commentsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  });
+};
+
 // 初始化
-onMounted(() => {
-  fetchArticleDetail();
-  fetchComments();
+onMounted(async () => {
+  const commentId = route.query.commentId;
+  
+  if (route.hash === '#comments' && commentId) {
+    targetCommentId.value = parseInt(commentId);
+    showAllComments.value = true;
+  }
+  
+  await fetchArticleDetail();
+  await fetchComments();
+  
+  if (route.hash === '#comments') {
+    if (commentId) {
+      setTimeout(() => {
+        scrollToComments(parseInt(commentId));
+      }, 500);
+    } else {
+      scrollToComments();
+    }
+  }
 });
 
 // 监听文章ID变化（适用于同页面路由切换）
@@ -930,9 +865,28 @@ watch(
   () => route.params.id,
   (newId) => {
     articleId.value = newId;
+    targetCommentId.value = null;
     fetchArticleDetail();
     fetchComments();
     commentPage.value = 1;
+  }
+);
+
+// 监听hash和query变化
+watch(
+  () => [route.hash, route.query.commentId],
+  ([newHash, newCommentId]) => {
+    if (newHash === '#comments') {
+      if (newCommentId) {
+        targetCommentId.value = parseInt(newCommentId);
+        setTimeout(() => {
+          scrollToComments(parseInt(newCommentId));
+        }, 500);
+      } else {
+        targetCommentId.value = null;
+        scrollToComments();
+      }
+    }
   }
 );
 </script>
@@ -1136,54 +1090,18 @@ watch(
   gap: 0px;
 }
 
-.comment-item {
-  padding: 0px;
-  margin-bottom: 0px;
-}
-
-.comment-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.comment-user-info {
+.reply-info-inline {
   margin-left: 8px;
+  font-size: 13px;
 }
 
-.comment-username {
+.reply-label {
+  color: #86909c;
+}
+
+.reply-target {
+  color: #165dff;
   font-weight: 500;
-  font-size: 14px;
-}
-
-.comment-time {
-  font-size: 12px;
-  color: #86909c;
-}
-
-.comment-content {
-  margin-bottom: 8px;
-  line-height: 1.6;
-  padding-left: 48px;
-}
-
-.comment-actions {
-  display: flex;
-  gap: 10px;
-  padding-left: 48px;
-}
-
-.comment-action-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: #86909c;
-  padding: 0;
-  height: auto;
-}
-
-.comment-action-btn.liked {
-  color: #f53f3f;
 }
 
 .reply-header {
@@ -1208,21 +1126,6 @@ watch(
 .cancel-reply-btn {
   padding: 4px 8px;
   font-size: 12px;
-}
-
-.comment-container {
-  margin-bottom: 16px;
-}
-
-.comment-replies {
-  margin-left: 40px;
-  margin-top: 8px;
-}
-
-.comment-reply-item {
-  margin-bottom: 8px;
-  padding: 6px;
-  border-left: 2px solid #e8e8e8;
 }
 
 .load-more-comments {
@@ -1333,5 +1236,21 @@ watch(
   justify-content: center;
   align-items: center;
   min-height: 400px;
+}
+
+/* 评论高亮样式 */
+:deep(.highlight-comment) {
+  animation: highlightPulse 3s ease-in-out;
+}
+
+@keyframes highlightPulse {
+  0% {
+    background-color: rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
 }
 </style>

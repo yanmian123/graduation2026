@@ -196,6 +196,7 @@ const userDropdownOptions = ref([
   { key: 'userinfo', label: '个人中心', icon: () => h(Person) },
   { key: 'resumes', label: '我的简历', icon: () => h(Person) },
   { key: 'applications', label: '我的申请', icon: () => h(Person) },
+  { key: 'verification', label: '实名认证', icon: () => h(Person) },
   { key: 'divider', type: 'divider' },
   { key: 'logout', label: '退出登录', icon: () => h(Person), type: 'warning' }
 ])
@@ -298,6 +299,9 @@ const handleUserAction = (key) => {
     case 'userinfo':
       router.push('/userinfo')
       break
+    case 'verification':
+      router.push('/user/verification')
+      break
     case 'resumes':
       router.push('/resumes')
       break
@@ -353,8 +357,20 @@ const formatTime = (timeString) => {
   }
 }
 
-const markAsRead = (notificationId) => {
+const markAsRead = async (notificationId) => {
   notificationStore.markAsRead(notificationId)
+  
+  const notification = notifications.value.find(n => n.id === notificationId)
+  if (notification) {
+    if (notification.notification_type === 'post_comment' && notification.related_object_id) {
+      router.push({
+        name: 'ArticlesDetail',
+        params: { id: notification.related_object_id },
+        hash: '#comments',
+        query: notification.comment_id ? { commentId: notification.comment_id } : undefined
+      })
+    }
+  }
 }
 
 const markAllAsRead = () => {

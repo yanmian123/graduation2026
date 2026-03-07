@@ -60,7 +60,7 @@
       <!-- 提交按钮 -->
       <n-form-item>
         <n-button type="primary" @click="handleSubmit">创建简历</n-button>
-                <n-button @click="$router.push('/api/user/info')" style="margin-left: 16px;">取消</n-button>
+                <n-button @click="$router.push('/userinfo')" style="margin-left: 16px;">取消</n-button>
         <n-button @click="$router.push('/resumes')" style="margin-left: 16px;">我的简历</n-button>
 
       </n-form-item>

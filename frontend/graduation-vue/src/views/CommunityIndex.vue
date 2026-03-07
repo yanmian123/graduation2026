@@ -254,6 +254,7 @@ import { useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
 import { ref, onMounted, h } from 'vue';
 import axios from '@/utils/axios';
+import { chatApi } from '@/services/api';
 
 // 图标使用 @vicons/ionicons5，确保已安装
 import {
@@ -416,12 +417,12 @@ const fetchPosts = async (isLoadMore = false) => {
           id: post.id,
           title: post.title,
           authorName: authorName,
-          authorId: post.user_id || post.user?.id || Math.floor(Math.random() * 1000),
+          authorId: post.user_id || post.user?.id,
           authorAvatar: userAvatar,
           // authorIdentity: post.identity || post.user?.profile?.identity || '职场前辈',
           category: post.category || '其他',
           authorSchool: post.user?.profile?.school || '未填写',
-          isFollowing: Math.random() > 0.5,
+          isFollowing: post.is_followed || false,
           postCount: Math.floor(Math.random() * 100) + 10,
           excerpt: post.content ? post.content.substring(0, 50) + (post.content.length > 50 ? '...' : '') : '',
           tags: post.tags ? post.tags.split(',') : [],
@@ -445,6 +446,9 @@ const fetchPosts = async (isLoadMore = false) => {
 
     // 更新数据
       posts.value = isLoadMore ? [...posts.value, ...paginatedPosts] : paginatedPosts;
+    
+      // 从localStorage同步关注状态
+      syncFollowStateFromStorage();
     
       // 更新总数据条数
       totalResults.value = total;
@@ -698,31 +702,99 @@ function handleFollow(userId) {
   if (!post) return
 
   if (post.isFollowing) {
-    axios.delete(`/users/${userId}/follow/`)
+    axios.delete(`/user/users/${userId}/follow/`)
       .then(() => {
         post.isFollowing = false
         message.success('已取消关注')
+        
+        // 同步关注状态到localStorage
+        syncFollowState(userId, false)
       })
       .catch(error => {
         console.error('取消关注失败:', error)
-        message.error('操作失败，请稍后重试')
+        if (error.response && error.response.data) {
+          console.error('错误详情:', error.response.data)
+          message.error(error.response.data.message || '操作失败，请稍后重试')
+        } else {
+          message.error('操作失败，请稍后重试')
+        }
       })
   } else {
-    axios.post(`/users/${userId}/follow/`)
+    axios.post(`/user/users/${userId}/follow/`)
       .then(() => {
         post.isFollowing = true
         message.success('关注成功')
+        
+        // 同步关注状态到localStorage
+        syncFollowState(userId, true)
       })
       .catch(error => {
         console.error('关注失败:', error)
-        message.error('操作失败，请稍后重试')
+        if (error.response && error.response.data) {
+          console.error('错误详情:', error.response.data)
+          message.error(error.response.data.message || '操作失败，请稍后重试')
+        } else {
+          message.error('操作失败，请稍后重试')
+        }
       })
   }
 }
 
+// 同步关注状态到localStorage
+function syncFollowState(userId, isFollowing) {
+  const followState = JSON.parse(localStorage.getItem('followState') || '{}')
+  followState[userId] = isFollowing
+  localStorage.setItem('followState', JSON.stringify(followState))
+}
+
+// 从localStorage同步关注状态到帖子列表
+function syncFollowStateFromStorage() {
+  const followState = JSON.parse(localStorage.getItem('followState') || '{}')
+  posts.value.forEach(post => {
+    if (post.authorId && followState[post.authorId] !== undefined) {
+      post.isFollowing = followState[post.authorId]
+    }
+  })
+}
+
 // 处理私信用户
-function handleMessage(userId) {
-  message.info('私信功能待实现');
+async function handleMessage(userId) {
+  try {
+    // 获取当前用户信息
+    const currentUser = JSON.parse(localStorage.getItem('userInfo') || '{}');
+    if (!currentUser.id) {
+      message.error('请先登录');
+      return;
+    }
+
+    // 防止自己给自己发私信
+    if (currentUser.id === userId) {
+      message.warning('不能给自己发私信');
+      return;
+    }
+
+    console.log('当前用户:', currentUser.id);
+    console.log('目标用户:', userId);
+
+    // 调用start_chat API创建或获取聊天室
+    const response = await chatApi.startChat({
+      enterprise_user_id: currentUser.id,
+      job_seeker_user_id: userId
+    });
+    
+    const roomId = response.data.id;
+    console.log('聊天室ID:', roomId);
+
+    // 跳转到聊天页面
+    router.push(`/chat/${roomId}`);
+  } catch (error) {
+    console.error('创建聊天失败:', error);
+    if (error.response?.status === 401) {
+      message.error('请先登录');
+    } else {
+      message.error('创建聊天失败，请稍后重试');
+    }
+  }
 }
 
 

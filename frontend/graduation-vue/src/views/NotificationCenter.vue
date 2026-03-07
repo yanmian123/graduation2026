@@ -167,12 +167,17 @@ const handleMarkAllAsRead = async () => {
 // 方法：点击通知
 const handleNotificationClick = async (notification) => {
   if (!notification.is_read) {
-    // 标记为已读
     await notificationStore.markAsRead(notification.id)
   }
   
-  // 可以在这里添加通知点击后的逻辑，比如跳转到相关页面
-  console.log('通知点击:', notification)
+  if (notification.notification_type === 'post_comment' && notification.related_object_id) {
+    router.push({
+      name: 'ArticlesDetail',
+      params: { id: notification.related_object_id },
+      hash: '#comments',
+      query: notification.comment_id ? { commentId: notification.comment_id } : undefined
+    })
+  }
 }
 
 // 方法：分页变化

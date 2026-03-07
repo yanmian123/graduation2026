@@ -20,15 +20,25 @@ django.setup()
 # 现在可以安全地导入其他模块
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
+from channels.sessions import SessionMiddlewareStack
 import chat.routing
 import notification.routing
 
+# HTTP应用
+http_application = get_asgi_application()
+
+# WebSocket应用
+websocket_application = AuthMiddlewareStack(
+    URLRouter(
+        chat.routing.websocket_urlpatterns + 
+        notification.routing.websocket_urlpatterns
+    )
+)
+
+# 添加Session middleware到WebSocket
+websocket_application = SessionMiddlewareStack(websocket_application)
+
 application = ProtocolTypeRouter({
-    "http": get_asgi_application(),
-    "websocket": AuthMiddlewareStack(
-        URLRouter(
-            chat.routing.websocket_urlpatterns + 
-            notification.routing.websocket_urlpatterns
-        )
-    ),
+    "http": http_application,
+    "websocket": websocket_application,
 })

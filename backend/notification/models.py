@@ -31,6 +31,7 @@ class Notification(models.Model):
     is_read = models.BooleanField(default=False, verbose_name='是否已读')
     related_object_id = models.PositiveIntegerField(null=True, blank=True, verbose_name='关联对象ID')
     related_object_type = models.CharField(max_length=50, null=True, blank=True, verbose_name='关联对象类型')
+    comment_id = models.PositiveIntegerField(null=True, blank=True, verbose_name='评论ID')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     
     class Meta:
@@ -40,3 +41,42 @@ class Notification(models.Model):
     
     def __str__(self):
         return f"{self.get_notification_type_display()} - {self.title}"
+
+
+class Announcement(models.Model):
+    """系统公告模型"""
+    ANNOUNCEMENT_TYPES = (
+        ('system', '系统公告'),
+        ('maintenance', '维护通知'),
+        ('feature', '功能更新'),
+        ('emergency', '紧急通知'),
+    )
+    
+    title = models.CharField(max_length=200, verbose_name='公告标题')
+    content = models.TextField(verbose_name='公告内容')
+    announcement_type = models.CharField(
+        max_length=20, 
+        choices=ANNOUNCEMENT_TYPES, 
+        default='system',
+        verbose_name='公告类型'
+    )
+    is_active = models.BooleanField(default=True, verbose_name='是否显示')
+    priority = models.IntegerField(default=0, verbose_name='优先级（数字越大越靠前）')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    created_by = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='announcements',
+        verbose_name='创建者'
+    )
+    
+    class Meta:
+        verbose_name = '系统公告'
+        verbose_name_plural = '系统公告'
+        ordering = ['-priority', '-created_at']
+    
+    def __str__(self):
+        return self.title

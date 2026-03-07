@@ -21,6 +21,7 @@ from django.urls import include
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     # path("api/", include("api.urls")),  # Include API app URLs
@@ -33,4 +34,9 @@ urlpatterns = [
     path('api/', include('enterprise.urls')), #企业模块接口路径：/api/enterprise/
     path('api/chat/', include('chat.urls')),
     path('api/', include('notification.urls')),  # 通知接口路径：/api/notifications/
-]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]
+
+# 开发环境下提供静态文件
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

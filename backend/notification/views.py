@@ -1,8 +1,8 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from .models import Notification
-from .serializers import NotificationSerializer
+from .models import Notification, Announcement
+from .serializers import NotificationSerializer, AnnouncementSerializer
 
 class NotificationViewSet(viewsets.ModelViewSet):
     serializer_class = NotificationSerializer
@@ -36,3 +36,21 @@ class NotificationViewSet(viewsets.ModelViewSet):
         # 获取未读通知数量
         count = self.get_queryset().filter(is_read=False).count()
         return Response({'unread_count': count})
+
+
+class AnnouncementViewSet(viewsets.ModelViewSet):
+    serializer_class = AnnouncementSerializer
+    
+    def get_permissions(self):
+        # 查看操作对所有用户开放，其他操作需要管理员权限
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [permissions.IsAdminUser()]
+    
+    def get_queryset(self):
+        # 只返回激活的公告，按优先级和创建时间排序
+        return Announcement.objects.filter(is_active=True).order_by('-priority', '-created_at')
+    
+    def perform_create(self, serializer):
+        # 创建公告时自动关联当前用户
+        serializer.save(created_by=self.request.user)

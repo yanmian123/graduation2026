@@ -1,0 +1,24 @@
+{% extends "admin/change_list.html" %}
+{% load i18n static %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    {% if pending_count > 0 %}
+        <li>
+            <a href="#" style="color: #ff4d4f; font-weight: bold;">
+                🔔 待审核申请: {{ pending_count }} 条
+            </a>
+        </li>
+    {% endif %}
+{% endblock %}
+
+{% block content_title %}
+    <h1>
+        {{ cl.opts.verbose_name_plural|capfirst }}
+        {% if pending_count > 0 %}
+            <span style="color: #ff4d4f; font-size: 14px; margin-left: 10px;">
+                (待审核: {{ pending_count }} 条)
+            </span>
+        {% endif %}
+    </h1>
+{% endblock %}

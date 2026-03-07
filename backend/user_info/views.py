@@ -1,79 +1,109 @@
-from rest_framework import status
-from rest_framework.views import APIView
+"""
+用户信息视图集
+"""
+from rest_framework import viewsets, status, permissions
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny  # 要求登录才能访问
-from django.contrib.auth import get_user_model
-from .serializers import UserInfoSerializer, UserInfoUpdateSerializer
-from article_publish.models import Article, Comment
-from django.db.models import Count
+from .models import VerificationApplication
+from .serializers import VerificationApplicationSerializer, VerificationApplicationCreateSerializer
+from django.utils import timezone
 
-User=get_user_model()
-
-class UserInfoView(APIView):
-    """
-    处理用户信息的获取（GET）和更新（PUT）
-    - 仅登录用户可访问（IsAuthenticated 权限）
-    - 用户只能操作自己的信息
-    """
-    """获取和更新用户信息的视图"""
-    permission_classes = [IsAuthenticated]  # 仅允许已认证用户访问
-
-    def get(self, request):
-        """获取当前登录用户的信息"""
-        user = request.user
-        serializer = UserInfoSerializer(user, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def put(self, request):
-        """更新当前登录用户的信息"""
-        user = request.user
-        #传入用户实例和请求数据，partial=True允许部分更新
-        serializer = UserInfoUpdateSerializer(user, data=request.data, partial=True, context={'request': request})
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        #验证失败返回错误信息
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def post(self, request):
-        """处理用户头像上传"""
-        user = request.user
-        if 'avatar' in request.FILES:
-            user.avatar = request.FILES['avatar']
-            user.save()
-            serializer = UserInfoSerializer(user, context={'request': request})
-            return Response({
-                'message': '头像上传成功',
-                'avatar': serializer.data['avatar']
-            }, status=status.HTTP_200_OK)
-        return Response(
-            {'error': '未提供头像文件'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-class ActiveUsersView(APIView):
-    """
-    获取活跃用户列表
-    按用户发布的文章数量排序，取前5名活跃用户
-    """
-    permission_classes = [AllowAny]  # 允许所有人访问
+class VerificationViewSet(viewsets.ModelViewSet):
+    """认证申请视图集"""
+    queryset = VerificationApplication.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
     
-    def get(self, request):
-        # 获取活跃用户：按发布的文章数量排序，取前5名
-        active_users = User.objects.annotate(
-            article_count=Count('articles'),
-            comment_count=Count('comments')
-        ).order_by('-article_count', '-comment_count')[:5]
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return VerificationApplicationCreateSerializer
+        return VerificationApplicationSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
         
-        # 构建响应数据
-        data = []
-        for user in active_users:
-            data.append({
-                'id': user.id,
-                'username': user.username,
-                'avatar': request.build_absolute_uri(user.avatar.url) if user.avatar else None,
-                'article_count': user.article_count,
-                'help_count': user.comment_count  # 使用评论数作为帮助人数的近似值
-            })
+        if self.request.user.is_staff:
+            return queryset
+        else:
+            return queryset.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        application = serializer.save(user=self.request.user)
         
-        return Response(data, status=status.HTTP_200_OK)
+        from notification.utils import create_notification
+        from django.contrib.auth import get_user_model
+        
+        User = get_user_model()
+        admin_users = User.objects.filter(is_staff=True, is_active=True)
+        
+        for admin_user in admin_users:
+            create_notification(
+                recipient=admin_user,
+                notification_type='system_general',
+                title='新的认证申请',
+                message=f'用户 {application.user.username} 提交了{application.get_verification_type_display()}申请，请及时审核',
+                related_object_id=application.id,
+                related_object_type='verification'
+            )
+    
+    @action(detail=False, methods=['get'])
+    def my_application(self, request):
+        """获取当前用户的认证申请"""
+        try:
+            application = VerificationApplication.objects.filter(user=request.user).first()
+            if application:
+                serializer = self.get_serializer(application)
+                return Response(serializer.data)
+            return Response({'message': '暂无认证申请'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAdminUser])
+    def approve(self, request, pk=None):
+        """管理员：通过认证"""
+        try:
+            application = self.get_object()
+            application.status = 'APPROVED'
+            application.reviewed_by = request.user
+            application.reviewed_at = timezone.now()
+            application.save()
+            
+            from notification.utils import create_notification
+            create_notification(
+                recipient=application.user,
+                notification_type='system_general',
+                title='认证审核通过',
+                message=f'您的{application.verification_type_display}申请已通过审核',
+                related_object_id=application.id,
+                related_object_type='verification'
+            )
+            
+            return Response({'message': '认证已通过'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAdminUser])
+    def reject(self, request, pk=None):
+        """管理员：拒绝认证"""
+        try:
+            application = self.get_object()
+            reject_reason = request.data.get('reject_reason', '')
+            
+            application.status = 'REJECTED'
+            application.reject_reason = reject_reason
+            application.reviewed_by = request.user
+            application.reviewed_at = timezone.now()
+            application.save()
+            
+            from notification.utils import create_notification
+            create_notification(
+                recipient=application.user,
+                notification_type='system_general',
+                title='认证审核未通过',
+                message=f'您的{application.verification_type_display}申请未通过审核。原因：{reject_reason}',
+                related_object_id=application.id,
+                related_object_type='verification'
+            )
+            
+            return Response({'message': '认证已拒绝'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

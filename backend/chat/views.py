@@ -62,13 +62,12 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def start_chat(self, request):
         """
-        开始聊天 - 忽略recruitment_id，只根据用户ID创建
+        开始聊天 - 支持普通用户之间的聊天
         """
         enterprise_user_id = request.data.get('enterprise_user_id')
         job_seeker_user_id = request.data.get('job_seeker_user_id')
-        recruitment_id = request.data.get('recruitment_id')  # 保留但不使用
         
-        print(f"🔍🔍 开始聊天请求参数: enterprise={enterprise_user_id}, job_seeker={job_seeker_user_id}, recruitment={recruitment_id}")
+        print(f"🔍🔍 开始聊天请求参数: enterprise={enterprise_user_id}, job_seeker={job_seeker_user_id}")
         
         # 1. 验证必需参数
         if not enterprise_user_id or not job_seeker_user_id:
@@ -77,38 +76,45 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # 2. 验证用户是否存在且类型正确
+        # 2. 验证用户是否存在
         try:
-            enterprise_user = User.objects.get(id=enterprise_user_id, is_enterprise=True)
-            job_seeker_user = User.objects.get(id=job_seeker_user_id, is_enterprise=False)
-            print(f"✅ 用户验证成功: 企业用户={enterprise_user.username}, 求职者={job_seeker_user.username}")
+            enterprise_user = User.objects.get(id=enterprise_user_id)
+            job_seeker_user = User.objects.get(id=job_seeker_user_id)
+            print(f"✅ 用户验证成功: enterprise={enterprise_user.username}, job_seeker={job_seeker_user.username}")
         except User.DoesNotExist:
             return Response(
-                {"error": "用户不存在或用户类型不匹配"}, 
+                {"error": "用户不存在"}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # 3. 简单查找或创建聊天室 - 只根据用户ID
+        # 3. 查找或创建聊天室
         created = False
         
         try:
-            # 只根据用户ID查找，忽略recruitment_id
+            # 查找已存在的聊天室（两个用户之间的聊天室）
             chat_rooms = ChatRoom.objects.filter(
                 enterprise_user=enterprise_user,
                 job_seeker_user=job_seeker_user
-            ).order_by('-created_at')  # 取最新的一个
+            ).order_by('-created_at')
+            
+            if not chat_rooms.exists():
+                # 如果找不到，尝试反向查找
+                chat_rooms = ChatRoom.objects.filter(
+                    enterprise_user=job_seeker_user,
+                    job_seeker_user=enterprise_user
+                ).order_by('-created_at')
             
             if chat_rooms.exists():
-                # 使用已存在的聊天室（取最新的）
+                # 使用已存在的聊天室
                 chat_room = chat_rooms.first()
                 created = False
                 print("✅ 找到已存在的聊天室")
             else:
-                # 创建新的聊天室，recruitment_id设为null
+                # 创建新的聊天室
                 chat_room = ChatRoom.objects.create(
                     enterprise_user=enterprise_user,
                     job_seeker_user=job_seeker_user,
-                    recruitment=None  # 总是设为null
+                    recruitment=None
                 )
                 created = True
                 print("✅ 创建新的聊天室")
@@ -161,14 +167,15 @@ class MessageViewSet(viewsets.ModelViewSet):
         recipient = None
         notification_type = None
         
-        if sender.is_enterprise:
-            # 企业发送消息给求职者
+        # 根据发送者确定接收者
+        if chat_room.enterprise_user == sender:
+            # 发送者是enterprise_user，接收者是job_seeker_user
             recipient = chat_room.job_seeker_user
-            notification_type = 'company_chat'
+            notification_type = 'company_chat' if sender.is_enterprise else 'jobseeker_message'
         else:
-            # 求职者发送消息给企业
+            # 发送者是job_seeker_user，接收者是enterprise_user
             recipient = chat_room.enterprise_user
-            notification_type = 'jobseeker_message'
+            notification_type = 'company_chat' if recipient.is_enterprise else 'jobseeker_message'
         
         # 创建通知
         if recipient:

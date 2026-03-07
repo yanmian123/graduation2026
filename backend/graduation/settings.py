@@ -25,7 +25,7 @@ SECRET_KEY = "django-insecure-wdujae!ea8)=vffb4+4u^u45%l_q6&f#mdxnm0zf1m(1)i$)p2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "colorfield",  # django-admin-interface依赖
+    "admin_interface",  # Django Admin Interface主题
     "rest_framework", #DRF
     "corsheaders", #CORS
     "register", #注册功能
@@ -61,6 +63,13 @@ CHANNEL_LAYERS = {
 
 AUTH_USER_MODEL = "register.User"
 
+# Session配置
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+SESSION_COOKIE_NAME = "sessionid"
+SESSION_COOKIE_AGE = 1209600  # 2周（秒）
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware", #CORS
     "django.middleware.security.SecurityMiddleware",
@@ -70,17 +79,49 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    
 ]
-CORS_ALLOW_ALL_ORIGINS = True  # 开发环境可以这样设置，生产环境需要指定域名
+
+# CORS配置
+CORS_ALLOW_ALL_ORIGINS = True  # 开发环境允许所有源
 CORS_ALLOW_CREDENTIALS = True  # 允许携带Cookie
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
 
 ROOT_URLCONF = "graduation.urls"
 
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / 'templates'],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -143,9 +184,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "zh-hans"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Asia/Shanghai"
 
 USE_I18N = True
 
@@ -157,7 +198,9 @@ MEDIA_ROOT = BASE_DIR / 'media'  # 本地保存路径（项目根目录/media）
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [BASE_DIR / 'graduation' / 'static']
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -197,4 +240,41 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=24),  # 访问令牌有效期
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # 刷新令牌有效期
     'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+}
+
+# Django Admin Interface 配置
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
+# 主题配置
+ADMIN_TITLE = '大学生就业信息共享平台'
+ADMIN_HEADER_COLOR = 'rgb(95, 133, 127)'  # 与平台主色调一致（绿色）
+ADMIN_NAME = '就业平台管理后台'
+
+# 模块配置
+ADMIN_INTERFACE = {
+    'name': '大学生就业信息共享平台',
+    'header_color': 'rgb(95, 133, 127)',
+    'title_color': '#FFFFFF',
+    'env_name': 'Development',
+    'language_selector': True,
+    'show_apps_as_dropdown': True,
+    'show_bookmarks': True,
+    'show_history': True,
+    'hide_app_index': False,
+    'logo': {
+        'visible': False,
+    },
+    'related_modal': True,
+    'navigation_collapse': False,
+    'navigation_expanded': False,
+    'submit_buttons': 'right',
+    'list_filter_dropdown': True,
+    'list_filter_sticky': True,
+    'search_autocomplete': False,
+    'theme_toggle': True,
+    'compact_tables': False,
+    'form_submit_sticky': True,
+    'form_pagination_sticky': True,
+    'recent_actions_visible': True,
 }

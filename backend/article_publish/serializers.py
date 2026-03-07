@@ -19,6 +19,10 @@ class ArticleSerializer(serializers.ModelSerializer):
     user_avatar = serializers.SerializerMethodField()  # 自定义作者头像字段处理
     is_collected = serializers.SerializerMethodField()  # 文章收藏状态
     is_liked = serializers.SerializerMethodField()  # 文章点赞状态
+    is_followed = serializers.SerializerMethodField()  # 是否关注作者
+    author_article_count = serializers.SerializerMethodField()  # 作者文章数
+    author_total_likes = serializers.SerializerMethodField()  # 作者总点赞数
+    author_follower_count = serializers.SerializerMethodField()  # 作者粉丝数
     
     def get_user_avatar(self, obj):
         if obj.user.avatar:
@@ -42,13 +46,38 @@ class ArticleSerializer(serializers.ModelSerializer):
             return Like.objects.filter(user=request.user, article=obj).exists()
         return False  # 未登录用户默认为未点赞
     
+    def get_is_followed(self, obj):
+        # 检查当前用户是否关注了文章作者
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            from .models import Follow
+            return Follow.objects.filter(follower=request.user, followed=obj.user).exists()
+        return False  # 未登录用户默认为未关注
+    
+    def get_author_article_count(self, obj):
+        # 获取作者的文章数
+        return obj.user.articles.count() if hasattr(obj.user, 'articles') else 0
+    
+    def get_author_total_likes(self, obj):
+        # 获取作者的总点赞数
+        total_likes = 0
+        for article in obj.user.articles.all() if hasattr(obj.user, 'articles') else []:
+            total_likes += article.like_count or 0
+        return total_likes
+    
+    def get_author_follower_count(self, obj):
+        # 获取作者的粉丝数
+        from .models import Follow
+        return Follow.objects.filter(followed=obj.user).count()
+    
     class Meta:
         model=Article
         fields = [
             'id', 'title', 'content', 'tags', 'category',
             'view_count', 'like_count', 'comment_count', 'star_count',
             'created_at', 'updated_at', 'user_id', 'username', 'nickname',
-            'user_avatar', 'is_collected', 'is_liked', 'attachments'
+            'user_avatar', 'is_collected', 'is_liked', 'is_followed', 'attachments',
+            'author_article_count', 'author_total_likes', 'author_follower_count'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     
@@ -93,6 +122,8 @@ class CommentSerializer(serializers.ModelSerializer):
     user_id = serializers.ReadOnlyField(source='user.id')
     replies = serializers.SerializerMethodField()
     parent = serializers.PrimaryKeyRelatedField(read_only=True)
+    parent_username = serializers.SerializerMethodField()
+    parent_nickname = serializers.SerializerMethodField()
     
     def get_avatar(self, obj):
         if obj.user.avatar:
@@ -100,13 +131,22 @@ class CommentSerializer(serializers.ModelSerializer):
         return None
     
     def get_replies(self, obj):
-        # 直接获取回复，不依赖hasattr检查
         return CommentSerializer(obj.replies.all(), many=True).data
+    
+    def get_parent_username(self, obj):
+        if obj.parent:
+            return obj.parent.user.username
+        return None
+    
+    def get_parent_nickname(self, obj):
+        if obj.parent:
+            return obj.parent.user.nickname or obj.parent.user.username
+        return None
     
     class Meta:
         model = Comment
-        fields = ['id', 'content', 'created_at', 'like_count', 'username', 'nickname', 'avatar', 'parent', 'replies', 'user_id']
-        read_only_fields = ['id', 'created_at', 'like_count', 'username', 'nickname', 'avatar', 'parent', 'replies', 'user_id']
+        fields = ['id', 'content', 'created_at', 'like_count', 'username', 'nickname', 'avatar', 'parent', 'replies', 'user_id', 'parent_username', 'parent_nickname']
+        read_only_fields = ['id', 'created_at', 'like_count', 'username', 'nickname', 'avatar', 'parent', 'replies', 'user_id', 'parent_username', 'parent_nickname']
 
     def create(self, validated_data):
         return Comment.objects.create(
@@ -127,6 +167,11 @@ class CollectionStatusSerializer(serializers.ModelSerializer):
 # 点赞状态序列化器
 class LikeStatusSerializer(serializers.Serializer):
     is_liked = serializers.BooleanField()
+    count = serializers.IntegerField()
+
+# 收藏状态序列化器
+class CollectStatusSerializer(serializers.Serializer):
+    is_collected = serializers.BooleanField()
     count = serializers.IntegerField()
 
 # 关注状态序列化器

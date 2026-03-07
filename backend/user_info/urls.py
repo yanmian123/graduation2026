@@ -1,7 +1,17 @@
-from django.urls import include, path
-from .views import UserInfoView, ActiveUsersView
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from article_publish.views import UserViewSet, FileUploadView
+from .views import VerificationViewSet
+
+router = DefaultRouter()
+router.register(r'verifications', VerificationViewSet, basename='verification')
+router.register(r'users', UserViewSet, basename='user')
+
 urlpatterns = [
-    # 接口路径：/api/user/info/（用于获取和更新用户信息）
-    path('info/', UserInfoView.as_view(),name='userinfo'),  # 用户信息相关路由
-    path('active/', ActiveUsersView.as_view(),name='active-users'),  # 活跃用户列表路由
+    path('', include(router.urls)),
+    path('info/', UserViewSet.as_view({'get': 'info', 'put': 'info'}), name='user-info'),
+    path('followers/', UserViewSet.as_view({'get': 'followers'}), name='user-followers'),
+    path('following/', UserViewSet.as_view({'get': 'following'}), name='user-following'),
+    path('following-enterprises/', UserViewSet.as_view({'get': 'following_enterprises'}), name='user-following-enterprises'),
+    path('upload/file/', FileUploadView.as_view(), name='file-upload'),
 ]

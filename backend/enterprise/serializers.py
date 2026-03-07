@@ -34,6 +34,7 @@ class RecruitmentSerializer(serializers.ModelSerializer):
             "deadline", "created_at", "updated_at"
         ]
         read_only_fields = ["enterprise"]  # 自动关联当前企业，前端无需传递
+        depth = 1  # 添加depth以嵌套序列化enterprise
     
     def get_enterprise_logo(self, obj):
         """获取企业Logo的完整URL"""
@@ -78,6 +79,7 @@ class JobApplicationSerializer(serializers.ModelSerializer):
         queryset=Recruitment.objects.all(),
         write_only=True
     )
+    recruitment_detail = RecruitmentSerializer(source='recruitment', read_only=True)
     resume = serializers.PrimaryKeyRelatedField(
         queryset=Resume.objects.all(),
         required=False,
@@ -101,7 +103,7 @@ class JobApplicationSerializer(serializers.ModelSerializer):
             "id", "recruitment", "recruitment_title", "applicant", 
             "applicant_name", "resume", "resume_name", "status", 
             "applied_at", "enterprise_name", "resume_snapshot", "pdf_file",
-            "education", "phone", "email"
+            "education", "phone", "email", "recruitment_detail"
         ]
         read_only_fields = ["applicant", "applied_at", "resume_snapshot", "pdf_file", "status"]
         

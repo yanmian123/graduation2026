@@ -124,6 +124,15 @@ class RecruitmentViewSet(viewsets.ModelViewSet):
         """动态查询集：企业查自己的，求职者查已发布的"""
         user = self.request.user
         print(f"🔍 当前用户: {user.username}, 企业信息: {hasattr(user, 'enterprise_profile')}")
+        
+        # 检查是否有enterprise_user_id参数（用于查看指定企业的招聘信息）
+        enterprise_user_id = self.request.query_params.get('enterprise_user_id')
+        if enterprise_user_id:
+            print(f"🔍 查看指定企业的招聘信息，enterprise_user_id: {enterprise_user_id}")
+            queryset = Recruitment.objects.filter(enterprise__user_id=enterprise_user_id, status="PUBLISHED")
+            print(f"🔍 查询到的招聘记录数量: {queryset.count()}")
+            return queryset.order_by("-created_at")
+        
         # 检查用户是否有企业信息（即是否为企业用户）
         if hasattr(user, "enterprise_profile"):
             # 企业用户：查看自己的所有招聘信息

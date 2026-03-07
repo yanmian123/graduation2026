@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Enterprise, Recruitment, JobApplication
+from .models import Enterprise, Recruitment
 
 @admin.register(Enterprise)
 class EnterpriseAdmin(admin.ModelAdmin):
@@ -25,6 +25,7 @@ class RecruitmentAdmin(admin.ModelAdmin):
     search_fields = ('title', 'enterprise__name', 'job')
     readonly_fields = ('created_at', 'updated_at')
     date_hierarchy = 'created_at'
+    actions = ['approve_recruitments', 'reject_recruitments']
     
     fieldsets = (
         ('基本信息', {'fields': ('enterprise', 'title', 'job_type')}),
@@ -33,18 +34,15 @@ class RecruitmentAdmin(admin.ModelAdmin):
         ('状态信息', {'fields': ('status', 'is_urgent', 'deadline')}),
         ('时间信息', {'fields': ('created_at', 'updated_at')}),
     )
-
-@admin.register(JobApplication)
-class JobApplicationAdmin(admin.ModelAdmin):
-    """职位申请管理界面"""
-    list_display = ('applicant', 'recruitment', 'status', 'applied_at')
-    list_filter = ('status', 'applied_at')
-    search_fields = ('applicant__username', 'recruitment__title')
-    readonly_fields = ('applied_at',)
     
-    fieldsets = (
-        ('申请信息', {'fields': ('recruitment', 'applicant')}),
-        ('简历信息', {'fields': ('resume', 'resume_snapshot', 'pdf_file')}),
-        ('申请状态', {'fields': ('status',)}),
-        ('时间信息', {'fields': ('applied_at',)}),
-    )
+    def approve_recruitments(self, request, queryset):
+        """批量审核通过招聘信息"""
+        updated = queryset.update(status='approved')
+        self.message_user(request, f'成功审核通过 {updated} 条招聘信息。')
+    approve_recruitments.short_description = '批量审核通过'
+    
+    def reject_recruitments(self, request, queryset):
+        """批量拒绝招聘信息"""
+        updated = queryset.update(status='rejected')
+        self.message_user(request, f'成功拒绝 {updated} 条招聘信息。')
+    reject_recruitments.short_description = '批量拒绝'

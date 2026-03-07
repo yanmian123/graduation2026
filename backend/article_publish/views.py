@@ -7,7 +7,8 @@ from rest_framework.views import APIView
 from rest_framework.decorators import action
 from .models import Article, Attachment, Comment, Like, Collection, Follow
 from register.models import User
-from .serializers import ArticleSerializer, AttachmentSerializer, ArticleSerializer2,CommentSerializer,LikeStatusSerializer, CollectionStatusSerializer,FollowStatusSerializer
+from .serializers import ArticleSerializer, AttachmentSerializer, ArticleSerializer2,CommentSerializer,LikeStatusSerializer, CollectStatusSerializer, CollectionStatusSerializer,FollowStatusSerializer
+from user_info.serializers import UserSerializer
 from django.db import models
 import logging
 logger = logging.getLogger(__name__)
@@ -224,7 +225,8 @@ class ArticleViewSet(viewsets.ModelViewSet):
                         related_object_id=article.id,
                         related_object_type='article'
                     )
-            return Response(CollectionStatusSerializer({
+            # 即使重复收藏，也返回当前状态（已收藏）
+            return Response(CollectStatusSerializer({
                 'is_collected': True,
                 'count': article.star_count
             }).data)
@@ -236,7 +238,8 @@ class ArticleViewSet(viewsets.ModelViewSet):
                 article.star_count -= 1
                 article.save()
                 logger.info(f"收藏操作 - 收藏数更新为: {article.star_count}")
-            return Response(CollectionStatusSerializer({
+            # 即使重复取消，也返回当前状态（未收藏）
+            return Response(CollectStatusSerializer({
                 'is_collected': False,
                 'count': article.star_count
             }).data)
@@ -306,7 +309,8 @@ class ArticleViewSet(viewsets.ModelViewSet):
                     title='新评论回复',
                     message=f"{request.user.nickname or request.user.username}回复了你的评论: {comment.content[:20]}...",
                     related_object_id=article.id,
-                    related_object_type='article'
+                    related_object_type='article',
+                    comment_id=comment.id
                 )
             # 如果是顶级评论，通知文章作者
             elif not parent_comment and request.user != article.user:
@@ -316,7 +320,8 @@ class ArticleViewSet(viewsets.ModelViewSet):
                     title='新评论通知',
                     message=f"{request.user.nickname or request.user.username}评论了你的文章: {comment.content[:20]}...",
                     related_object_id=article.id,
-                    related_object_type='article'
+                    related_object_type='article',
+                    comment_id=comment.id
                 )
             
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -388,7 +393,125 @@ class CommentViewSet(viewsets.GenericViewSet):
 
 class UserViewSet(viewsets.GenericViewSet):
     queryset = User.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = []  # 移除默认认证要求
+    
+    def get_permissions(self):
+        """根据不同的action设置不同的权限"""
+        if self.action in ['retrieve', 'follow_status', 'info', 'followers', 'following', 'following_enterprises']:
+            return []  # 获取用户详情和关注状态不需要认证
+        return [IsAuthenticated()]  # 其他操作需要认证
+    
+    def retrieve(self, request, pk=None):
+        """获取用户详情（包括is_enterprise字段）"""
+        try:
+            user = self.get_object()
+            return Response({
+                'id': user.id,
+                'username': user.username,
+                'nickname': user.nickname,
+                'avatar': user.avatar.url if user.avatar else None,
+                'is_enterprise': user.is_enterprise,
+                'email': user.email
+            })
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['get', 'put'], url_path='info')
+    def info(self, request):
+        """获取或更新当前用户信息"""
+        try:
+            user = request.user
+            
+            if request.method == 'PUT':
+                serializer = UserSerializer(user, data=request.data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(serializer.data)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({
+                    'id': user.id,
+                    'username': user.username,
+                    'nickname': user.nickname,
+                    'avatar': user.avatar.url if user.avatar else None,
+                    'is_enterprise': user.is_enterprise,
+                    'email': user.email,
+                    'follower_count': Follow.objects.filter(followed=user).count(),
+                    'following_count': Follow.objects.filter(follower=user).count(),
+                    'following_enterprise_count': Follow.objects.filter(
+                        follower=user,
+                        follow_type='enterprise'
+                    ).count()
+                })
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['get'], url_path='followers')
+    def followers(self, request):
+        """获取当前用户的粉丝列表"""
+        try:
+            followers = Follow.objects.filter(followed=request.user).select_related('follower')
+            result = []
+            for follow in followers:
+                result.append({
+                    'id': follow.follower.id,
+                    'username': follow.follower.username,
+                    'nickname': follow.follower.nickname,
+                    'avatar': follow.follower.avatar.url if follow.follower.avatar else None
+                })
+            return Response(result)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['get'], url_path='following')
+    def following(self, request):
+        """获取当前用户关注的用户列表"""
+        try:
+            following = Follow.objects.filter(follower=request.user).select_related('followed')
+            result = []
+            for follow in following:
+                result.append({
+                    'id': follow.followed.id,
+                    'username': follow.followed.username,
+                    'nickname': follow.followed.nickname,
+                    'avatar': follow.followed.avatar.url if follow.followed.avatar else None
+                })
+            return Response(result)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['get'], url_path='following-enterprises')
+    def following_enterprises(self, request):
+        """获取当前用户关注的企业列表"""
+        try:
+            from enterprise.models import Enterprise
+            
+            # 获取当前用户关注的企业用户
+            enterprise_follows = Follow.objects.filter(
+                follower=request.user,
+                follow_type='enterprise'
+            ).select_related('followed')
+            
+            result = []
+            for follow in enterprise_follows:
+                user = follow.followed
+                # 获取企业信息
+                try:
+                    enterprise = Enterprise.objects.get(user=user)
+                    result.append({
+                        'id': user.id,
+                        'username': user.username,
+                        'name': enterprise.name,
+                        'logo': enterprise.logo.url if enterprise.logo else None,
+                        'industry': enterprise.industry,
+                        'scale': enterprise.scale
+                    })
+                except Enterprise.DoesNotExist:
+                    continue
+            
+            return Response(result)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # 获取关注状态
     @action(detail=True, methods=['get'])

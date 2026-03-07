@@ -1,4 +1,6 @@
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from register.models import User
 
 from django.conf import settings
@@ -90,3 +92,91 @@ class Follow(models.Model):
         unique_together = ['follower', 'followed', 'follow_type']  # 防止重复关注
         verbose_name="关注记录"
         ordering=['-created_at'] 
+
+class Report(models.Model):
+    REPORT_STATUS_CHOICES = [
+        ('pending', '待处理'),
+        ('approved', '已通过'),
+        ('rejected', '已拒绝'),
+    ]
+    
+    REPORT_TYPE_CHOICES = [
+        ('user', '举报用户'),
+        ('article', '举报文章'),
+        ('comment', '举报评论'),
+    ]
+    
+    reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_made', verbose_name="举报人")
+    reported_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_received', verbose_name="被举报用户")
+    report_type = models.CharField(max_length=20, choices=REPORT_TYPE_CHOICES, default='user', verbose_name="举报类型")
+    reason = models.CharField(max_length=200, verbose_name="举报原因")
+    description = models.TextField(blank=True, verbose_name="详细描述")
+    status = models.CharField(max_length=20, choices=REPORT_STATUS_CHOICES, default='pending', verbose_name="处理状态")
+    admin_feedback = models.TextField(blank=True, verbose_name="管理员反馈")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="举报时间")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
+    
+    class Meta:
+        verbose_name="举报记录"
+        ordering=['-created_at']
+        
+    def __str__(self):
+        return f"{self.reporter.username} 举报 {self.reported_user.username}: {self.reason}"
+
+
+@receiver(post_save, sender=Report)
+def send_report_notification(sender, instance, created, **kwargs):
+    """举报状态变化时发送通知"""
+    if not created:
+        try:
+            from django.core.cache import cache
+            
+            # 使用缓存避免重复发送通知
+            cache_key = f'report_notification_{instance.id}_{instance.status}'
+            if cache.get(cache_key):
+                return
+            
+            if instance.status == 'approved':
+                from notification.utils import create_notification
+                feedback = instance.admin_feedback if instance.admin_feedback else ''
+                feedback_text = f'。{feedback}' if feedback else ''
+                
+                create_notification(
+                    recipient=instance.reporter,
+                    notification_type='report_approved',
+                    title='举报处理结果',
+                    message=f'您对{instance.reported_user.nickname or instance.reported_user.username}的举报已通过处理{feedback_text}',
+                    related_object_id=instance.id,
+                    related_object_type='report'
+                )
+                
+                create_notification(
+                    recipient=instance.reported_user,
+                    notification_type='user_reported',
+                    title='账号被举报',
+                    message=f'您的账号因"{instance.reason}"被举报，已通过处理{feedback_text}',
+                    related_object_id=instance.id,
+                    related_object_type='report'
+                )
+                
+                cache.set(cache_key, True, 300)
+                
+            elif instance.status == 'rejected':
+                from notification.utils import create_notification
+                feedback = instance.admin_feedback if instance.admin_feedback else ''
+                feedback_text = f'。{feedback}' if feedback else ''
+                
+                create_notification(
+                    recipient=instance.reporter,
+                    notification_type='report_rejected',
+                    title='举报处理结果',
+                    message=f'您对{instance.reported_user.nickname or instance.reported_user.username}的举报已被拒绝{feedback_text}',
+                    related_object_id=instance.id,
+                    related_object_type='report'
+                )
+                
+                cache.set(cache_key, True, 300)
+        except Exception as e:
+            print(f"发送举报通知时出错: {e}")
+            import traceback
+            traceback.print_exc() 

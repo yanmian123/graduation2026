@@ -7,3 +7,6 @@ mysqlclient==2.2.7
 PyJWT==2.10.1
 sqlparse==0.5.3
 tzdata==2025.2
+channels==4.0.0
+channels-redis==4.2.0
+redis==5.0.1

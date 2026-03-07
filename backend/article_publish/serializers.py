@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Article,Attachment,Comment,Collection,Like
+from .models import Article,Attachment,Comment,Collection,Like,Report
 
 class AttachmentSerializer(serializers.ModelSerializer):
     '''附件序列化器'''
@@ -120,6 +120,7 @@ class CommentSerializer(serializers.ModelSerializer):
     nickname = serializers.ReadOnlyField(source='user.nickname')
     avatar = serializers.SerializerMethodField()
     user_id = serializers.ReadOnlyField(source='user.id')
+    article_id = serializers.ReadOnlyField(source='article.id')
     replies = serializers.SerializerMethodField()
     parent = serializers.PrimaryKeyRelatedField(read_only=True)
     parent_username = serializers.SerializerMethodField()
@@ -145,8 +146,8 @@ class CommentSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Comment
-        fields = ['id', 'content', 'created_at', 'like_count', 'username', 'nickname', 'avatar', 'parent', 'replies', 'user_id', 'parent_username', 'parent_nickname']
-        read_only_fields = ['id', 'created_at', 'like_count', 'username', 'nickname', 'avatar', 'parent', 'replies', 'user_id', 'parent_username', 'parent_nickname']
+        fields = ['id', 'content', 'created_at', 'like_count', 'username', 'nickname', 'avatar', 'parent', 'replies', 'user_id', 'parent_username', 'parent_nickname', 'article_id']
+        read_only_fields = ['id', 'created_at', 'like_count', 'username', 'nickname', 'avatar', 'parent', 'replies', 'user_id', 'parent_username', 'parent_nickname', 'article_id']
 
     def create(self, validated_data):
         return Comment.objects.create(
@@ -177,3 +178,36 @@ class CollectStatusSerializer(serializers.Serializer):
 # 关注状态序列化器
 class FollowStatusSerializer(serializers.Serializer):
     is_following = serializers.BooleanField()
+
+# 举报序列化器
+class ReportSerializer(serializers.ModelSerializer):
+    reporter_username = serializers.ReadOnlyField(source='reporter.username')
+    reporter_nickname = serializers.SerializerMethodField()
+    reported_user_username = serializers.ReadOnlyField(source='reported_user.username')
+    reported_user_nickname = serializers.SerializerMethodField()
+    
+    def get_reporter_nickname(self, obj):
+        return obj.reporter.nickname or obj.reporter.username
+    
+    def get_reported_user_nickname(self, obj):
+        return obj.reported_user.nickname or obj.reported_user.username
+    
+    class Meta:
+        model = Report
+        fields = ['id', 'reporter', 'reporter_username', 'reporter_nickname', 
+                  'reported_user', 'reported_user_username', 'reported_user_nickname',
+                  'report_type', 'reason', 'description', 'status', 'admin_feedback', 
+                  'created_at', 'updated_at']
+        read_only_fields = ['id', 'reporter', 'created_at', 'updated_at']
+
+# 举报创建序列化器
+class ReportCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = ['reported_user', 'report_type', 'reason', 'description']
+        
+    def create(self, validated_data):
+        return Report.objects.create(
+            reporter=self.context['request'].user,
+            **validated_data
+        )

@@ -5,9 +5,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework.views import APIView
 from rest_framework.decorators import action
-from .models import Article, Attachment, Comment, Like, Collection, Follow
+from .models import Article, Attachment, Comment, Like, Collection, Follow, Report
 from register.models import User
-from .serializers import ArticleSerializer, AttachmentSerializer, ArticleSerializer2,CommentSerializer,LikeStatusSerializer, CollectStatusSerializer, CollectionStatusSerializer,FollowStatusSerializer
+from .serializers import ArticleSerializer, AttachmentSerializer, ArticleSerializer2,CommentSerializer,LikeStatusSerializer, CollectStatusSerializer, CollectionStatusSerializer,FollowStatusSerializer,ReportSerializer,ReportCreateSerializer
 from user_info.serializers import UserSerializer
 from django.db import models
 import logging
@@ -59,10 +59,15 @@ class ArticleViewSet(viewsets.ModelViewSet):
         keyword=self.request.query_params.get('keyword')
         ordering=self.request.query_params.get('ordering')
         user_only=self.request.query_params.get('user_only')
+        user_id=self.request.query_params.get('user_id')
         
         # 如果请求参数 user_only=true，只返回当前用户的文章
         if user_only == 'true' and self.request.user.is_authenticated:
             queryset = queryset.filter(user=self.request.user)
+        
+        # 如果请求参数 user_id存在，返回指定用户的文章
+        if user_id:
+            queryset = queryset.filter(user_id=user_id)
         
         if category and category != 'all':
             queryset=queryset.filter(category=category)
@@ -267,10 +272,20 @@ class ArticleViewSet(viewsets.ModelViewSet):
         # 返回分页数据
         return paginator.get_paginated_response(serializer.data)
     
-    # 获取当前用户的收藏
-    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    # 获取收藏
+    @action(detail=False, methods=['get'])
     def collections(self, request):
-        collections = Collection.objects.filter(user=request.user).order_by('-created_at')
+        user_id = request.query_params.get('user_id')
+        
+        if user_id:
+            # 获取指定用户的收藏
+            collections = Collection.objects.filter(user_id=user_id).order_by('-created_at')
+        else:
+            # 获取当前用户的收藏（需要认证）
+            if not request.user.is_authenticated:
+                return Response({'error': '需要登录'}, status=status.HTTP_401_UNAUTHORIZED)
+            collections = Collection.objects.filter(user=request.user).order_by('-created_at')
+        
         serializer = CollectionStatusSerializer(collections, many=True)
         return Response(serializer.data)
 
@@ -364,10 +379,15 @@ class CommentViewSet(viewsets.GenericViewSet):
         '''获取当前用户的评论'''
         queryset = Comment.objects.all()
         user_only = self.request.query_params.get('user_only')
+        user_id = self.request.query_params.get('user_id')
         
         # 如果请求参数 user_only=true，只返回当前用户的评论
         if user_only == 'true' and self.request.user.is_authenticated:
             queryset = queryset.filter(user=self.request.user)
+        
+        # 如果请求参数 user_id存在，返回指定用户的评论
+        if user_id:
+            queryset = queryset.filter(user_id=user_id)
         
         return queryset.order_by('-created_at')
 
@@ -411,7 +431,12 @@ class UserViewSet(viewsets.GenericViewSet):
                 'nickname': user.nickname,
                 'avatar': user.avatar.url if user.avatar else None,
                 'is_enterprise': user.is_enterprise,
-                'email': user.email
+                'is_staff': user.is_staff,
+                'is_superuser': user.is_superuser,
+                'email': user.email,
+                'follower_count': Follow.objects.filter(followed=user).count(),
+                'following_count': Follow.objects.filter(follower=user).count(),
+                'following_enterprise_count': Follow.objects.filter(follower=user, follow_type='enterprise').count()
             })
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
@@ -435,6 +460,8 @@ class UserViewSet(viewsets.GenericViewSet):
                     'nickname': user.nickname,
                     'avatar': user.avatar.url if user.avatar else None,
                     'is_enterprise': user.is_enterprise,
+                    'is_staff': user.is_staff,
+                    'is_superuser': user.is_superuser,
                     'email': user.email,
                     'follower_count': Follow.objects.filter(followed=user).count(),
                     'following_count': Follow.objects.filter(follower=user).count(),
@@ -585,6 +612,45 @@ class UserViewSet(viewsets.GenericViewSet):
                 )
             
         return Response(status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=True, methods=['post'])
+    def report(self, request, pk=None):
+        """举报用户"""
+        reported_user = self.get_object()
+        
+        # 检查是否举报自己
+        if request.user == reported_user:
+            return Response(
+                {'error': '不能举报自己'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 检查是否已经举报过该用户
+        existing_report = Report.objects.filter(
+            reporter=request.user,
+            reported_user=reported_user,
+            status='pending'
+        ).first()
+        
+        if existing_report:
+            return Response(
+                {'error': '您已经举报过该用户，请等待管理员处理'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 创建举报
+        report = Report.objects.create(
+            reporter=request.user,
+            reported_user=reported_user,
+            report_type='user',
+            reason=request.data.get('reason', ''),
+            description=request.data.get('description', '')
+        )
+        
+        return Response(
+            {'message': '举报提交成功，管理员会尽快处理'},
+            status=status.HTTP_201_CREATED
+        )
 
 class FileUploadView(APIView):
     '''附件上传接口'''
@@ -659,3 +725,126 @@ class PostSearchView(APIView):
             'count': total,
             'next': page * page_size < total  # 是否有下一页
         })
+
+class ReportViewSet(viewsets.ModelViewSet):
+    """举报视图集"""
+    queryset = Report.objects.all()
+    permission_classes = [IsAuthenticated]
+    
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return ReportCreateSerializer
+        return ReportSerializer
+    
+    def get_permissions(self):
+        if self.action in ['update', 'partial_update', 'destroy']:
+            return [IsAuthenticated()]
+        return [IsAuthenticated()]
+    
+    def create(self, request, *args, **kwargs):
+        """创建举报"""
+        try:
+            # 检查是否举报自己
+            reported_user_id = request.data.get('reported_user')
+            if int(reported_user_id) == request.user.id:
+                return Response(
+                    {'error': '不能举报自己'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # 检查是否已经举报过该用户
+            existing_report = Report.objects.filter(
+                reporter=request.user,
+                reported_user_id=reported_user_id,
+                status='pending'
+            ).first()
+            
+            if existing_report:
+                return Response(
+                    {'error': '您已经举报过该用户，请等待管理员处理'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            
+            return Response(
+                {'message': '举报提交成功，管理员会尽快处理'},
+                status=status.HTTP_201_CREATED
+            )
+        except Exception as e:
+            logger.error(f'创建举报失败: {e}')
+            return Response(
+                {'error': '举报提交失败，请重试'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    @action(detail=False, methods=['get'])
+    def my_reports(self, request):
+        """获取当前用户的举报记录"""
+        reports = Report.objects.filter(reporter=request.user)
+        serializer = ReportSerializer(reports, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        """管理员通过举报"""
+        if not request.user.is_staff:
+            return Response(
+                {'error': '只有管理员可以处理举报'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        report = self.get_object()
+        report.status = 'approved'
+        report.admin_feedback = request.data.get('admin_feedback', '')
+        report.save()
+        
+        # 通知举报人
+        create_notification(
+            recipient=report.reporter,
+            notification_type='report_approved',
+            title='举报处理结果',
+            message=f'您对{report.reported_user.nickname or report.reported_user.username}的举报已通过处理。{report.admin_feedback}',
+            related_object_id=report.id,
+            related_object_type='report'
+        )
+        
+        # 通知被举报人
+        create_notification(
+            recipient=report.reported_user,
+            notification_type='user_reported',
+            title='账号被举报',
+            message=f'您的账号因"{report.reason}"被举报，已通过处理。{report.admin_feedback}',
+            related_object_id=report.id,
+            related_object_type='report'
+        )
+        
+        return Response({'message': '举报已通过处理'})
+    
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """管理员拒绝举报"""
+        if not request.user.is_staff:
+            return Response(
+                {'error': '只有管理员可以处理举报'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        report = self.get_object()
+        report.status = 'rejected'
+        report.admin_feedback = request.data.get('admin_feedback', '')
+        report.save()
+        
+        # 通知举报人
+        create_notification(
+            recipient=report.reporter,
+            notification_type='report_rejected',
+            title='举报处理结果',
+            message=f'您对{report.reported_user.nickname or report.reported_user.username}的举报已被拒绝。{report.admin_feedback}',
+            related_object_id=report.id,
+            related_object_type='report'
+        )
+        
+        return Response({'message': '举报已拒绝处理'})

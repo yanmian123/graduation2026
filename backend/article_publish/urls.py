@@ -1,11 +1,12 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from .views import ArticleViewSet, FileUploadView,PostSearchView,CommentViewSet, UserViewSet
+from .views import ArticleViewSet, FileUploadView,PostSearchView,CommentViewSet, UserViewSet, ReportViewSet
 
 router = DefaultRouter()
 router.register(r'posts', ArticleViewSet, basename='article')
 router.register(r'comments', CommentViewSet, basename='comment')
 router.register(r'users', UserViewSet, basename='user')
+router.register(r'reports', ReportViewSet, basename='report')
 
 urlpatterns = [
     path('posts/searching/', PostSearchView.as_view(), name='post-search'),

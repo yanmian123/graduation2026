@@ -215,6 +215,8 @@ const handleRegister = async () => {
       // 存储 Token
       localStorage.setItem('accessToken', loginResponse.data.access);
       localStorage.setItem('refreshToken', loginResponse.data.refresh);
+      sessionStorage.setItem('accessToken', loginResponse.data.access);
+      sessionStorage.setItem('refreshToken', loginResponse.data.refresh);
       // 保存token
       // const { access, refresh } = loginResponse.data
       // localStorage.setItem('accessToken', access)

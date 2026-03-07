@@ -252,7 +252,7 @@
 <script setup>
 import { useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
-import { ref, onMounted, h } from 'vue';
+import { ref, onMounted, onActivated, h } from 'vue';
 import axios from '@/utils/axios';
 import { chatApi } from '@/services/api';
 
@@ -511,6 +511,10 @@ const handlePageSizeChange = (newPageSize) => {
 onMounted(() => {
   fetchPosts();
   fetchHotData();
+});
+
+onActivated(() => {
+  syncFollowStateFromStorage();
 });
 
 

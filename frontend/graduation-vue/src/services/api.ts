@@ -94,10 +94,16 @@ export const notificationApi = {
 export const articleApi = {
   // 获取当前用户的文章
   getMyArticles: () => api.get('api/posts/', { params: { user_only: 'true' } }),
+  // 获取指定用户的文章
+  getUserArticles: (userId: number) => api.get('api/posts/', { params: { user_id: userId } }),
   // 获取当前用户的评论
   getMyComments: () => api.get('api/comments/', { params: { user_only: 'true' } }),
+  // 获取指定用户的评论
+  getUserComments: (userId: number) => api.get('api/comments/', { params: { user_id: userId } }),
   // 获取当前用户的收藏
-  getMyCollections: () => api.get('api/posts/collections/')
+  getMyCollections: () => api.get('api/posts/collections/'),
+  // 获取指定用户的收藏
+  getUserCollections: (userId: number) => api.get('api/posts/collections/', { params: { user_id: userId } })
 }
 
 // 投递记录相关API

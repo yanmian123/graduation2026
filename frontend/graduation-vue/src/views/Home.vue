@@ -8,7 +8,7 @@
       <!-- Banner轮播区 -->
       <n-carousel 
         autoplay 
-        interval="5000" 
+        :interval="5000" 
         class="banner-carousel"
         indicator-placement="bottom"
       >

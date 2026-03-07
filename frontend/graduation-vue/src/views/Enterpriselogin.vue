@@ -119,6 +119,8 @@ const handleLogin = async () => {
     const { access, refresh } = response.data
     localStorage.setItem('accessToken', access)
     localStorage.setItem('refreshToken', refresh)
+    sessionStorage.setItem('accessToken', access)
+    sessionStorage.setItem('refreshToken', refresh)
     
     // 🔥 新增：获取并保存完整用户信息
     const userInfoResponse = await axios.get('/user/info/')

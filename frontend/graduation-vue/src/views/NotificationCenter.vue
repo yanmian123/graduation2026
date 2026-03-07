@@ -11,17 +11,30 @@
           :options="filterOptions"
         />
         
-        <n-button
-          type="primary"
-          size="medium"
-          @click="handleMarkAllAsRead"
-          :disabled="notificationStore.isLoading || filteredNotifications.length === 0"
-        >
-          <template #icon>
-            <n-icon><CheckmarkCircle /></n-icon>
-          </template>
-          全部标记为已读
-        </n-button>
+        <div class="action-buttons">
+          <n-button
+            type="info"
+            size="medium"
+            @click="goToChat"
+          >
+            <template #icon>
+              <n-icon><Chatbubbles /></n-icon>
+            </template>
+            点击进入沟通界面
+          </n-button>
+          
+          <n-button
+            type="primary"
+            size="medium"
+            @click="handleMarkAllAsRead"
+            :disabled="notificationStore.isLoading || filteredNotifications.length === 0"
+          >
+            <template #icon>
+              <n-icon><CheckmarkCircle /></n-icon>
+            </template>
+            全部标记为已读
+          </n-button>
+        </div>
       </div>
       
       <!-- 通知列表 -->
@@ -98,7 +111,7 @@ import {
   NPagination,
   useMessage
 } from 'naive-ui'
-import { CheckmarkCircle, NotificationsOff } from '@vicons/ionicons5'
+import { CheckmarkCircle, NotificationsOff, Chatbubbles } from '@vicons/ionicons5'
 import { useNotificationStore } from '@/stores/notificationStore'
 
 const message = useMessage()
@@ -164,6 +177,10 @@ const handleMarkAllAsRead = async () => {
   }
 }
 
+const goToChat = () => {
+  router.push('/chat')
+}
+
 // 方法：点击通知
 const handleNotificationClick = async (notification) => {
   if (!notification.is_read) {
@@ -177,6 +194,10 @@ const handleNotificationClick = async (notification) => {
       hash: '#comments',
       query: notification.comment_id ? { commentId: notification.comment_id } : undefined
     })
+  } else if (notification.notification_type === 'report_approved' || notification.notification_type === 'report_rejected') {
+    router.push('/notifications')
+  } else if (notification.notification_type === 'user_reported') {
+    router.push('/notifications')
   }
 }
 
@@ -267,6 +288,11 @@ onMounted(async () => {
 
 .filter-select {
   width: 180px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
 }
 
 .notification-list-container {

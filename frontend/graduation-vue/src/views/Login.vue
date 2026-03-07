@@ -546,10 +546,13 @@ const handleUserLogin = async () => {
     const { access, refresh } = response.data
     localStorage.setItem('accessToken', access)
     localStorage.setItem('refreshToken', refresh)
+    sessionStorage.setItem('accessToken', access)
+    sessionStorage.setItem('refreshToken', refresh)
     
     const userInfoResponse = await axios.get('/user/info/')
     const userInfo = userInfoResponse.data
     localStorage.setItem('userInfo', JSON.stringify(userInfo))
+    sessionStorage.setItem('userInfo', JSON.stringify(userInfo))
     
     router.push(userInfo.is_enterprise ? '/enterprise/home' : '/home')
   } catch (error) {
@@ -575,10 +578,13 @@ const handleEnterpriseLogin = async () => {
     const { access, refresh } = response.data
     localStorage.setItem('accessToken', access)
     localStorage.setItem('refreshToken', refresh)
+    sessionStorage.setItem('accessToken', access)
+    sessionStorage.setItem('refreshToken', refresh)
     
     const userInfoResponse = await axios.get('/user/info/')
     const userInfo = userInfoResponse.data
     localStorage.setItem('userInfo', JSON.stringify(userInfo))
+    sessionStorage.setItem('userInfo', JSON.stringify(userInfo))
     
     router.push('/enterprise/home')
   } catch (error) {

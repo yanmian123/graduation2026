@@ -9,29 +9,36 @@
           <n-card bordered class="article-card">
             <!-- 作者信息 -->
             <div class="author-info">
-              <n-avatar :src="article.authorAvatar" class="author-avatar" round />
+              <n-avatar :src="article.authorAvatar" class="author-avatar" round @click="goToAuthorProfile" style="cursor: pointer;" />
               <div class="author-details">
-                <div class="author-name">{{ article.authorName }}</div>
+                <div class="author-name" @click="goToAuthorProfile" style="cursor: pointer;">{{ article.authorName }}</div>
                 <div class="author-identity">{{ article.authorIdentity }}</div>
               </div>
-              <n-button
-                v-if="!isFollowing"
-                size="small"
-                type="primary"
-                @click="handleFollow"
-                class="follow-btn"
-              >
-                关注
-              </n-button>
-              <n-button
-                v-else
-                size="small"
-                ghost
-                @click="handleFollow"
-                class="follow-btn"
-              >
-                已关注
-              </n-button>
+              <n-space>
+                <n-button
+                  v-if="!isFollowing"
+                  size="small"
+                  type="primary"
+                  @click="handleFollow"
+                  class="follow-btn"
+                >
+                  关注
+                </n-button>
+                <n-button
+                  v-else
+                  size="small"
+                  ghost
+                  @click="handleFollow"
+                  class="follow-btn"
+                >
+                  已关注
+                </n-button>
+                <n-dropdown :options="authorOptions" placement="bottom-start" @select="handleAuthorAction">
+                  <n-button :bordered="false" style="padding: 0 4px">
+                    ···
+                  </n-button>
+                </n-dropdown>
+              </n-space>
             </div>
 
             <!-- 文章元信息 -->
@@ -297,6 +304,8 @@ import {
   NText,
   NIcon,
   NAvatar,
+  NSpace,
+  NDropdown,
   // NTextarea
 } from 'naive-ui';
 
@@ -310,6 +319,14 @@ const menuOptions = [
   { key: 'jobs', label: '招聘信息' },
   { key: 'community', label: '经验社区', disabled: true },
   { key: 'resources', label: '就业资源' }
+];
+
+// 作者操作选项
+const authorOptions = [
+  {
+    label: '举报',
+    key: 'report'
+  }
 ];
 
 // 状态管理
@@ -814,6 +831,52 @@ const handleSearch = async () => {
   setTimeout(() => {
     window.dispatchEvent(new CustomEvent('search', { detail: keyword }));
   }, 100);
+};
+
+// 跳转到作者主页
+const goToAuthorProfile = () => {
+  if (article.value.authorId) {
+    router.push(`/user/profile/${article.value.authorId}`);
+  }
+};
+
+// 处理作者操作
+const handleAuthorAction = (key) => {
+  switch (key) {
+    case 'report':
+      handleReport();
+      break;
+    default:
+      break;
+  }
+};
+
+// 举报功能
+const handleReport = () => {
+  if (!article.value.authorId) {
+    message.error('无法获取作者信息');
+    return;
+  }
+  
+  // 使用prompt获取举报原因（简单实现）
+  const reason = prompt('请输入举报原因：');
+  if (reason && reason.trim()) {
+    submitReport(article.value.authorId, reason.trim());
+  }
+};
+
+// 提交举报
+const submitReport = async (userId, reason) => {
+  try {
+    await axios.post(`/user/users/${userId}/report/`, {
+      reason: reason,
+      report_type: 'user'
+    });
+    message.success('举报提交成功，管理员会尽快处理');
+  } catch (error) {
+    console.error('举报提交失败:', error);
+    message.error('举报提交失败，请重试');
+  }
 };
 
 // 滚动到评论区

@@ -41,7 +41,7 @@
           </n-input>
           
           <div class="notification-container" @mouseenter="openNotificationDropdown" @mouseleave="closeNotificationDropdown">
-            <div class="notification-trigger">
+            <div class="notification-trigger" @click="handleNotificationIconClick">
               <n-badge :value="unreadCount" :max="99" :show="unreadCount > 0">
                 <n-icon size="20" class="notification-icon">
                   <Notifications />
@@ -124,7 +124,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, onErrorCaptured, computed, h } from 'vue'
+import { ref, onMounted, onUnmounted, onErrorCaptured, computed, h, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { 
   NLayoutHeader, 
@@ -144,6 +144,7 @@ import {
 import { Briefcase, Search, Person, Notifications, NotificationsOutline, LogoGithub, LogoWechat } from '@vicons/ionicons5'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { getUserInfo } from '@/api/user'
+import { notificationWebSocketService } from '@/services/notificationWebSocket'
 
 // 错误处理
 const error = ref(null)
@@ -169,8 +170,21 @@ const unreadCount = computed(() => notificationStore.unreadCount)
 const notifications = computed(() => notificationStore.sortedNotifications.slice(0, 5))
 const showNotification = ref(false)
 
+// 监听未读通知数量变化
+watch(unreadCount, (newCount, oldCount) => {
+  console.log('🔔 未读通知数量变化', {
+    oldCount: oldCount,
+    newCount: newCount,
+    timestamp: new Date().toISOString()
+  })
+}, { immediate: true })
+
 // 打开通知下拉菜单
 const openNotificationDropdown = () => {
+  console.log('📂 打开通知下拉菜单', {
+    currentUnreadCount: unreadCount.value,
+    currentNotificationsCount: notifications.value.length
+  })
   showNotification.value = true
   notificationStore.fetchNotifications()
 }
@@ -217,15 +231,30 @@ const handleScroll = () => {
 // 生命周期
 onMounted(() => {
   console.log('Header组件挂载完成')
-  initializeComponent()
+  // 先注册通知回调，再初始化组件（连接WebSocket）
   notificationStore.registerNotificationHandler()
+  initializeComponent()
   window.addEventListener('scroll', handleScroll)
+  // 添加页面可见性监听
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
   notificationStore.unregisterNotificationHandler()
   window.removeEventListener('scroll', handleScroll)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
+
+// 处理页面可见性变化
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    console.log('📱 页面重新可见，刷新通知')
+    notificationStore.fetchUnreadCount()
+    if (!notificationWebSocketService.isConnected.value) {
+      notificationStore.connectWebSocket()
+    }
+  }
+}
 
 // 初始化组件
 const initializeComponent = async () => {
@@ -378,6 +407,10 @@ const markAllAsRead = () => {
 }
 
 const showAllNotifications = () => {
+  router.push('/notifications')
+}
+
+const handleNotificationIconClick = () => {
   router.push('/notifications')
 }
 </script>

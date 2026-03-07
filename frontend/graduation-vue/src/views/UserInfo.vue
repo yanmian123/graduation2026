@@ -48,12 +48,10 @@
       </template>
       <template #extra>
         <n-space>
+          <n-button v-if="form.is_staff || form.is_superuser" type="warning" @click="goToAdminVerification">管理员审核</n-button>
+          <n-button v-if="form.is_staff || form.is_superuser" type="error" @click="goToAdminReports">举报管理</n-button>
+          <n-button type="primary" @click="goToChat">私信与求职沟通</n-button>
           <n-button @click="showEditModal = true">编辑个人信息</n-button>
-          <n-dropdown :options="options" placement="bottom-start">
-            <n-button :bordered="false" style="padding: 0 4px">
-              ···
-            </n-button>
-          </n-dropdown>
         </n-space>
       </template>
       <template #footer>
@@ -68,9 +66,9 @@
         <div class="tab-content">
           <n-empty v-if="publishedArticles.length === 0" description="暂无发布内容" />
           <div v-else class="article-list">
-            <n-card v-for="article in publishedArticles" :key="article.id" class="article-card">
+            <n-card v-for="article in publishedArticles" :key="article.id" class="article-card" hoverable @click="openArticleDetail(article.id)">
               <h3>{{ article.title }}</h3>
-              <p>{{ article.content }}</p>
+              <p class="article-content">{{ stripHtmlTags(article.content) }}</p>
               <div class="article-meta">
                 <span>发布时间: {{ article.created_at }}</span>
                 <span>点赞数: {{ article.likes }}</span>
@@ -83,8 +81,8 @@
         <div class="tab-content">
           <n-empty v-if="comments.length === 0" description="暂无评论" />
           <div v-else class="comment-list">
-            <n-card v-for="comment in comments" :key="comment.id" class="comment-card">
-              <p>{{ comment.content }}</p>
+            <n-card v-for="comment in comments" :key="comment.id" class="comment-card" hoverable @click="openArticleWithComment(comment)">
+              <p class="article-content">{{ stripHtmlTags(comment.content) }}</p>
               <div class="comment-meta">
                 <span>评论时间: {{ comment.created_at }}</span>
               </div>
@@ -96,7 +94,7 @@
         <div class="tab-content">
           <n-empty v-if="applications.length === 0" description="暂无投递记录" />
           <div v-else class="application-list">
-            <n-card v-for="app in applications" :key="app.id" class="application-card">
+            <n-card v-for="app in applications" :key="app.id" class="application-card" hoverable @click="goToApplications">
               <h3>{{ app.position }}</h3>
               <p>公司: {{ app.company }}</p>
               <div class="application-meta">
@@ -111,9 +109,9 @@
         <div class="tab-content">
           <n-empty v-if="favorites.length === 0" description="暂无收藏" />
           <div v-else class="favorite-list">
-            <n-card v-for="item in favorites" :key="item.id" class="favorite-card">
+            <n-card v-for="item in favorites" :key="item.id" class="favorite-card" hoverable @click="openArticleDetail(item.article_id)">
               <h3>{{ item.title }}</h3>
-              <p>{{ item.description }}</p>
+              <p class="article-content">{{ stripHtmlTags(item.description) }}</p>
               <div class="favorite-meta">
                 <span>收藏时间: {{ item.created_at }}</span>
               </div>
@@ -408,7 +406,7 @@ import { articleApi, applicationApi } from '@/services/api';
 import { 
   NInput, NSelect, NInputNumber, NButton, NAvatar, NIcon, NUpload, 
   NSpace, useMessage, NImage, NPageHeader, NGrid, NGi, NStatistic, 
-  NBreadcrumb, NBreadcrumbItem, NDropdown, NDivider, NTabs, NTabPane, 
+  NBreadcrumb, NBreadcrumbItem, NDivider, NTabs, NTabPane, 
   NEmpty, NCard, NModal, NSpin
 } from 'naive-ui';
 import { Person, Business } from '@vicons/ionicons5';
@@ -444,21 +442,6 @@ const loadingFollowers = ref(false);
 const loadingFollowing = ref(false);
 const loadingFollowingEnterprises = ref(false);
 
-const options = [
-  {
-    label: '私信',
-    key: '1'
-  },
-  {
-    label: '催更',
-    key: '2'
-  },
-  {
-    label: '举报',
-    key: '3'
-  }
-];
-
 const form = ref({
   nickname: '',
   sex: '',
@@ -475,6 +458,8 @@ const form = ref({
   intended_city: '',
   personal_profile: '',
   avatar: '',
+  is_staff: false,
+  is_superuser: false,
 });
 
 const avatarFileList = ref([]);
@@ -609,6 +594,8 @@ const loadComments = async () => {
     const res = await articleApi.getMyComments();
     comments.value = res.data.map(comment => ({
       id: comment.id,
+      article_id: comment.article_id,
+      comment_id: comment.id,
       content: comment.content,
       created_at: comment.created_at
     }));
@@ -637,6 +624,7 @@ const loadFavorites = async () => {
     const res = await articleApi.getMyCollections();
     favorites.value = res.data.map(fav => ({
       id: fav.id,
+      article_id: fav.article_id,
       title: fav.article_title || '未知标题',
       description: fav.article_content?.substring(0, 100) || '暂无描述',
       created_at: fav.created_at
@@ -760,6 +748,37 @@ const goToEnterpriseProfile = (enterpriseUserId) => {
   router.push(`/enterprise/${enterpriseUserId}`);
 };
 
+const goToChat = () => {
+  router.push('/chat');
+};
+
+const goToAdminVerification = () => {
+  router.push('/admin/verification');
+};
+
+const goToAdminReports = () => {
+  router.push('/admin/reports');
+};
+
+const stripHtmlTags = (html) => {
+  if (!html) return '';
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return div.textContent || div.innerText || '';
+};
+
+const openArticleDetail = (articleId) => {
+  window.open(`/community/post/${articleId}`, '_blank');
+};
+
+const openArticleWithComment = (comment) => {
+  window.open(`/community/post/${comment.article_id}?commentId=${comment.comment_id}#comments`, '_blank');
+};
+
+const goToApplications = () => {
+  router.push('/applications');
+};
+
 const getIndustryText = (industry) => {
   const industryMap = {
     'IT': '信息技术',
@@ -860,6 +879,17 @@ label {
 .application-card,
 .favorite-card {
   margin-bottom: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+}
+
+.article-card:hover,
+.favorite-card:hover,
+.comment-card:hover,
+.application-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 .article-card h3,
@@ -868,14 +898,43 @@ label {
 .favorite-card h3 {
   margin: 0 0 10px 0;
   font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  line-height: 1.4;
+}
+
+.comment-card p {
+  margin: 0 0 10px 0;
+  color: #666;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 60px;
+}
+
+.article-content {
+  margin: 0 0 10px 0;
+  color: #666;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 60px;
 }
 
 .article-card p,
-.comment-card p,
 .application-card p,
 .favorite-card p {
   margin: 0 0 10px 0;
   color: #666;
+  line-height: 1.6;
 }
 
 .article-meta,

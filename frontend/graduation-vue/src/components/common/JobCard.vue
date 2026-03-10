@@ -25,6 +25,15 @@
           >
             {{ getRecruitTypeText(job.recruit_type) }}
           </n-tag>
+          <n-tag 
+            v-if="job.job_type"
+            :type="getJobTypeTag(job.job_type)"  
+            size="small"
+            class="job-type-tag"
+            round
+          >
+            {{ getJobTypeText(job.job_type) }}
+          </n-tag>
         </div>
       </div>
     </div>
@@ -168,6 +177,13 @@ const recruitTypeMap = {
   'INTERNSHIP': { text: '实习', type: 'warning' }
 }
 
+// 工作类型映射
+const jobTypeMap = {
+  'FULL_TIME': { text: '全职', type: 'primary' },
+  'PART_TIME': { text: '兼职', type: 'info' },
+  'INTERNSHIP': { text: '实习', type: 'warning' }
+}
+
 // 经验要求映射
 const experienceMap = {
   'FRESH': '应届毕业生',
@@ -204,6 +220,14 @@ const getRecruitTypeTag = (type) => {
 
 const getRecruitTypeText = (type) => {
   return recruitTypeMap[type]?.text || type
+}
+
+const getJobTypeTag = (type) => {
+  return jobTypeMap[type]?.type || 'default'
+}
+
+const getJobTypeText = (type) => {
+  return jobTypeMap[type]?.text || type
 }
 
 const getExperienceText = (experience) => {
@@ -361,6 +385,24 @@ const handleContact = async () => {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.urgent-tag {
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.type-tag {
+  background-color: #dbeafe;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.job-type-tag {
+  background-color: #e0e7ff;
+  color: #4f46e5;
+  border: 1px solid #c7d2fe;
 }
 
 .company-info {

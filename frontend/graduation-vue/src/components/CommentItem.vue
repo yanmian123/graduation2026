@@ -44,16 +44,11 @@
         >
           回复
         </n-button>
-        <n-button
-          v-if="getCurrentUserId() === comment.userId || getCurrentUserId() === articleAuthorId"
-          ghost
-          size="tiny"
-          class="comment-action-btn"
-          type="error"
-          @click="deleteComment(comment.id)"
-        >
-          删除
-        </n-button>
+        <n-dropdown :options="moreOptions" placement="bottom-start" @select="handleMoreAction">
+          <n-button ghost size="tiny" class="comment-action-btn">
+            ···
+          </n-button>
+        </n-dropdown>
       </div>
     </n-card>
     
@@ -94,7 +89,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { Heart, ChevronForward, ChevronDown } from '@vicons/ionicons5';
-import { NCard, NAvatar, NButton, NIcon } from 'naive-ui';
+import { NCard, NAvatar, NButton, NIcon, NDropdown } from 'naive-ui';
 
 const props = defineProps({
   comment: {
@@ -111,10 +106,42 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['like', 'reply', 'delete']);
+const emit = defineEmits(['like', 'reply', 'delete', 'report']);
 
 const isExpanded = ref(false);
 const showAll = ref(false);
+
+const moreOptions = computed(() => {
+  const options = [];
+  
+  const currentUserId = getCurrentUserId();
+  console.log('CommentItem - currentUserId:', currentUserId, 'type:', typeof currentUserId);
+  console.log('CommentItem - comment.userId:', props.comment.userId, 'type:', typeof props.comment.userId);
+  console.log('CommentItem - articleAuthorId:', props.articleAuthorId, 'type:', typeof props.articleAuthorId);
+  console.log('CommentItem - comment:', props.comment);
+  
+  const isCommentAuthor = currentUserId === props.comment.userId;
+  const isArticleAuthor = currentUserId === props.articleAuthorId;
+  console.log('CommentItem - isCommentAuthor:', isCommentAuthor);
+  console.log('CommentItem - isArticleAuthor:', isArticleAuthor);
+  console.log('CommentItem - canDelete:', isCommentAuthor || isArticleAuthor);
+  
+  if (isCommentAuthor || isArticleAuthor) {
+    console.log('CommentItem - 添加删除选项');
+    options.push({
+      label: '删除评论',
+      key: 'delete'
+    });
+  }
+  
+  options.push({
+    label: '举报评论',
+    key: 'report'
+  });
+  
+  console.log('CommentItem - moreOptions:', options);
+  return options;
+});
 
 const isTopLevelComment = computed(() => {
   return !props.comment.parentUsername;
@@ -220,13 +247,25 @@ const deleteComment = (commentId) => {
   emit('delete', commentId);
 };
 
+const handleMoreAction = (key) => {
+  if (key === 'delete') {
+    deleteComment(props.comment.id);
+  } else if (key === 'report') {
+    emit('report', props.comment.id);
+  }
+};
+
 const getCurrentUserId = () => {
-  const token = localStorage.getItem('access_token');
+  const token = sessionStorage.getItem('accessToken') || sessionStorage.getItem('enterpriseToken');
+  console.log('CommentItem - token:', token);
   if (!token) return null;
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.user_id;
-  } catch {
+    console.log('CommentItem - payload:', payload);
+    console.log('CommentItem - user_id from payload:', payload.user_id);
+    return parseInt(payload.user_id);
+  } catch (error) {
+    console.error('CommentItem - token解析错误:', error);
     return null;
   }
 };

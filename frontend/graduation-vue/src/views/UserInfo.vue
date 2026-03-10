@@ -51,7 +51,7 @@
           <n-button v-if="form.is_staff || form.is_superuser" type="warning" @click="goToAdminVerification">管理员审核</n-button>
           <n-button v-if="form.is_staff || form.is_superuser" type="error" @click="goToAdminReports">举报管理</n-button>
           <n-button type="primary" @click="goToChat">私信与求职沟通</n-button>
-          <n-button @click="showEditModal = true">编辑个人信息</n-button>
+          <n-button @click="openEditModal">编辑个人信息</n-button>
         </n-space>
       </template>
       <template #footer>
@@ -140,12 +140,13 @@
                 </template>
               </n-avatar>
               <n-upload
-                :default-file-list="avatarFileList"
                 @change="handleAvatarChange"
                 :max="1"
                 type="select"
+                :show-file-list="false"
+                :file-list="[]"
               >
-                <n-button type="primary" size="small">上传头像</n-button>
+                <n-button type="primary" size="small">更换头像</n-button>
               </n-upload>
             </n-space>
             <div class="avatar-hint">支持 JPG、PNG 格式，大小不超过 2MB</div>
@@ -443,6 +444,8 @@ const loadingFollowing = ref(false);
 const loadingFollowingEnterprises = ref(false);
 
 const form = ref({
+  id: null,
+  username: '',
   nickname: '',
   sex: '',
   age: null,
@@ -460,6 +463,9 @@ const form = ref({
   avatar: '',
   is_staff: false,
   is_superuser: false,
+  follower_count: 0,
+  following_count: 0,
+  following_enterprise_count: 0,
 });
 
 const avatarFileList = ref([]);
@@ -469,13 +475,19 @@ const handleAvatarChange = (data) => {
   console.log('handleAvatarChange called with:', data);
   avatarFileList.value = data.fileList;
   
-  if (avatarFileList.value.length > 0 && avatarFileList.value[0].file) {
-    const file = avatarFileList.value[0].file;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      previewAvatarUrl.value = e.target.result;
-    };
-    reader.readAsDataURL(file);
+  if (avatarFileList.value.length > 0) {
+    const fileItem = avatarFileList.value[0];
+    
+    if (fileItem.file) {
+      const file = fileItem.file;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        previewAvatarUrl.value = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    } else if (fileItem.url) {
+      previewAvatarUrl.value = fileItem.url;
+    }
   }
 };
 
@@ -504,11 +516,17 @@ onMounted(async () => {
     const response = await getUserInfo();
     const userData = response.data;
     
+    console.log('获取到的用户数据:', userData);
+    console.log('用户数据键值:', Object.keys(userData));
+    
     if (userData.age) userData.age = Number(userData.age);
     if (userData.graduation_year) userData.graduation_year = Number(userData.graduation_year);
     if (userData.intended_salary) userData.intended_salary = Number(userData.intended_salary);
     
     form.value = userData;
+    
+    console.log('赋值后的表单数据:', form.value);
+    console.log('表单数据键值:', Object.keys(form.value));
     
     let avatarUrl = form.value.avatar || '';
     if (avatarUrl && !avatarUrl.startsWith('http')) {
@@ -644,8 +662,6 @@ const handleSave = async () => {
 
     console.log('提交的基本信息:', submitData);
     
-    await updateUserInfo(submitData)
-    
     if (avatarFileList.value.length > 0 && avatarFileList.value[0].file) {
       console.log('检测到头像文件，开始上传...');
       
@@ -682,13 +698,40 @@ const handleSave = async () => {
       localStorage.setItem('userInfo', JSON.stringify(userInfo));
     }
     
+    await updateUserInfo(submitData)
+    
     message.success('信息更新成功');
     showEditModal.value = false;
+    
+    await loadStats();
   } catch (error) {
     message.error('更新失败，请检查输入');
     console.error('保存失败原因:', error);
     console.error('错误响应:', error.response);
   }
+};
+
+const openEditModal = async () => {
+  console.log('打开编辑模态框，当前表单数据:', form.value);
+  
+  try {
+    const response = await getUserInfo();
+    const userData = response.data;
+    
+    console.log('重新获取的用户数据:', userData);
+    
+    if (userData.age) userData.age = Number(userData.age);
+    if (userData.graduation_year) userData.graduation_year = Number(userData.graduation_year);
+    if (userData.intended_salary) userData.intended_salary = Number(userData.intended_salary);
+    
+    form.value = userData;
+    
+    console.log('更新后的表单数据:', form.value);
+  } catch (error) {
+    console.error('重新获取用户信息失败:', error);
+  }
+  
+  showEditModal.value = true;
 };
 
 const loadFollowers = async () => {

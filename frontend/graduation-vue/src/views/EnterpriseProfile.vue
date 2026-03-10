@@ -44,16 +44,26 @@
         >
           编辑企业信息
         </n-button>
-        <n-button
-          v-else
-          :type="isFollowing ? 'default' : 'primary'"
-          size="large"
-          round
-          @click="handleFollow"
-          :loading="following"
-        >
-          {{ isFollowing ? '已关注' : '关注企业' }}
-        </n-button>
+        <n-space v-else justify="center">
+          <n-button
+            :type="isFollowing ? 'default' : 'primary'"
+            size="large"
+            round
+            @click="handleFollow"
+            :loading="following"
+          >
+            {{ isFollowing ? '已关注' : '关注企业' }}
+          </n-button>
+          <n-button
+            type="success"
+            size="large"
+            round
+            @click="handleContact"
+            :loading="contacting"
+          >
+            联系企业
+          </n-button>
+        </n-space>
       </div>
 
       <!-- 企业详细信息 -->
@@ -129,7 +139,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
-import { NCard, NButton, NAvatar, NIcon, NTag, NEmpty } from 'naive-ui'
+import { NCard, NButton, NAvatar, NIcon, NTag, NEmpty, NSpace } from 'naive-ui'
 import {
   ChevronBackOutline,
   Business,
@@ -146,8 +156,8 @@ const route = useRoute()
 const router = useRouter()
 const message = useMessage()
 
-// 获取路由参数
-const enterpriseUserId = ref(route.params.id)
+// 获取路由参数（企业ID）
+const enterpriseId = ref(route.params.id)
 
 // 数据状态
 const enterprise = ref({})
@@ -155,6 +165,7 @@ const recruitments = ref([])
 const loading = ref(true)
 const isFollowing = ref(false)
 const following = ref(false)
+const contacting = ref(false)
 
 // 默认公司Logo
 const defaultCompanyLogo = ref('/images/default-company-logo.png')
@@ -191,7 +202,7 @@ const getScaleText = (scale) => {
 const fetchEnterpriseInfo = async () => {
   try {
     loading.value = true
-    const response = await axios.get(`/enterprises/user/${enterpriseUserId.value}/`)
+    const response = await axios.get(`/enterprises/${enterpriseId.value}/`)
     const data = response.data
     
     // 处理logo URL，添加localhost:8000前缀（如果是相对路径）
@@ -204,6 +215,9 @@ const fetchEnterpriseInfo = async () => {
     enterprise.value = data
     console.log('企业信息:', data)
     console.log('企业logo:', data.logo)
+    
+    // 企业信息加载完成后，检查关注状态
+    await checkFollowStatus()
   } catch (error) {
     console.error('获取企业信息失败:', error)
     message.error('获取企业信息失败，请稍后重试')
@@ -215,7 +229,7 @@ const fetchEnterpriseInfo = async () => {
 // 获取企业发布的职位
 const fetchEnterpriseRecruitments = async () => {
   try {
-    const response = await axios.get(`/recruitments/?enterprise_user_id=${enterpriseUserId.value}`)
+    const response = await axios.get(`/recruitments/?enterprise_id=${enterpriseId.value}`)
     recruitments.value = response.data.results || response.data
   } catch (error) {
     console.error('获取企业职位失败:', error)
@@ -224,8 +238,16 @@ const fetchEnterpriseRecruitments = async () => {
 
 // 检查是否为企业用户查看自己的企业信息
 const isOwnEnterprise = computed(() => {
-  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-  return userInfo.is_enterprise && userInfo.id === parseInt(enterpriseUserId.value)
+  const token = sessionStorage.getItem('accessToken') || sessionStorage.getItem('enterpriseToken')
+  if (!token) return false
+  
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    const currentUserId = parseInt(payload.user_id)
+    return payload.token_type === 'enterprise' && enterprise.value.user === currentUserId
+  } catch {
+    return false
+  }
 })
 
 // 计算企业logo URL
@@ -252,7 +274,7 @@ const checkFollowStatus = async () => {
   }
   
   try {
-    const response = await axios.get(`/users/${enterpriseUserId.value}/follow_status/`)
+    const response = await axios.get(`/users/${enterprise.value.user}/follow_status/`)
     isFollowing.value = response.data.is_following
   } catch (error) {
     console.error('获取关注状态失败:', error)
@@ -277,11 +299,11 @@ const handleFollow = async () => {
   following.value = true
   try {
     if (isFollowing.value) {
-      await axios.delete(`/users/${enterpriseUserId.value}/follow/`)
+      await axios.delete(`/users/${enterprise.value.user}/follow/`)
       isFollowing.value = false
       message.success('已取消关注')
     } else {
-      await axios.post(`/users/${enterpriseUserId.value}/follow/`)
+      await axios.post(`/users/${enterprise.value.user}/follow/`)
       isFollowing.value = true
       message.success('关注成功')
     }
@@ -290,6 +312,47 @@ const handleFollow = async () => {
     message.error('操作失败，请稍后重试')
   } finally {
     following.value = false
+  }
+}
+
+// 联系企业
+const handleContact = async () => {
+  const token = sessionStorage.getItem('accessToken') || sessionStorage.getItem('enterpriseToken')
+  if (!token) {
+    message.warning('请先登录后再联系企业')
+    router.push('/login')
+    return
+  }
+
+  let currentUserId = null
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    currentUserId = parseInt(payload.user_id)
+    if (payload.token_type === 'enterprise') {
+      message.error('企业用户不能联系其他企业')
+      return
+    }
+  } catch {
+    message.error('登录状态异常，请重新登录')
+    router.push('/login')
+    return
+  }
+
+  contacting.value = true
+  try {
+    const response = await axios.post('/chat/chatrooms/start_chat/', {
+      enterprise_user_id: enterprise.value.user,
+      job_seeker_user_id: currentUserId
+    })
+    
+    const roomId = response.data.id
+    message.success('聊天室已连接')
+    router.push(`/chat/${roomId}`)
+  } catch (error) {
+    console.error('创建聊天室失败:', error)
+    message.error('创建聊天失败，请稍后重试')
+  } finally {
+    contacting.value = false
   }
 }
 
@@ -312,7 +375,6 @@ const goBack = () => {
 onMounted(() => {
   fetchEnterpriseInfo()
   fetchEnterpriseRecruitments()
-  checkFollowStatus()
 })
 </script>
 

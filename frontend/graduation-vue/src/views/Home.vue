@@ -5,6 +5,13 @@
 
     <!-- 主体内容区 -->
     <main class="main-content">
+      <!-- 加载状态 -->
+      <div v-if="loading" class="loading-container">
+        <n-spin size="large" />
+      </div>
+      
+      <!-- 内容展示 -->
+      <template v-else>
       <!-- Banner轮播区 -->
       <n-carousel 
         autoplay 
@@ -65,47 +72,32 @@
       <section class="jobs-section">
         <div class="section-header">
           <h2>热门招聘</h2>
-          <div class="jobs-filter">
-            <n-select 
-              v-model:value="jobFilter" 
-              :options="jobFilterOptions" 
-              size="small"
-              @update:value="handleJobFilterChange"
-            />
-          </div>
+          <n-button text @click="seeMore('enterprises')">查看更多</n-button>
         </div>
         
         <div class="jobs-list">
           <div 
-            v-for="job in filteredJobs" 
-            :key="job.id" 
+            v-for="enterprise in enterprises" 
+            :key="enterprise.id" 
             class="job-item"
-            @click="$router.push(`/jobs/${job.id}`)"
+            @click="$router.push(`/enterprise/${enterprise.id}`)"
           >
             <div class="job-item-left">
-              <h3>{{ job.title }}</h3>
-              <p class="company">{{ job.company }}</p>
-              <div class="job-meta">
-                <span>{{ job.location }}</span>
-                <span>{{ job.experience }}</span>
-                <span>{{ job.education }}</span>
+              <n-avatar :src="enterprise.logo" class="enterprise-avatar" />
+              <div class="enterprise-info">
+                <h3>{{ enterprise.name }}</h3>
+                <p class="company">{{ enterprise.industry }}</p>
+                <div class="job-meta">
+                  <span>{{ enterprise.scale }}</span>
+                  <span>{{ enterprise.location }}</span>
+                </div>
               </div>
             </div>
             <div class="job-item-right">
-              <span class="job-salary">{{ job.salary }}</span>
-              <span class="publish-time">{{ job.publishTime }}</span>
+              <span class="job-count">有{{ enterprise.jobCount }}个在招职位</span>
             </div>
           </div>
         </div>
-        
-        <n-button 
-          type="primary" 
-          ghost 
-          class="load-more-btn"
-          @click="loadMoreJobs"
-        >
-          加载更多
-        </n-button>
       </section>
 
       <!-- 就业资源共享区 -->
@@ -182,44 +174,41 @@
           </div>
         </div>
       </section>
+      </template>
     </main>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, markRaw } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
 import { 
-  Briefcase,        // 对应 BriefcaseBusiness（商务公文包）
-  Search,           // 原图标存在，无需替换
-  Person,           // 原图标存在，无需替换
-  DocumentText,     // 对应 FileText（文件文本）
-  Book,             // 对应 BookOpen（打开的书）
-  BarChart,         // 原图标存在，无需替换
-  Calendar,         // 原图标存在，无需替换
-  Heart,            // 原图标存在，无需替换
-  Download,         // 原图标存在，无需替换
-  Create,           // 对应 Edit3（编辑）
-  CheckmarkCircle   // 对应 CheckCircle2（勾选圆圈）
-} from '@vicons/ionicons5';  // 假设路径保持一致
-
-import { NLayoutHeader, NMenu, NInput, NDropdown, NButton, NCarousel, NCard, NTag, NIcon, NAvatar } from 'naive-ui';
+  Briefcase,
+  Search,
+  Person,
+  DocumentText,
+  Book,
+  BarChart,
+  Calendar,
+  Heart,
+  Download,
+  Create,
+  CheckmarkCircle
+} from '@vicons/ionicons5';
+import { NLayoutHeader, NMenu, NInput, NDropdown, NButton, NCarousel, NCard, NTag, NIcon, NAvatar, NSpin, NSpace } from 'naive-ui';
 import axios from '@/utils/axios';
+import { articleApi } from '@/services/api';
 
-
-console.log('Naive UI检查:', {
-  naive: window.naive,
-  NTable: window.NTable
-})
 // 路由与消息提示
 const router = useRouter();
 const message = useMessage();
 
 // 状态管理
-const isLogin = ref(!!localStorage.getItem('accessToken'));
+const isLogin = ref(!!sessionStorage.getItem('accessToken') || !!sessionStorage.getItem('enterpriseToken'));
 const userAvatar = ref('');
 const searchQuery = ref('');
+const loading = ref(true);
 
 // 模拟数据 - Banner
 const banners = [
@@ -229,7 +218,7 @@ const banners = [
     desc: '名企校招信息实时更新，把握最佳求职时机',
     btnText: '立即查看',
     imgUrl: '/public/images/chinatelecom.jpg',
-    link: '/jobs?type=autumn'
+    link: '/jobs'
   },
   {
     id: 2,
@@ -237,7 +226,7 @@ const banners = [
     desc: '300+专业简历模板，助你脱颖而出',
     btnText: '领取模板',
     imgUrl: 'https://picsum.photos/id/239/1200/400',
-    link: '/resources?type=resume'
+    link: '/resumes/create'
   },
   {
     id: 3,
@@ -252,194 +241,41 @@ const banners = [
 // 推荐岗位数据
 const recommendedJobs = ref([]);
 
-// 获取最近发布的三个招聘岗位
-const fetchRecommendedJobs = async () => {
-  try {
-    const response = await axios.get('/recruitments/');
-    // 筛选已发布的招聘，并按创建时间倒序排序，取最近的3个
-    const publishedJobs = response.data.filter(job => job.status === 'PUBLISHED');
-    publishedJobs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    
-    // 转换API数据为前端需要的格式
-    recommendedJobs.value = publishedJobs.slice(0, 3).map(job => ({
-      id: job.id,
-      title: job.title,
-      company: job.enterprise_name || '未知企业', // 企业名称（直接使用顶级字段）
-      companyLogo: job.enterprise_logo || 'https://picsum.photos/id/1/60/60', // 企业logo（直接使用顶级字段）
-      salary: job.salary,
-      location: job.work_location, // 工作地点
-      type: job.job_type === 'FULL_TIME' ? '全职' : job.job_type === 'PART_TIME' ? '兼职' : '实习', // 工作类型
-      tags: ['JavaScript', 'Vue', 'React'] // 暂时使用默认标签
-    }));
-    
-    console.log('📊 获取推荐岗位成功，数量:', recommendedJobs.value.length);
-  } catch (error) {
-    console.error('❌ 获取推荐岗位失败:', error);
-    // 失败时使用默认数据
-    recommendedJobs.value = [
-      {
-        id: 1,
-        title: '前端开发工程师',
-        company: '字节跳动',
-        companyLogo: 'https://picsum.photos/id/1/60/60',
-        salary: '15k-25k',
-        location: '北京',
-        type: '校招',
-        tags: ['JavaScript', 'Vue', 'React']
-      },
-      {
-        id: 2,
-        title: '产品经理',
-        company: '腾讯',
-        companyLogo: 'https://picsum.photos/id/2/60/60',
-        salary: '12k-20k',
-        location: '深圳',
-        type: '实习',
-        tags: ['需求分析', '原型设计']
-      },
-      {
-        id: 3,
-        title: '数据分析师',
-        company: '阿里巴巴',
-        companyLogo: 'https://picsum.photos/id/3/60/60',
-        salary: '18k-30k',
-        location: '杭州',
-        type: '校招',
-        tags: ['Python', 'SQL', '可视化']
-      }
-    ];
-  }
-};
+// 热门企业数据
+const enterprises = ref([]);
 
-// 招聘信息
-const allJobs = ref([
-  {
-    id: 101,
-    title: 'Java开发工程师',
-    company: '华为',
-    location: '深圳',
-    experience: '应届毕业生',
-    education: '本科',
-    salary: '18k-28k',
-    publishTime: '2小时前'
-  },
-  {
-    id: 102,
-    title: 'UI设计师',
-    company: '网易',
-    location: '杭州',
-    experience: '实习',
-    education: '本科',
-    salary: '8k-12k',
-    publishTime: '1天前'
-  },
-  {
-    id: 103,
-    title: '算法工程师',
-    company: '百度',
-    location: '北京',
-    experience: '应届毕业生',
-    education: '硕士',
-    salary: '25k-40k',
-    publishTime: '3天前'
-  }
-]);
+// 社区文章数据
+const articles = ref([]);
 
-const jobFilter = ref('all');
-const jobFilterOptions = [
-  { label: '全部', value: 'all' },
-  { label: '校招', value: 'campus' },
-  { label: '实习', value: 'intern' },
-  { label: '社招', value: 'social' }
-];
+// 就业资源数据
+const resources = ref([]);
 
-const filteredJobs = computed(() => {
-  // 实际项目中根据筛选条件过滤
-  return allJobs.value;
-});
 
-// 资源共享区
-const resources = [
-  {
-    id: 1,
-    title: '2024互联网校招面试题集',
-    desc: '包含各大厂技术岗面试真题及答案解析',
-    icon: Book,
-    downloads: 1254,
-    updateTime: '2024-09-01'
-  },
-  {
-    id: 2,
-    title: '计算机专业简历模板',
-    desc: '针对计算机相关岗位设计的专业简历模板',
-    icon: DocumentText,
-    downloads: 3241,
-    updateTime: '2024-08-20'
-  },
-  {
-    id: 3,
-    title: '2024行业薪资报告',
-    desc: '各行业薪资水平分析及就业前景预测',
-    icon: BarChart,
-    downloads: 876,
-    updateTime: '2024-09-10'
-  },
-  {
-    id: 4,
-    title: '群面技巧与案例分析',
-    desc: '群面常见问题及应对策略，附实战案例',
-    icon: Create,
-    downloads: 983,
-    updateTime: '2024-08-15'
-  }
-];
-
-// 社区文章
-const articles = [
-  {
-    id: 1,
-    title: '双非本科如何逆袭进入大厂',
-    excerpt: '分享我的秋招备战经验，从简历准备到面试技巧，希望能帮到同样背景的同学...',
-    author: '学长Alex',
-    authorAvatar: 'https://picsum.photos/id/100/40/40',
-    date: '2024-09-05',
-    likes: 342
-  },
-  {
-    id: 2,
-    title: '产品经理面试全流程解析',
-    excerpt: '结合自己5家大厂的面试经历，整理出产品经理面试的核心考察点和准备方法...',
-    author: '学姐Mia',
-    authorAvatar: 'https://picsum.photos/id/101/40/40',
-    date: '2024-09-01',
-    likes: 289
-  }
-];
 
 // 工具列表
 const tools = [
   {
     id: 1,
     name: '简历生成器',
-    icon: Create,
+    icon: markRaw(Create),
     path: '/resumes/create'
   },
   {
     id: 2,
     name: '简历诊断',
-    icon: CheckmarkCircle,
+    icon: markRaw(CheckmarkCircle),
     path: '/tools/resume-check'
   },
   {
     id: 3,
     name: '薪资查询',
-    icon: BarChart,
+    icon: markRaw(BarChart),
     path: '/tools/salary'
   },
   {
     id: 4,
     name: '宣讲会日历',
-    icon: Calendar,
+    icon: markRaw(Calendar),
     path: '/events'
   }
 ];
@@ -460,7 +296,214 @@ onMounted(async () => {
   
   // 获取推荐岗位
   await fetchRecommendedJobs();
+  
+  // 获取热门企业
+  await fetchHotEnterprises();
+  
+  // 获取社区文章
+  await fetchArticles();
+  
+  // 获取就业资源
+  await fetchResources();
+  
+  loading.value = false;
 });
+
+// 获取推荐岗位
+const fetchRecommendedJobs = async () => {
+  try {
+    const response = await axios.get('/recruitments/', { 
+      params: { limit: 3, ordering: '-created_at' }
+    });
+    recommendedJobs.value = (response.data.results || response.data).slice(0, 3).map(job => ({
+      id: job.id,
+      title: job.title,
+      company: job.enterprise?.name || '未知企业',
+      companyLogo: job.enterprise?.logo || '',
+      salary: job.salary,
+      location: job.work_location,
+      type: job.job_type,
+      tags: [job.job_category, job.recruit_type]
+    }));
+  } catch (error) {
+    console.error('获取推荐岗位失败:', error);
+  }
+};
+
+// 获取热门企业
+const fetchHotEnterprises = async () => {
+  try {
+    const response = await axios.get('/enterprises/list_public/', { 
+      params: { limit: 20 }
+    });
+    const enterprisesData = (response.data.results || response.data).slice(0, 20);
+    
+    console.log('获取到的企业数据:', enterprisesData);
+    
+    if (enterprisesData.length === 0) {
+      console.warn('没有找到任何企业数据');
+      return;
+    }
+    
+    // 为每个企业获取职位数量
+    const enterprisesWithJobCount = await Promise.all(
+      enterprisesData.map(async (enterprise) => {
+        try {
+          const jobsResponse = await axios.get(`/recruitments/?enterprise_id=${enterprise.id}`);
+          const jobs = jobsResponse.data.results || jobsResponse.data;
+          
+          console.log(`企业 ${enterprise.name} 的职位数量:`, jobs.length);
+          
+          // 处理logo URL
+          let logoUrl = enterprise.logo || enterprise.company_logo || '';
+          if (logoUrl && !logoUrl.startsWith('http')) {
+            logoUrl = `http://localhost:8000${logoUrl}`;
+          }
+          
+          return {
+            id: enterprise.id,
+            name: enterprise.name,
+            industry: getIndustryText(enterprise.industry),
+            scale: getScaleText(enterprise.scale),
+            location: enterprise.address || '未知地点',
+            logo: logoUrl,
+            jobCount: jobs.length,
+            recruitType: jobs.length > 0 ? jobs[0].recruit_type : 'all'
+          };
+        } catch (error) {
+          console.error(`获取企业${enterprise.id}的职位失败:`, error);
+          return {
+            id: enterprise.id,
+            name: enterprise.name,
+            industry: getIndustryText(enterprise.industry),
+            scale: getScaleText(enterprise.scale),
+            location: enterprise.address || '未知地点',
+            logo: enterprise.logo || enterprise.company_logo || '',
+            jobCount: 0,
+            recruitType: 'all'
+          };
+        }
+      })
+    );
+    
+    console.log('处理后的企业数据:', enterprisesWithJobCount);
+    
+    // 按职位数量降序排序，显示职位最多的前3个企业
+    enterprises.value = enterprisesWithJobCount
+      .sort((a, b) => b.jobCount - a.jobCount)
+      .slice(0, 3);
+      
+    console.log('最终显示的企业:', enterprises.value);
+  } catch (error) {
+    console.error('获取热门企业失败:', error);
+    message.error('获取企业信息失败，请稍后重试');
+  }
+};
+
+// 行业映射
+const industryMap = {
+  'IT': '信息技术',
+  'FINANCE': '金融',
+  'EDUCATION': '教育',
+  'MEDIA': '传媒',
+  'MANUFACTURING': '制造业',
+  'SERVICE': '服务业',
+  'OTHER': '其他'
+};
+
+// 规模映射
+const scaleMap = {
+  'MICRO': '微型企业（<10人）',
+  'SMALL': '小型企业（10-99人）',
+  'MEDIUM': '中型企业（100-999人）',
+  'LARGE': '大型企业（1000人以上）'
+};
+
+const getIndustryText = (industry) => {
+  return industryMap[industry] || industry || '未知行业';
+};
+
+const getScaleText = (scale) => {
+  return scaleMap[scale] || scale || '未知规模';
+};
+
+// 获取社区文章
+const fetchArticles = async () => {
+  try {
+    const response = await axios.get('/posts/', { 
+      params: { limit: 6, ordering: '-created_at' }
+    });
+    articles.value = (response.data.results || response.data).slice(0, 6).map(article => ({
+      id: article.id,
+      title: article.title,
+      excerpt: article.content?.substring(0, 100) + '...' || '暂无简介',
+      author: article.user?.username || '匿名用户',
+      authorAvatar: article.user?.avatar || '',
+      date: formatTime(article.created_at),
+      likes: article.like_count || 0
+    }));
+  } catch (error) {
+    console.error('获取社区文章失败:', error);
+  }
+};
+
+// 获取就业资源
+const fetchResources = async () => {
+  try {
+    // 由于系统中没有专门的资源API，这里使用模拟数据
+    resources.value = [
+      {
+        id: 1,
+        title: '简历模板大全',
+        desc: '包含100+专业简历模板，涵盖各行各业',
+        icon: markRaw(DocumentText),
+        downloads: 12580,
+        updateTime: '2024-03-01'
+      },
+      {
+        id: 2,
+        title: '面试技巧指南',
+        desc: '大厂面试官亲授面试技巧和注意事项',
+        icon: markRaw(Book),
+        downloads: 8932,
+        updateTime: '2024-02-28'
+      },
+      {
+        id: 3,
+        title: '职业规划手册',
+        desc: '帮助你制定清晰的职业发展路径',
+        icon: markRaw(Briefcase),
+        downloads: 6754,
+        updateTime: '2024-02-25'
+      },
+      {
+        id: 4,
+        title: '薪资查询工具',
+        desc: '查询各行业各岗位的薪资水平',
+        icon: markRaw(BarChart),
+        downloads: 15432,
+        updateTime: '2024-03-05'
+      }
+    ];
+  } catch (error) {
+    console.error('获取就业资源失败:', error);
+  }
+};
+
+// 格式化时间
+const formatTime = (timeStr) => {
+  if (!timeStr) return '未知';
+  const date = new Date(timeStr);
+  const now = new Date();
+  const diff = Math.floor((now - date) / 1000);
+  
+  if (diff < 60) return '刚刚';
+  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
+  if (diff < 2592000) return `${Math.floor(diff / 86400)}天前`;
+  
+  return date.toLocaleDateString('zh-CN');
+};
 
 
 const handleBannerClick = (banner) => {
@@ -475,19 +518,13 @@ const handleToolClick = (tool) => {
   router.push(tool.path);
 };
 
-const handleJobFilterChange = () => {
-  // 实际项目中处理筛选逻辑
-};
-
-const loadMoreJobs = () => {
-  // 加载更多逻辑
-  message.info('加载更多招聘信息...');
-};
-
 const seeMore = (type) => {
   switch (type) {
     case 'recommendation':
       router.push('/jobs?type=recommended');
+      break;
+    case 'enterprises':
+      router.push('/enterprises');
       break;
     case 'resources':
       router.push('/resources');
@@ -513,6 +550,13 @@ const seeMore = (type) => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 16px;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
 }
 
 .section-header {
@@ -660,60 +704,91 @@ const seeMore = (type) => {
 
 /* 招聘列表 */
 .jobs-list {
-  border-radius: 8px;
-  border: 1px solid #e8e8e8;
-  overflow: hidden;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
 .job-item {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   padding: 16px;
-  border-bottom: 1px solid #e8e8e8;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  background-color: #fff;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
 }
 
 .job-item:hover {
   background-color: #f7f8fa;
+  border-color: #2d8cf0;
+  box-shadow: 0 2px 8px rgba(45, 140, 240, 0.1);
 }
 
-.job-item:last-child {
-  border-bottom: none;
+.job-item-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 12px;
 }
 
-.job-item-left h3 {
+.enterprise-avatar {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+}
+
+.enterprise-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.enterprise-info h3 {
   margin: 0 0 8px 0;
-  font-size: 16px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1d2129;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .company {
   color: #86909c;
   font-size: 14px;
   margin: 0 0 8px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .job-meta {
   display: flex;
-  gap: 16px;
-  font-size: 14px;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 13px;
   color: #4e5969;
+  line-height: 1.5;
+}
+
+.job-meta span {
+  display: inline-flex;
+  align-items: center;
 }
 
 .job-item-right {
-  text-align: right;
+  text-align: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e8e8e8;
 }
 
-.job-salary {
-  color: #f53f3f;
+.job-count {
+  color: #2d8cf0;
   font-weight: 500;
-  display: block;
-  margin-bottom: 4px;
-}
-
-.publish-time {
-  font-size: 12px;
-  color: #86909c;
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 .load-more-btn {
@@ -948,6 +1023,26 @@ const seeMore = (type) => {
   .banner-info p {
     font-size: 14px;
     margin-bottom: 16px;
+  }
+
+  .job-item-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .enterprise-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .enterprise-info h3 {
+    font-size: 16px;
+  }
+
+  .job-meta {
+    flex-direction: column;
+    gap: 4px;
   }
 
   .articles-list {

@@ -29,6 +29,7 @@ import UserVerification from '@/views/UserVerification.vue'
 import AdminVerification from '@/views/AdminVerification.vue'
 import AdminReportManagement from '@/views/AdminReportManagement.vue'
 import TalentPool from '@/views/TalentPool.vue'
+import EnterpriseList from '@/views/EnterpriseList.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -78,6 +79,7 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {path: '/enterprise/recruitments/:id/edit', name: 'RecruitmentEdit', component:RecruitmentEdit,meta: { layout: 'enterprise', requiresAuth: true }},
+    {path: '/enterprises', name: 'EnterpriseList', component: EnterpriseList, meta: { requiresAuth: true, layout: 'default' }},
   ],
 })
 

@@ -200,19 +200,19 @@ const closeNotificationDropdown = () => {
 const menuOptions = ref([
   { key: 'home', label: '首页' },
   { key: 'jobs', label: '招聘信息' },
-  { key: 'resources', label: '就业资源' },
+  { key: 'resumes', label: '简历管理' },
   { key: 'community', label: '经验社区'},
-  { key: 'events', label: '宣讲会' }
+  { key: 'enterprises', label: '企业列表' }
 ])
 
 // 用户下拉菜单
 const userDropdownOptions = ref([
-  { key: 'userinfo', label: '个人中心', icon: () => h(Person) },
-  { key: 'resumes', label: '我的简历', icon: () => h(Person) },
-  { key: 'applications', label: '我的申请', icon: () => h(Person) },
-  { key: 'verification', label: '实名认证', icon: () => h(Person) },
+  { key: 'userinfo', label: '个人中心' },
+  { key: 'resumes', label: '我的简历' },
+  { key: 'applications', label: '我的申请' },
+  { key: 'verification', label: '实名认证' },
   { key: 'divider', type: 'divider' },
-  { key: 'logout', label: '退出登录', icon: () => h(Person), type: 'warning' }
+  { key: 'logout', label: '退出登录', type: 'warning' }
 ])
 
 // 消息提示

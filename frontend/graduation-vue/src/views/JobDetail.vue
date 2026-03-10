@@ -261,8 +261,8 @@ const goBack = () => {
 
 // 点击企业信息跳转到企业主页
 const handleCompanyClick = () => {
-  if (job.value.enterprise_user_id) {
-    router.push(`/enterprise/${job.value.enterprise_user_id}`)
+  if (job.value.enterprise_id) {
+    router.push(`/enterprise/${job.value.enterprise_id}`)
   }
 }
 

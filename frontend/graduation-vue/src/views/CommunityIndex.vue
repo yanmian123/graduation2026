@@ -515,79 +515,12 @@ onMounted(() => {
 
 onActivated(() => {
   syncFollowStateFromStorage();
+  // 重新获取帖子列表以更新评论数等数据
+  fetchPosts();
+  fetchHotData();
 });
 
 
-
-// const handleSearch = async ()=>{
-//   const keyword = searchQuery.value.trim(); // 提前处理关键词，代码更简洁
-//   if (!keyword) {
-//     message.warning('请输入搜索关键词~'); // 提示用户输入
-//     return;
-//   }
-  
-//   isSearching.value = true; // 设置搜索状态
-//   loading.value = true; // 显示加载状态 
-//   try {
-//     const response = await axios.get('/posts/searching/', {
-//       params: { keyword,
-//        page: 1, 
-//        page_size: pageSize.value } 
-//     });
-//      // 格式化搜索结果（复用已有的格式化逻辑）
-//     searchResults.value = response.data.results.map(post => formatPost(post)); 
-//     totalResults.value = response.data.count; // 假设返回的结果数组
-//     hasMore.value = response.data.next !== null; // 根据后端分页判断
-//   } catch (error) {
-//         console.error('搜索请求失败:', error);
-//     console.error('错误状态码:', error.response?.status);
-//     console.error('请求的完整 URL:', error.config?.url);
-//     message.error('搜索失败，请重试');
-//   } finally {
-//     loading.value = false; // 隐藏加载状态
-//   }
-// }
-
-// const formatPost = (post) => {
-//   // 从帖子对象的顶层属性获取用户信息
-//   // 优先使用后端返回的nickname字段，如果没有或为空，则从username生成
-//   let authorName;
-//   if (post.nickname && post.nickname.trim()) {
-//       authorName = post.nickname;
-//   } else {
-//       const rawUsername = post.username || '匿名用户';
-//       const namePart = rawUsername.replace(/\d+/g, '');
-//       if (namePart) {
-//           authorName = namePart.charAt(0).toUpperCase() + namePart.slice(1) + '同学';
-//       } else {
-//           authorName = '用户' + rawUsername;
-//       }
-//   }
-  
-//   // 为头像URL添加localhost:8000前缀（如果是相对路径）
-//   const rawAvatar = post.user_avatar || post.avatar || post.user?.avatar || post.author?.avatar;
-//   const userAvatar = rawAvatar ? (rawAvatar.startsWith('http') ? rawAvatar : `http://localhost:8000${rawAvatar}`) : 'https://picsum.photos/id/237/40/40';
-//   const userId = post.user_id || post.user?.id || post.author?.id || Math.floor(Math.random() * 1000);
-  
-//   return {
-//     id: post.id,
-//     title: post.title,
-//     authorName: authorName,
-//     authorId: userId,
-//     authorAvatar: userAvatar,
-//     authorIdentity: post.identity || post.user?.profile?.identity || '职场前辈',
-//    category: post.category || '其他',
-//     authorSchool: post.user?.profile?.school || post.author?.school || '未填写',
-//     isFollowing: Math.random() > 0.5,
-//     postCount: Math.floor(Math.random() * 100) + 10,
-//     excerpt: post.content ? post.content.substring(0, 50) + (post.content.length > 50 ? '...' : '') : '',
-//     tags: post.tags ? post.tags.split(',') : [],
-//     likeCount: post.like_count || 0,
-//     commentCount: post.comment_count || 0,
-//     collectionCount: post.star_count || 0,
-//     publishTime: post.created_at ? formatTimeAgo(post.created_at) : ''
-//   };
-// };
 
 
 const handleFilterChange = (value) => {

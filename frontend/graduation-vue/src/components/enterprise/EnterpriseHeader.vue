@@ -169,10 +169,9 @@ const handleUserAction = (key) => {
       break
     case 'company':
       const enterpriseInfo = JSON.parse(localStorage.getItem('enterpriseInfo') || '{}')
-      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-      const userId = userInfo.id
-      if (userId) {
-        router.push(`/enterprise/${userId}`)
+      const enterpriseId = enterpriseInfo.id
+      if (enterpriseId) {
+        router.push(`/enterprise/${enterpriseId}`)
       } else {
         router.push('/enterprise/edit')
       }

@@ -14,6 +14,7 @@
                 <div class="author-name" @click="goToAuthorProfile" style="cursor: pointer;">{{ article.authorName }}</div>
                 <div class="author-identity">{{ article.authorIdentity }}</div>
               </div>
+              
               <n-space>
                 <n-button
                   v-if="!isFollowing"
@@ -176,6 +177,7 @@
                 @like="likeComment"
                 @reply="replyToComment"
                 @delete="deleteComment"
+                @report="reportComment"
               />
             </div>
 
@@ -268,6 +270,60 @@
         © 2024 职享圈 - 大学生就业经验社区
       </n-text>
     </n-layout-footer>
+
+    <!-- 举报文章模态框 -->
+    <n-modal v-model:show="showArticleReportModal" preset="card" title="举报文章" style="width: 500px">
+      <n-form-item label="举报原因">
+        <n-select
+          v-model:value="articleReportForm.reason"
+          :options="reportUserReasonOptions"
+          placeholder="请选择举报原因"
+        />
+      </n-form-item>
+      <n-form-item label="详细描述">
+        <n-input
+          v-model:value="articleReportForm.description"
+          type="textarea"
+          placeholder="请输入详细描述（选填）"
+          :rows="4"
+          maxlength="500"
+          show-count
+        />
+      </n-form-item>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="cancelArticleReport">取消</n-button>
+          <n-button type="primary" @click="submitArticleReport">提交举报</n-button>
+        </n-space>
+      </template>
+    </n-modal>
+
+    <!-- 举报评论模态框 -->
+    <n-modal v-model:show="showReportModal" preset="card" title="举报评论" style="width: 500px">
+      <n-form-item label="举报原因">
+        <n-select
+          v-model:value="reportForm.reason"
+          :options="reportReasonOptions"
+          placeholder="请选择举报原因"
+        />
+      </n-form-item>
+      <n-form-item label="详细描述">
+        <n-input
+          v-model:value="reportForm.description"
+          type="textarea"
+          placeholder="请输入详细描述（选填）"
+          :rows="4"
+          maxlength="500"
+          show-count
+        />
+      </n-form-item>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="cancelReport">取消</n-button>
+          <n-button type="primary" @click="submitCommentReport">提交举报</n-button>
+        </n-space>
+      </template>
+    </n-modal>
   </n-layout>
 </template>
 
@@ -306,7 +362,9 @@ import {
   NAvatar,
   NSpace,
   NDropdown,
-  // NTextarea
+  NModal,
+  NFormItem,
+  NSelect
 } from 'naive-ui';
 
 const router = useRouter();
@@ -365,6 +423,45 @@ const loading = ref(true);
 // 回复评论相关状态
 const replyingToCommentId = ref(null);
 const replyingToUsername = ref('');
+// 举报评论相关状态
+const showReportModal = ref(false);
+const reportCommentId = ref(null);
+const reportForm = ref({
+  reason: '',
+  description: ''
+});
+// 举报文章相关状态
+const showArticleReportModal = ref(false);
+const articleReportForm = ref({
+  reason: '',
+  description: ''
+});
+
+// 举报用户理由选项（用于举报文章作者）
+const reportUserReasonOptions = [
+  { label: '发布不良的内容或信息', value: '发布不良的内容或信息' },
+  { label: '传播色情或引导私下交易', value: '传播色情或引导私下交易' },
+  { label: '侵犯权益', value: '侵犯权益' },
+  { label: '未成年相关', value: '未成年相关' },
+  { label: '冒充他人', value: '冒充他人' },
+  { label: '涉嫌欺诈', value: '涉嫌欺诈' },
+  { label: '危害人身安全', value: '危害人身安全' },
+  { label: '网络暴力', value: '网络暴力' },
+  { label: '我不喜欢这个账号的内容', value: '我不喜欢这个账号的内容' },
+  { label: '其它', value: '其它' }
+];
+
+// 举报评论理由选项（保持不变）
+const reportReasonOptions = [
+  { label: '谩骂攻击', value: '谩骂攻击' },
+  { label: '色情低俗', value: '色情低俗' },
+  { label: '违法违规', value: '违法违规' },
+  { label: '广告营销', value: '广告营销' },
+  { label: '价值观导向不良', value: '价值观导向不良' },
+  { label: '政治敏感', value: '政治敏感' },
+  { label: '虚假冒充', value: '虚假冒充' },
+  { label: '其他', value: '其他' }
+];
 
 // 分类文本映射
 const categoryMap = {
@@ -858,25 +955,80 @@ const handleReport = () => {
     return;
   }
   
-  // 使用prompt获取举报原因（简单实现）
-  const reason = prompt('请输入举报原因：');
-  if (reason && reason.trim()) {
-    submitReport(article.value.authorId, reason.trim());
-  }
+  showArticleReportModal.value = true;
 };
 
-// 提交举报
-const submitReport = async (userId, reason) => {
+// 提交文章举报
+const submitArticleReport = async () => {
+  if (!articleReportForm.value.reason) {
+    message.warning('请选择举报原因');
+    return;
+  }
+  
   try {
-    await axios.post(`/user/users/${userId}/report/`, {
-      reason: reason,
+    await axios.post(`/user/users/${article.value.authorId}/report/`, {
+      reason: articleReportForm.value.reason,
+      description: articleReportForm.value.description,
       report_type: 'user'
     });
     message.success('举报提交成功，管理员会尽快处理');
+    showArticleReportModal.value = false;
+    articleReportForm.value = {
+      reason: '',
+      description: ''
+    };
   } catch (error) {
     console.error('举报提交失败:', error);
     message.error('举报提交失败，请重试');
   }
+};
+
+// 取消文章举报
+const cancelArticleReport = () => {
+  showArticleReportModal.value = false;
+  articleReportForm.value = {
+    reason: '',
+    description: ''
+  };
+};
+
+// 举报评论
+const reportComment = (commentId) => {
+  reportCommentId.value = commentId;
+  showReportModal.value = true;
+};
+
+// 提交评论举报
+const submitCommentReport = async () => {
+  if (!reportForm.value.reason) {
+    message.warning('请选择举报理由');
+    return;
+  }
+  
+  try {
+    await axios.post(`/comments/${reportCommentId.value}/report/`, {
+      reason: reportForm.value.reason,
+      description: reportForm.value.description
+    });
+    message.success('举报提交成功，管理员会尽快处理');
+    showReportModal.value = false;
+    reportForm.value = {
+      reason: '',
+      description: ''
+    };
+  } catch (error) {
+    console.error('举报评论失败:', error);
+    message.error('举报提交失败，请重试');
+  }
+};
+
+// 取消举报
+const cancelReport = () => {
+  showReportModal.value = false;
+  reportForm.value = {
+    reason: '',
+    description: ''
+  };
 };
 
 // 滚动到评论区

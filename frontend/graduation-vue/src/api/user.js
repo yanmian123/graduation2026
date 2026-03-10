@@ -15,9 +15,11 @@ export const updateUserInfo = (data) => {
   return axios.put('/user/info/', data);
 };
 
-// 上传用户头像
+// 上传用户头像（使用PUT方法更新用户信息）
 export const uploadUserAvatar = (formData) => {
-  // 不手动设置Content-Type，让axios自动处理
-  // axios会自动设置正确的Content-Type，包括boundary信息
-  return axios.post('/user/info/', formData);
+  return axios.put('/user/info/', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
 };

@@ -30,7 +30,6 @@ class ArticleViewSet(viewsets.ModelViewSet):
     - destroy: 删除文章
     """
     serializer_class = ArticleSerializer
-    # permission_classes = [permissions.IsAuthenticated, IsArticleOwner]  # 登录+所有者权限
 
     # 动态设置权限
     def get_permissions(self):
@@ -356,21 +355,29 @@ class CommentViewSet(viewsets.GenericViewSet):
     def destroy(self, request, *args, **kwargs):
         comment = self.get_object()
         
-        # 检查是否是评论作者
-        if comment.user != request.user:
+        # 检查是否是评论作者或文章作者
+        if comment.user != request.user and comment.article.user != request.user:
             return Response(
-                {'error': '只能删除自己的评论'}, 
+                {'error': '只能删除自己的评论或文章作者可以删除文章下的评论'}, 
                 status=status.HTTP_403_FORBIDDEN
             )
         
         # 获取关联的文章
         article = comment.article
         
-        # 删除评论
+        # 计算要删除的评论总数（包括所有二级评论）
+        if comment.parent is None:
+            # 顶级评论：计算自身 + 所有二级评论的数量
+            total_comments_to_delete = 1 + comment.replies.count()
+        else:
+            # 二级评论：只删除自己
+            total_comments_to_delete = 1
+        
+        # 删除评论（会级联删除二级评论）
         comment.delete()
         
         # 减少文章的评论数
-        article.comment_count -= 1
+        article.comment_count -= total_comments_to_delete
         article.save()
         
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -435,7 +442,7 @@ class UserViewSet(viewsets.GenericViewSet):
                 'is_superuser': user.is_superuser,
                 'email': user.email,
                 'follower_count': Follow.objects.filter(followed=user).count(),
-                'following_count': Follow.objects.filter(follower=user).count(),
+                'following_count': Follow.objects.filter(follower=user, follow_type='user').count(),
                 'following_enterprise_count': Follow.objects.filter(follower=user, follow_type='enterprise').count()
             })
         except Exception as e:
@@ -459,12 +466,25 @@ class UserViewSet(viewsets.GenericViewSet):
                     'username': user.username,
                     'nickname': user.nickname,
                     'avatar': user.avatar.url if user.avatar else None,
+                    'sex': user.sex,
+                    'age': user.age,
+                    'major': user.major,
+                    'phone_number': user.phone_number,
+                    'graduation_school': user.graduation_school,
+                    'education_level': user.education_level,
+                    'graduation_year': user.graduation_year,
+                    'current_status': user.current_status,
+                    'intended_position': user.intended_position,
+                    'intended_salary': user.intended_salary,
+                    'address': user.address,
+                    'intended_city': user.intended_city,
+                    'personal_profile': user.personal_profile,
                     'is_enterprise': user.is_enterprise,
                     'is_staff': user.is_staff,
                     'is_superuser': user.is_superuser,
                     'email': user.email,
                     'follower_count': Follow.objects.filter(followed=user).count(),
-                    'following_count': Follow.objects.filter(follower=user).count(),
+                    'following_count': Follow.objects.filter(follower=user, follow_type='user').count(),
                     'following_enterprise_count': Follow.objects.filter(
                         follower=user,
                         follow_type='enterprise'
@@ -494,7 +514,7 @@ class UserViewSet(viewsets.GenericViewSet):
     def following(self, request):
         """获取当前用户关注的用户列表"""
         try:
-            following = Follow.objects.filter(follower=request.user).select_related('followed')
+            following = Follow.objects.filter(follower=request.user, follow_type='user').select_related('followed')
             result = []
             for follow in following:
                 result.append({
@@ -526,7 +546,8 @@ class UserViewSet(viewsets.GenericViewSet):
                 try:
                     enterprise = Enterprise.objects.get(user=user)
                     result.append({
-                        'id': user.id,
+                        'id': enterprise.id,  # 使用企业ID而不是用户ID
+                        'user_id': user.id,    # 保留用户ID用于其他用途
                         'username': user.username,
                         'name': enterprise.name,
                         'logo': enterprise.logo.url if enterprise.logo else None,

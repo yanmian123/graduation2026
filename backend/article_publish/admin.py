@@ -39,24 +39,7 @@ class ReportAdmin(admin.ModelAdmin):
     
     def save_model(self, request, obj, form, change):
         """保存举报记录时检查状态变化并发送通知"""
-        if change:
-            try:
-                old_obj = Report.objects.get(pk=obj.pk)
-                old_status = old_obj.status
-                new_status = obj.status
-                
-                if old_status == 'pending' and new_status == 'approved':
-                    super().save_model(request, obj, form, change)
-                    self.send_approval_notification(obj)
-                elif old_status == 'pending' and new_status == 'rejected':
-                    super().save_model(request, obj, form, change)
-                    self.send_rejection_notification(obj)
-                else:
-                    super().save_model(request, obj, form, change)
-            except Report.DoesNotExist:
-                super().save_model(request, obj, form, change)
-        else:
-            super().save_model(request, obj, form, change)
+        super().save_model(request, obj, form, change)
     
     def send_approval_notification(self, report):
         """发送举报通过通知"""

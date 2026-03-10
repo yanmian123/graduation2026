@@ -55,17 +55,54 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
     parser_classes = [JSONParser,MultiPartParser, FormParser]  # 支持文件上传
     
     def get_queryset(self):
-        # 只能查询自己的企业信息
+        # retrieve 操作可以查询所有企业信息
+        if self.action == 'retrieve':
+            return Enterprise.objects.all()
+        # 其他操作只能查询自己的企业信息
         return Enterprise.objects.filter(user=self.request.user)
 
     def get_permissions(self):
-        if self.action == 'by_user':
+        if self.action == 'by_user' or self.action == 'list_public' or self.action == 'retrieve':
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated(), IsEnterpriseOwner()]
 
     def perform_create(self, serializer):
         # 创建时自动绑定当前登录用户
         serializer.save(user=self.request.user)
+        
+    @action(detail=False, methods=['get'], url_path='list_public')
+    def list_public(self, request):
+        """公开的企业列表接口（供所有用户查看）"""
+        try:
+            queryset = Enterprise.objects.all().select_related('user')
+            
+            # 搜索功能
+            search = request.query_params.get('search')
+            if search:
+                queryset = queryset.filter(
+                    Q(name__icontains=search) |
+                    Q(description__icontains=search) |
+                    Q(industry__icontains=search)
+                )
+            
+            # 分页
+            from rest_framework.pagination import PageNumberPagination
+            paginator = PageNumberPagination()
+            paginator.page_size = request.query_params.get('page_size', 12)
+            page = paginator.paginate_queryset(queryset, request)
+            
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return paginator.get_paginated_response(serializer.data)
+            
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
         
     # 新增：专门处理logo上传的方法
     @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser])
@@ -125,7 +162,15 @@ class RecruitmentViewSet(viewsets.ModelViewSet):
         user = self.request.user
         print(f"🔍 当前用户: {user.username}, 企业信息: {hasattr(user, 'enterprise_profile')}")
         
-        # 检查是否有enterprise_user_id参数（用于查看指定企业的招聘信息）
+        # 检查是否有enterprise_id参数（用于查看指定企业的招聘信息）
+        enterprise_id = self.request.query_params.get('enterprise_id')
+        if enterprise_id:
+            print(f"🔍 查看指定企业的招聘信息，enterprise_id: {enterprise_id}")
+            queryset = Recruitment.objects.filter(enterprise_id=enterprise_id, status="PUBLISHED")
+            print(f"🔍 查询到的招聘记录数量: {queryset.count()}")
+            return queryset.order_by("-created_at")
+        
+        # 检查是否有enterprise_user_id参数（用于查看指定企业的招聘信息，向后兼容）
         enterprise_user_id = self.request.query_params.get('enterprise_user_id')
         if enterprise_user_id:
             print(f"🔍 查看指定企业的招聘信息，enterprise_user_id: {enterprise_user_id}")

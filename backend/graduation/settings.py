@@ -287,6 +287,7 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # 刷新令牌有效期
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'TOKEN_OBTAIN_SERIALIZER': 'register.serializers.CustomTokenObtainPairSerializer',
 }
 
 # Django Admin Interface 配置

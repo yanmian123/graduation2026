@@ -25,6 +25,7 @@ class Article(models.Model):
     like_count=models.IntegerField(default=0, verbose_name="点赞数")
     star_count=models.IntegerField(default=0, verbose_name="收藏数")
     comment_count=models.IntegerField(default=0, verbose_name="评论数")
+    is_draft=models.BooleanField(default=False, verbose_name="是否为草稿")
     created_at=models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
     updated_at=models.DateTimeField(auto_now=True, verbose_name="更新时间")
     

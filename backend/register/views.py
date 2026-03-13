@@ -10,8 +10,65 @@ import random
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+def send_register_code(request):
+    """发送注册验证码"""
+    email = request.data.get('email')
+    
+    if not email:
+        return Response(
+            {"error": "请输入邮箱"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # 检查邮箱是否已被注册
+    if User.objects.filter(email=email).exists():
+        return Response(
+            {"error": "该邮箱已被注册"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # 生成6位随机验证码
+    code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+    
+    # 将验证码存入缓存，5分钟有效
+    cache_key = f'register_code_{email}'
+    cache.set(cache_key, code, 300)  # 300秒 = 5分钟
+    
+    # 这里应该发送邮件，简化版直接返回验证码
+    # 实际项目中需要配置邮件发送功能
+    return Response({
+        "message": "验证码已发送",
+        "code": code  # 开发环境返回验证码，生产环境应该发送邮件
+    })
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def register(request):
     print(f"Received data: {request.data}")  # 打印接收到的数据
+    
+    # 验证邮箱验证码
+    email = request.data.get('email')
+    code = request.data.get('verification_code')
+    
+    if not email or not code:
+        return Response(
+            {"error": "请输入邮箱和验证码"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # 验证验证码
+    cache_key = f'register_code_{email}'
+    cached_code = cache.get(cache_key)
+    
+    if not cached_code or cached_code != code:
+        return Response(
+            {"error": "验证码错误或已过期"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # 验证码验证通过，清除验证码
+    cache.delete(cache_key)
+    
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()

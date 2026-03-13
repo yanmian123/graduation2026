@@ -59,6 +59,7 @@ class ArticleViewSet(viewsets.ModelViewSet):
         ordering=self.request.query_params.get('ordering')
         user_only=self.request.query_params.get('user_only')
         user_id=self.request.query_params.get('user_id')
+        is_draft=self.request.query_params.get('is_draft')
         
         # 如果请求参数 user_only=true，只返回当前用户的文章
         if user_only == 'true' and self.request.user.is_authenticated:
@@ -67,6 +68,10 @@ class ArticleViewSet(viewsets.ModelViewSet):
         # 如果请求参数 user_id存在，返回指定用户的文章
         if user_id:
             queryset = queryset.filter(user_id=user_id)
+        
+        # 如果请求参数 is_draft 存在，过滤草稿
+        if is_draft is not None:
+            queryset = queryset.filter(is_draft=(is_draft == 'true'))
         
         if category and category != 'all':
             queryset=queryset.filter(category=category)
@@ -402,18 +407,25 @@ class CommentViewSet(viewsets.GenericViewSet):
     @action(detail=True, methods=['post', 'delete'],permission_classes=[IsAuthenticated])
     def like(self, request, pk=None):
         comment = self.get_object()
-        like, created = Like.objects.get_or_create(user=request.user, comment=comment)
+        like_exists = Like.objects.filter(user=request.user, comment=comment).exists()
         
-        if request.method == 'POST' and created:
-            comment.like_count += 1
-            comment.save()
-            return Response({'is_liked': True, 'count': comment.like_count})
+        if request.method == 'POST':
+            if not like_exists:
+                Like.objects.create(user=request.user, comment=comment)
+                comment.like_count += 1
+                comment.save()
+                return Response({'is_liked': True, 'count': comment.like_count})
+            else:
+                return Response({'is_liked': True, 'count': comment.like_count})
             
-        if request.method == 'DELETE' and not created:
-            like.delete()
-            comment.like_count -= 1
-            comment.save()
-            return Response({'is_liked': False, 'count': comment.like_count})
+        if request.method == 'DELETE':
+            if like_exists:
+                Like.objects.filter(user=request.user, comment=comment).delete()
+                comment.like_count -= 1
+                comment.save()
+                return Response({'is_liked': False, 'count': comment.like_count})
+            else:
+                return Response({'is_liked': False, 'count': comment.like_count})
             
         return Response(status=status.HTTP_400_BAD_REQUEST)
 

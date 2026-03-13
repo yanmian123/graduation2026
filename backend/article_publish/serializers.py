@@ -77,7 +77,7 @@ class ArticleSerializer(serializers.ModelSerializer):
             'view_count', 'like_count', 'comment_count', 'star_count',
             'created_at', 'updated_at', 'user_id', 'username', 'nickname',
             'user_avatar', 'is_collected', 'is_liked', 'is_followed', 'attachments',
-            'author_article_count', 'author_total_likes', 'author_follower_count'
+            'author_article_count', 'author_total_likes', 'author_follower_count', 'is_draft'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     
@@ -125,6 +125,7 @@ class CommentSerializer(serializers.ModelSerializer):
     parent = serializers.PrimaryKeyRelatedField(read_only=True)
     parent_username = serializers.SerializerMethodField()
     parent_nickname = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
     
     def get_avatar(self, obj):
         if obj.user.avatar:
@@ -144,10 +145,17 @@ class CommentSerializer(serializers.ModelSerializer):
             return obj.parent.user.nickname or obj.parent.user.username
         return None
     
+    def get_is_liked(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            from .models import Like
+            return Like.objects.filter(user=request.user, comment=obj).exists()
+        return False
+    
     class Meta:
         model = Comment
-        fields = ['id', 'content', 'created_at', 'like_count', 'username', 'nickname', 'avatar', 'parent', 'replies', 'user_id', 'parent_username', 'parent_nickname', 'article_id']
-        read_only_fields = ['id', 'created_at', 'like_count', 'username', 'nickname', 'avatar', 'parent', 'replies', 'user_id', 'parent_username', 'parent_nickname', 'article_id']
+        fields = ['id', 'content', 'created_at', 'like_count', 'username', 'nickname', 'avatar', 'parent', 'replies', 'user_id', 'parent_username', 'parent_nickname', 'article_id', 'is_liked']
+        read_only_fields = ['id', 'created_at', 'like_count', 'username', 'nickname', 'avatar', 'parent', 'replies', 'user_id', 'parent_username', 'parent_nickname', 'article_id', 'is_liked']
 
     def create(self, validated_data):
         return Comment.objects.create(

@@ -66,12 +66,27 @@
         <div class="tab-content">
           <n-empty v-if="publishedArticles.length === 0" description="暂无发布内容" />
           <div v-else class="article-list">
-            <n-card v-for="article in publishedArticles" :key="article.id" class="article-card" hoverable @click="openArticleDetail(article.id)">
-              <h3>{{ article.title }}</h3>
-              <p class="article-content">{{ stripHtmlTags(article.content) }}</p>
-              <div class="article-meta">
-                <span>发布时间: {{ article.created_at }}</span>
-                <span>点赞数: {{ article.likes }}</span>
+            <n-card v-for="article in publishedArticles" :key="article.id" class="article-card" hoverable>
+              <div class="article-content-wrapper">
+                <div class="article-main" @click="openArticleDetail(article.id)">
+                  <h3>{{ article.title }}</h3>
+                  <p class="article-content">{{ stripHtmlTags(article.content) }}</p>
+                  <div class="article-meta">
+                    <span>发布时间: {{ article.created_at }}</span>
+                    <span>点赞数: {{ article.likes }}</span>
+                  </div>
+                </div>
+                <div class="article-actions">
+                  <n-button size="small" quaternary type="primary" @click.stop="updateArticle(article.id)">
+                    更新
+                  </n-button>
+                  <n-button size="small" quaternary type="warning" @click.stop="unpublishArticle(article.id)">
+                    下架
+                  </n-button>
+                  <n-button size="small" quaternary type="error" @click.stop="deleteArticle(article.id)">
+                    删除
+                  </n-button>
+                </div>
               </div>
             </n-card>
           </div>
@@ -581,9 +596,9 @@ const loadStats = async () => {
     form.value.following_count = userData.following_count || 0;
     form.value.following_enterprise_count = userData.following_enterprise_count || 0;
     
-    // 获取我的文章
+    // 获取我的文章（排除草稿）
     const articlesRes = await articleApi.getMyArticles();
-    const articles = articlesRes.data;
+    const articles = articlesRes.data.filter(article => !article.is_draft);
     
     // 计算统计数据
     stats.value = {
@@ -814,6 +829,36 @@ const openArticleDetail = (articleId) => {
   window.open(`/community/post/${articleId}`, '_blank');
 };
 
+const updateArticle = (articleId) => {
+  const article = publishedArticles.value.find(a => a.id === articleId);
+  if (article) {
+    router.push({
+      path: '/community/edit',
+      query: { articleId: articleId }
+    });
+  }
+};
+
+const unpublishArticle = async (articleId) => {
+  try {
+    await axios.patch(`/posts/${articleId}/`, { is_draft: true });
+    message.success('文章已下架为草稿');
+    loadStats();
+  } catch (error) {
+    message.error('下架失败：' + (error.response?.data?.message || error.message));
+  }
+};
+
+const deleteArticle = async (articleId) => {
+  try {
+    await axios.delete(`/posts/${articleId}/`);
+    message.success('文章已删除');
+    loadStats();
+  } catch (error) {
+    message.error('删除失败：' + (error.response?.data?.message || error.message));
+  }
+};
+
 const openArticleWithComment = (comment) => {
   window.open(`/community/post/${comment.article_id}?commentId=${comment.comment_id}#comments`, '_blank');
 };
@@ -925,6 +970,39 @@ label {
   cursor: pointer;
   transition: all 0.3s ease;
   border-radius: 8px;
+}
+
+.article-content-wrapper {
+  display: flex;
+  gap: 12px;
+}
+
+.article-main {
+  flex: 1;
+  cursor: pointer;
+}
+
+.article-main:hover h3 {
+  color: #667eea;
+}
+
+.article-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 80px;
+}
+
+.article-actions .n-button {
+  width: 100%;
+}
+
+.article-header {
+  cursor: pointer;
+}
+
+.article-header:hover h3 {
+  color: #667eea;
 }
 
 .article-card:hover,

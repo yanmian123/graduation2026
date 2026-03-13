@@ -25,6 +25,28 @@
           />
         </n-form-item>
 
+        <!-- 验证码 -->
+        <n-form-item path="verificationCode" label="验证码">
+          <div class="code-input-wrapper">
+            <n-input 
+              v-model:value="formData.verificationCode" 
+              placeholder="请输入验证码"
+              :prefix="Key"
+              maxlength="6"
+            />
+            <n-button 
+              type="primary" 
+              ghost
+              :disabled="codeSent || countdown > 0"
+              :loading="sendingCode"
+              @click="sendVerificationCode"
+              class="send-code-btn"
+            >
+              {{ countdown > 0 ? `${countdown}秒后重发` : '发送验证码' }}
+            </n-button>
+          </div>
+        </n-form-item>
+
         <!-- 密码 -->
         <n-form-item path="password" label="密码">
           <n-input 
@@ -33,6 +55,7 @@
             placeholder="请输入密码"
             :prefix="LockClosed"
             show-password-on="mousedown"
+            autocomplete="new-password"
           />
         </n-form-item>
 
@@ -44,6 +67,7 @@
             placeholder="请再次输入密码"
             :prefix="LockClosed"
             show-password-on="mousedown"
+            autocomplete="new-password"
           />
         </n-form-item>
 
@@ -78,30 +102,31 @@
     </n-card>
   </div>
 
-
-
   
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { NForm, NFormItem, NInput, NButton, NCard, NSpin, NText } from 'naive-ui'
-// 修正图标导入，将User改为Person
-import { Person, LockClosed, Mail } from '@vicons/ionicons5'
+import { NForm, NFormItem, NInput, NButton, NCard, NSpin, NText, useMessage } from 'naive-ui'
+import { Person, LockClosed, Mail, Key } from '@vicons/ionicons5'
 import axios from 'axios'
 
-// 其余代码保持不变...
 const formData = ref({
   username: '',
   email: '',
   password: '',
-  confirmPassword: ''
+  confirmPassword: '',
+  verificationCode: ''
 })
 
 const formRef = ref(null)
 const loading = ref(false)
+const sendingCode = ref(false)
+const codeSent = ref(false)
+const countdown = ref(0)
 const router = useRouter()
+const message = useMessage()
 
 const rules = {
   username: [
@@ -111,6 +136,10 @@ const rules = {
   email: [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
     { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+  ],
+  verificationCode: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { len: 6, message: '验证码为6位数字', trigger: 'blur' }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
@@ -130,6 +159,52 @@ const rules = {
   ]
 }
 
+const sendVerificationCode = async () => {
+  if (!formData.value.email) {
+    message.warning('请先输入邮箱')
+    return
+  }
+  
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(formData.value.email)) {
+    message.warning('请输入正确的邮箱格式')
+    return
+  }
+  
+  try {
+    sendingCode.value = true
+    const response = await axios.post('http://localhost:8000/api/send-register-code/', {
+      email: formData.value.email
+    })
+    
+    if (response.status === 200) {
+      message.success(`验证码已发送到 ${formData.value.email}`)
+      codeSent.value = true
+      
+      const code = response.data.code
+      message.info(`开发环境验证码：${code}`)
+      
+      countdown.value = 60
+      const timer = setInterval(() => {
+        countdown.value--
+        if (countdown.value <= 0) {
+          clearInterval(timer)
+          codeSent.value = false
+        }
+      }, 1000)
+    }
+  } catch (error) {
+    console.error('发送验证码失败:', error)
+    if (error.response?.data?.error) {
+      message.error(error.response.data.error)
+    } else {
+      message.error('发送验证码失败，请稍后重试')
+    }
+  } finally {
+    sendingCode.value = false
+  }
+}
+
 const handleRegister = async () => {
   if (!formRef.value) return
   
@@ -137,19 +212,29 @@ const handleRegister = async () => {
     await formRef.value.validate()
     loading.value = true
     
-    // 与settings.py中的配置对应，使用正确的API地址
     const response = await axios.post('http://localhost:8000/api/register/', {
       username: formData.value.username,
       email: formData.value.email,
       password: formData.value.password,
-      password_confirm: formData.value.confirmPassword 
+      password_confirm: formData.value.confirmPassword,
+      verification_code: formData.value.verificationCode
     })
     
     if (response.status === 201) {
+      message.success('注册成功！请登录')
       router.push('/login')
     }
   } catch (error) {
     console.error('注册失败:', error)
+    if (error.response?.data?.error) {
+      message.error(error.response.data.error)
+    } else if (error.response?.data) {
+      const errors = error.response.data
+      const errorMessages = Object.values(errors).flat()
+      message.error(errorMessages[0] || '注册失败，请检查输入信息')
+    } else {
+      message.error('注册失败，请稍后重试')
+    }
   } finally {
     loading.value = false
   }
@@ -158,8 +243,6 @@ const handleRegister = async () => {
 const goToLogin = () => {
   router.push('/login')
 }
-
-
 </script>
 
 <style scoped>
@@ -179,5 +262,19 @@ const goToLogin = () => {
 
 .n-form-item {
   margin-bottom: 16px;
+}
+
+.code-input-wrapper {
+  display: flex;
+  gap: 8px;
+}
+
+.code-input-wrapper .n-input {
+  flex: 1;
+}
+
+.send-code-btn {
+  white-space: nowrap;
+  min-width: 100px;
 }
 </style>

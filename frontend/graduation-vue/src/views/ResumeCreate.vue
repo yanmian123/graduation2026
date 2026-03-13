@@ -1,78 +1,159 @@
 <template>
   <div class="resume-create">
     <h2>创建我的简历</h2>
-    <n-form ref="formRef" :model="form" :rules="rules" label-width="120px" class="form-container">
-      <!-- 姓名 -->
-      <n-form-item label="姓名" path="name">
-        <n-input v-model:value="form.name" placeholder="请输入姓名" />
-      </n-form-item>
+    
+    <!-- 基本信息 -->
+    <n-card title="基本信息" class="section-card">
+      <n-form ref="formRef" :model="form" :rules="rules" label-width="120px">
+        <!-- 姓名 -->
+        <n-form-item label="姓名" path="name">
+          <n-input v-model:value="form.name" placeholder="请输入姓名" />
+        </n-form-item>
 
-      <!-- 性别 -->
-      <n-form-item label="性别" path="sex">
-        <n-select v-model:value="form.sex" :options="sexOptions" placeholder="请选择性别" />
-      </n-form-item>
+        <!-- 性别 -->
+        <n-form-item label="性别" path="sex">
+          <n-select v-model:value="form.sex" :options="sexOptions" placeholder="请选择性别" />
+        </n-form-item>
 
-      <!-- 邮箱（必填） -->
-      <n-form-item label="邮箱" path="email">
-        <n-input v-model:value="form.email" type="email" placeholder="请输入邮箱（如xxx@test.com）" />
-      </n-form-item>
+        <!-- 邮箱（必填） -->
+        <n-form-item label="邮箱" path="email">
+          <n-input v-model:value="form.email" type="email" placeholder="请输入邮箱（如xxx@test.com）" />
+        </n-form-item>
 
-      <!-- 电话 -->
-      <n-form-item label="电话" path="phone">
-        <n-input v-model:value="form.phone" placeholder="请输入手机号（可含国家代码）" />
-      </n-form-item>
+        <!-- 电话 -->
+        <n-form-item label="电话" path="phone">
+          <n-input v-model:value="form.phone" placeholder="请输入手机号（可含国家代码）" />
+        </n-form-item>
 
-      <!-- 学历 -->
-      <n-form-item label="学历" path="education">
-        <n-select v-model:value="form.education" :options="educationOptions" placeholder="请选择学历" />
-      </n-form-item>
+        <!-- 学历 -->
+        <n-form-item label="学历" path="education">
+          <n-select v-model:value="form.education" :options="educationOptions" placeholder="请选择学历" />
+        </n-form-item>
 
-      <!-- 求职意向 -->
-      <n-form-item label="求职意向" path="job_objective">
-        <n-input v-model:value="form.job_objective" placeholder="请输入求职意向（如前端工程师）" />
-      </n-form-item>
+        <!-- 求职意向 -->
+        <n-form-item label="求职意向" path="job_objective">
+          <n-input v-model:value="form.job_objective" placeholder="请输入求职意向（如前端工程师）" />
+        </n-form-item>
+      </n-form>
+    </n-card>
 
-      <!-- 实习经历（文本域） -->
-      <n-form-item label="实习经历" path="internship_experience">
-        <n-input
-          v-model:value="form.internship_experience"
-          type="textarea"
-          rows="4"
-          placeholder="请描述实习经历（如公司、职位、职责）"
-        />
-      </n-form-item>
+    <!-- 经历信息 -->
+    <n-card title="经历信息" class="section-card">
+      <n-form ref="formRef" :model="form" :rules="rules" label-width="120px">
+        <!-- 实习经历（文本域） -->
+        <n-form-item label="实习经历" path="internship_experience">
+          <n-input
+            v-model:value="form.internship_experience"
+            type="textarea"
+            rows="4"
+            placeholder="请描述实习经历（如公司、职位、职责）"
+          />
+        </n-form-item>
 
-            <!-- PDF上传组件 -->
-      <n-form-item label="PDF简历" >
-        <n-upload
-          type="drag"
-          accept=".pdf"
-          :max-size="10 * 1024 * 1024"
-          :auto-upload="false" 
-          
-          @change="handleFileChange"
-          class="upload-area" 
-        >
-          <div >选择PDF文件</div>
-        </n-upload>
-      </n-form-item>
+        <!-- 工作经历（文本域） -->
+        <n-form-item label="工作经历" path="work_experience">
+          <n-input
+            v-model:value="form.work_experience"
+            type="textarea"
+            rows="4"
+            placeholder="请描述工作经历（如公司、职位、职责、成就）"
+          />
+        </n-form-item>
 
-      <!-- 提交按钮 -->
-      <n-form-item>
-        <n-button type="primary" @click="handleSubmit">创建简历</n-button>
-                <n-button @click="$router.push('/userinfo')" style="margin-left: 16px;">取消</n-button>
-        <n-button @click="$router.push('/resumes')" style="margin-left: 16px;">我的简历</n-button>
+        <!-- 项目经历（文本域） -->
+        <n-form-item label="项目经历" path="project_experience">
+          <n-input
+            v-model:value="form.project_experience"
+            type="textarea"
+            rows="4"
+            placeholder="请描述项目经历（如项目名称、角色、技术栈、成果）"
+          />
+        </n-form-item>
 
-      </n-form-item>
-    </n-form>
+        <!-- 校园经历（文本域） -->
+        <n-form-item label="校园经历" path="school_experience">
+          <n-input
+            v-model:value="form.school_experience"
+            type="textarea"
+            rows="4"
+            placeholder="请描述校园经历（如社团活动、学生会、志愿者经历）"
+          />
+        </n-form-item>
+      </n-form>
+    </n-card>
+
+    <!-- 其他信息 -->
+    <n-card title="其他信息" class="section-card">
+      <n-form ref="formRef" :model="form" :rules="rules" label-width="120px">
+        <!-- 奖学金（文本域） -->
+        <n-form-item label="奖学金" path="scholarships">
+          <n-input
+            v-model:value="form.scholarships"
+            type="textarea"
+            rows="3"
+            placeholder="请描述获得的奖学金（如国家奖学金、校级奖学金等）"
+          />
+        </n-form-item>
+
+        <!-- 技能标签（文本域） -->
+        <n-form-item label="技能标签" path="skills">
+          <n-input
+            v-model:value="form.skills"
+            type="textarea"
+            rows="3"
+            placeholder="请填写技能标签（如：Java、Python、Vue.js、MySQL等，用逗号分隔）"
+          />
+        </n-form-item>
+
+        <!-- 自我评价（文本域） -->
+        <n-form-item label="自我评价" path="self_evaluation">
+          <n-input
+            v-model:value="form.self_evaluation"
+            type="textarea"
+            rows="4"
+            placeholder="请进行自我评价（如性格特点、学习能力、团队协作等）"
+          />
+        </n-form-item>
+      </n-form>
+    </n-card>
+
+    <!-- PDF上传 -->
+    <n-card title="简历文件" class="section-card">
+      <n-form ref="formRef" :model="form" :rules="rules" label-width="120px">
+        <n-form-item label="PDF简历">
+          <n-upload
+            type="drag"
+            accept=".pdf"
+            :max-size="10 * 1024 * 1024"
+            :auto-upload="false" 
+            @change="handleFileChange"
+            class="upload-area" 
+          >
+            <div class="upload-text">
+              <n-icon :component="DocumentOutline" size="32" />
+              <div>点击或拖拽上传PDF文件</div>
+              <div class="upload-hint">支持 .pdf 格式，最大 10MB</div>
+            </div>
+          </n-upload>
+        </n-form-item>
+      </n-form>
+    </n-card>
+
+    <!-- 操作按钮 -->
+    <div class="action-buttons">
+      <n-button type="primary" size="large" @click="handleSubmit">创建简历</n-button>
+      <n-button size="large" @click="$router.push('/userinfo')">取消</n-button>
+      <n-button size="large" @click="$router.push('/resumes')">我的简历</n-button>
+    </div>
   </div>
-
 </template>
 
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useMessage} from 'naive-ui';
+import { useMessage } from 'naive-ui';
+import { NCard } from 'naive-ui';
+import { DocumentOutline } from '@vicons/ionicons5';
 import { createResume } from '@/api/resume';
 import axios from '@/utils/axios';
 
@@ -92,7 +173,7 @@ const form = ref({
   project_experience: '',
   school_experience: '',
   self_evaluation: '',
-  Scholarships: '',
+  scholarships: '',
   skills: '',
   job_objective: '',
   status: 'draft' // 默认草稿状态
@@ -136,8 +217,7 @@ const handleSubmit = async () => {
   try {
     await formRef.value.validate();
 
-
-        // 提交前再次验证文件（如果有文件）
+    // 提交前再次验证文件（如果有文件）
     if (selectedFile.value) {
       const isPdf = selectedFile.value.type === 'application/pdf' && 
                    selectedFile.value.name.toLowerCase().endsWith('.pdf');
@@ -233,33 +313,94 @@ const handleUploadError = (error) => {
 <style scoped>
 .resume-create {
   padding: 24px;
-}
-.form-container {
-  max-width: 800px;
-  margin-top: 24px;
-}
-n-form-item {
-  margin-bottom: 16px;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
-/* 在原style标签内添加 */
+.resume-create h2 {
+  text-align: center;
+  margin-bottom: 32px;
+  color: #333;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.section-card {
+  margin-bottom: 24px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.section-card :deep(.n-card__header) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 16px;
+  padding: 16px 20px;
+}
+
+.section-card :deep(.n-card__content) {
+  padding: 24px 20px;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 32px;
+  padding: 20px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
 .upload-area {
-  border: 2px dashed #4096ff; /* 蓝色虚线边框 */
-  padding: 30px;
-  border-radius: 6px;
+  border: 2px dashed #4096ff;
+  padding: 24px 20px;
+  border-radius: 8px;
   background: #f9f9f9;
   text-align: center;
   cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.upload-area:hover {
+  border-color: #1890ff;
+  background: #f0f7ff;
+  transform: translateY(-2px);
 }
 
 .upload-text {
   color: #666;
   font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
-/* 悬停效果 */
-.upload-area:hover {
-  border-color: #1890ff;
-  background: #f0f7ff;
+.upload-hint {
+  color: #999;
+  font-size: 12px;
+  margin-top: 0;
+}
+
+.n-form-item {
+  margin-bottom: 20px;
+}
+
+.n-form-item:last-child {
+  margin-bottom: 0;
+}
+
+:deep(.n-input) {
+  border-radius: 4px;
+}
+
+:deep(.n-input__textarea) {
+  border-radius: 4px;
+}
+
+:deep(.n-select) {
+  border-radius: 4px;
 }
 </style>

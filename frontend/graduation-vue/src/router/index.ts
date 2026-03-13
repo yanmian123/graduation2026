@@ -49,6 +49,7 @@ const router = createRouter({
     {path: '/enterprise/:id',name: 'EnterpriseProfile',component: EnterpriseProfile,meta: { requiresAuth: true ,layout: 'default' }},
     {path:'/community',name:'CommunityIndex',component:CommunityIndex, meta: { requiresAuth: true,layout:'default' }},
     {path:'/community/articlescreate',name:'CommunityCreate',component:CommunityCreate, meta: { requiresAuth: true,layout:'default' }},
+    {path:'/community/edit',name:'CommunityEdit',component:CommunityCreate, meta: { requiresAuth: true,layout:'default' }},
     {path:'/community/post/:id',name: 'ArticlesDetail',component: ArticlesDetail,meta: { requiresAuth: true,layout:'default' }},
     {path: '/enterprise/register', name: 'EnterpriseRegister', component:EnterpriseRegister,meta: { requiresAuth: false, layout:'empty' }},
     {path: '/enterprise',name: 'Enterprise',redirect: '/enterprise/home',meta: { layout: 'enterprise', requiresAuth: true }},

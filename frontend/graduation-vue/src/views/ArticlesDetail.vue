@@ -810,7 +810,25 @@ const submitComment = async () => {
 // 点赞评论
 const likeComment = async (commentId) => {
   try {
-    const comment = comments.value.find(c => c.id === commentId);
+    const findComment = (commentList, id) => {
+      for (const comment of commentList) {
+        if (comment.id === id) {
+          return comment;
+        }
+        if (comment.replies && comment.replies.length > 0) {
+          const found = findComment(comment.replies, id);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    
+    const comment = findComment(comments.value, commentId);
+    if (!comment) {
+      console.error('未找到评论:', commentId);
+      return;
+    }
+    
     if (comment.isLiked) {
       await axios.delete(`/comments/${commentId}/like/`);
       comment.likeCount--;
@@ -1236,11 +1254,86 @@ watch(
   line-height: 1.8;
   color: #1d2129;
   margin-bottom: 32px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .article-body img {
   max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 16px auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.article-body p {
+  margin: 12px 0;
+}
+
+.article-body h1,
+.article-body h2,
+.article-body h3,
+.article-body h4,
+.article-body h5,
+.article-body h6 {
+  margin: 20px 0 12px 0;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.article-body h1 {
+  font-size: 28px;
+}
+
+.article-body h2 {
+  font-size: 24px;
+}
+
+.article-body h3 {
+  font-size: 20px;
+}
+
+.article-body ul,
+.article-body ol {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.article-body li {
+  margin: 6px 0;
+}
+
+.article-body blockquote {
   margin: 16px 0;
+  padding: 12px 16px;
+  border-left: 4px solid #667eea;
+  background-color: #f7f8fa;
+  color: #4a5568;
+}
+
+.article-body pre {
+  margin: 16px 0;
+  padding: 16px;
+  background-color: #f7f8fa;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.article-body code {
+  background-color: #f7f8fa;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+}
+
+.article-body a {
+  color: #667eea;
+  text-decoration: none;
+}
+
+.article-body a:hover {
+  text-decoration: underline;
 }
 
 .article-tags {

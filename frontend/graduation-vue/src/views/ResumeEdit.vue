@@ -1,50 +1,126 @@
 <template>
   <div class="resume-edit">
     <h2>编辑简历</h2>
-    <n-form ref="formRef" :model="form" :rules="rules" label-width="120px" class="form-container">
-      <!-- 姓名 -->
-      <n-form-item label="姓名" path="name">
-        <n-input v-model:value="form.name" placeholder="请输入姓名" />
-      </n-form-item>
+    
+    <!-- 基本信息 -->
+    <n-card title="基本信息" class="section-card">
+      <n-form ref="formRef" :model="form" :rules="rules" label-width="120px">
+        <!-- 姓名 -->
+        <n-form-item label="姓名" path="name">
+          <n-input v-model:value="form.name" placeholder="请输入姓名" />
+        </n-form-item>
 
-      <!-- 性别 -->
-      <n-form-item label="性别" path="sex">
-        <n-select v-model:value="form.sex" :options="sexOptions" placeholder="请选择性别" />
-      </n-form-item>
+        <!-- 性别 -->
+        <n-form-item label="性别" path="sex">
+          <n-select v-model:value="form.sex" :options="sexOptions" placeholder="请选择性别" />
+        </n-form-item>
 
-      <!-- 邮箱（必填） -->
-      <n-form-item label="邮箱" path="email">
-        <n-input v-model:value="form.email" type="email" placeholder="请输入邮箱（如xxx@test.com）" />
-      </n-form-item>
+        <!-- 邮箱（必填） -->
+        <n-form-item label="邮箱" path="email">
+          <n-input v-model:value="form.email" type="email" placeholder="请输入邮箱（如xxx@test.com）" />
+        </n-form-item>
 
-      <!-- 电话 -->
-      <n-form-item label="电话" path="phone">
-        <n-input v-model:value="form.phone" placeholder="请输入手机号（可含国家代码）" />
-      </n-form-item>
+        <!-- 电话 -->
+        <n-form-item label="电话" path="phone">
+          <n-input v-model:value="form.phone" placeholder="请输入手机号（可含国家代码）" />
+        </n-form-item>
 
-      <!-- 学历 -->
-      <n-form-item label="学历" path="education">
-        <n-select v-model:value="form.education" :options="educationOptions" placeholder="请选择学历" />
-      </n-form-item>
+        <!-- 学历 -->
+        <n-form-item label="学历" path="education">
+          <n-select v-model:value="form.education" :options="educationOptions" placeholder="请选择学历" />
+        </n-form-item>
 
-      <!-- 求职意向 -->
-      <n-form-item label="求职意向" path="job_objective">
-        <n-input v-model:value="form.job_objective" placeholder="请输入求职意向（如前端工程师）" />
-      </n-form-item>
+        <!-- 求职意向 -->
+        <n-form-item label="求职意向" path="job_objective">
+          <n-input v-model:value="form.job_objective" placeholder="请输入求职意向（如前端工程师）" />
+        </n-form-item>
+      </n-form>
+    </n-card>
 
-      <!-- 实习经历（文本域） -->
-      <n-form-item label="实习经历" path="internship_experience">
-        <n-input
-          v-model:value="form.internship_experience"
-          type="textarea"
-          rows="4"
-          placeholder="请描述实习经历（如公司、职位、职责）"
-        />
-      </n-form-item>
+    <!-- 经历信息 -->
+    <n-card title="经历信息" class="section-card">
+      <n-form ref="formRef" :model="form" :rules="rules" label-width="120px">
+        <!-- 实习经历（文本域） -->
+        <n-form-item label="实习经历" path="internship_experience">
+          <n-input
+            v-model:value="form.internship_experience"
+            type="textarea"
+            rows="4"
+            placeholder="请描述实习经历（如公司、职位、职责）"
+          />
+        </n-form-item>
 
-      <!-- PDF文件操作区域 -->
-      <n-form-item label="PDF简历">
-        <div class="pdf-operations">
+        <!-- 工作经历（文本域） -->
+        <n-form-item label="工作经历" path="work_experience">
+          <n-input
+            v-model:value="form.work_experience"
+            type="textarea"
+            rows="4"
+            placeholder="请描述工作经历（如公司、职位、职责、成就）"
+          />
+        </n-form-item>
+
+        <!-- 项目经历（文本域） -->
+        <n-form-item label="项目经历" path="project_experience">
+          <n-input
+            v-model:value="form.project_experience"
+            type="textarea"
+            rows="4"
+            placeholder="请描述项目经历（如项目名称、角色、技术栈、成果）"
+          />
+        </n-form-item>
+
+        <!-- 校园经历（文本域） -->
+        <n-form-item label="校园经历" path="school_experience">
+          <n-input
+            v-model:value="form.school_experience"
+            type="textarea"
+            rows="4"
+            placeholder="请描述校园经历（如社团活动、学生会、志愿者经历）"
+          />
+        </n-form-item>
+      </n-form>
+    </n-card>
+
+    <!-- 其他信息 -->
+    <n-card title="其他信息" class="section-card">
+      <n-form ref="formRef" :model="form" :rules="rules" label-width="120px">
+        <!-- 奖学金（文本域） -->
+        <n-form-item label="奖学金" path="scholarships">
+          <n-input
+            v-model:value="form.scholarships"
+            type="textarea"
+            rows="3"
+            placeholder="请描述获得的奖学金（如国家奖学金、校级奖学金等）"
+          />
+        </n-form-item>
+
+        <!-- 技能标签（文本域） -->
+        <n-form-item label="技能标签" path="skills">
+          <n-input
+            v-model:value="form.skills"
+            type="textarea"
+            rows="3"
+            placeholder="请填写技能标签（如：Java、Python、Vue.js、MySQL等，用逗号分隔）"
+          />
+        </n-form-item>
+
+        <!-- 自我评价（文本域） -->
+        <n-form-item label="自我评价" path="self_evaluation">
+          <n-input
+            v-model:value="form.self_evaluation"
+            type="textarea"
+            rows="4"
+            placeholder="请进行自我评价（如性格特点、学习能力、团队协作等）"
+          />
+        </n-form-item>
+      </n-form>
+    </n-card>
+
+    <!-- PDF上传 -->
+    <n-card title="简历文件" class="section-card">
+      <n-form ref="formRef" :model="form" :rules="rules" label-width="120px">
+        <n-form-item label="PDF简历">
           <!-- 已上传PDF预览 -->
           <div v-if="form.pdf_url" class="pdf-preview">
             <div class="preview-header">
@@ -74,65 +150,34 @@
               @change="handleFileChange"
               class="upload-area"
             >
-              <div class="upload-content">
-                <n-icon size="48" class="upload-icon">
-                  <CloudUploadOutline />
-                </n-icon>
-                <div class="upload-text">点击或拖拽PDF文件到此处上传</div>
-                <div class="upload-hint">支持.pdf格式，最大10MB</div>
+              <div class="upload-text">
+                <n-icon :component="DocumentOutline" size="32" />
+                <div>点击或拖拽上传PDF文件</div>
+                <div class="upload-hint">支持 .pdf 格式，最大 10MB</div>
               </div>
             </n-upload>
           </div>
-        </div>
-      </n-form-item>
+        </n-form-item>
+      </n-form>
+    </n-card>
 
-      <!-- 提交按钮 -->
-      <n-form-item>
-        <n-button type="primary" @click="handleSubmit" :loading="submitting">保存修改</n-button>
-        <n-button @click="$router.push('/resumes')" style="margin-left: 16px;">取消</n-button>
-      </n-form-item>
-    </n-form>
-
-    <!-- PDF预览模态框 -->
-    <n-modal v-model:show="showPdfPreview" transform-origin="center">
-      <n-card
-        style="width: 90%; max-width: 1000px; height: 90vh;"
-        :bordered="false"
-        size="huge"
-        role="dialog"
-        aria-modal="true"
-      >
-        <template #header>
-          <div class="modal-header">
-            <span>PDF预览 - {{ currentPdfName }}</span>
-            <n-button quaternary circle @click="showPdfPreview = false">
-              <template #icon>
-                <n-icon><CloseOutline /></n-icon>
-              </template>
-            </n-button>
-          </div>
-        </template>
-        <div class="pdf-viewer-container">
-          <iframe
-            v-if="showPdfPreview"
-            :src="pdfPreviewUrl"
-            width="100%"
-            height="100%"
-            style="border: none;"
-            title="PDF预览"
-          ></iframe>
-        </div>
-      </n-card>
-    </n-modal>
+    <!-- 操作按钮 -->
+    <div class="action-buttons">
+      <n-button type="primary" size="large" @click="handleSubmit" :loading="submitting">保存修改</n-button>
+      <n-button size="large" @click="$router.push('/resumes')">取消</n-button>
+      <n-button size="large" @click="$router.push('/resumes')">我的简历</n-button>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useMessage } from 'naive-ui';
+import { NCard } from 'naive-ui';
+import { EyeOutline, DocumentOutline } from '@vicons/ionicons5';
 import { getResumeDetail, updateResume, deleteResumePdf } from '@/api/resume';
-import { EyeOutline, CloudUploadOutline, CloseOutline } from '@vicons/ionicons5';
+import axios from '@/utils/axios';
 
 // 路由相关
 const router = useRouter();
@@ -151,7 +196,7 @@ const form = ref({
   project_experience: '',
   school_experience: '',
   self_evaluation: '',
-  Scholarships: '',
+  scholarships: '',
   skills: '',
   job_objective: '',
   status: 'draft',
@@ -159,21 +204,8 @@ const form = ref({
 });
 
 const selectedFile = ref(null);
-const showPdfPreview = ref(false);
 const submitting = ref(false);
 const deletingPdf = ref(false);
-
-// 计算属性
-const pdfPreviewUrl = computed(() => {
-  if (!form.value.pdf_url) return '';
-  // 确保URL是完整的（如果是相对路径，添加基础URL）
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-  return form.value.pdf_url.startsWith('http') ? form.value.pdf_url : `${baseUrl}${form.value.pdf_url}`;
-});
-
-const currentPdfName = computed(() => {
-  return getFileName(form.value.pdf_url);
-});
 
 // 下拉选项
 const sexOptions = [
@@ -249,8 +281,10 @@ const previewPdf = () => {
     return;
   }
   
-  // 直接在新窗口打开PDF链接
-  window.open(pdfPreviewUrl.value, '_blank', 'width=1200,height=800,scrollbars=yes');
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+  const pdfUrl = form.value.pdf_url.startsWith('http') ? form.value.pdf_url : `${baseUrl}${form.value.pdf_url}`;
+  
+  window.open(pdfUrl, '_blank', 'width=1200,height=800,scrollbars=yes');
 };
 
 // 删除PDF
@@ -274,43 +308,49 @@ const handleDeletePdf = async () => {
 };
 
 const handleSubmit = async () => {
-    if (!formRef.value) return;
-    
-    try {
-        submitting.value = true;
-        await formRef.value.validate();
+  if (!formRef.value) return;
+  
+  try {
+    submitting.value = true;
+    await formRef.value.validate();
 
-        if (selectedFile.value) {
-            const formData = new FormData();
-            
-            // 简化字段处理，只添加必要的字段
-            const fields = ['name', 'sex', 'email', 'phone', 'education', 
-                          'job_objective', 'internship_experience', 'skills'];
-            
-            fields.forEach(key => {
-                if (form.value[key] !== undefined && form.value[key] !== null) {
-                    formData.append(key, form.value[key]);
-                }
-            });
-
-            formData.append('pdf_file', selectedFile.value);
-
-            await updateResume(resumeId, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-        } else {
-            await updateResume(resumeId, form.value);
-        }
-
-        message.success('简历更新成功！');
-        router.push('/resumes');
-    } catch (error) {
-        const errorMsg = error.response?.data?.message || '更新失败，请检查输入';
-        message.error(errorMsg);
-        console.error('更新错误详情:', error);
-    } finally {
-        submitting.value = false;
+    if (selectedFile.value) {
+      const isPdf = selectedFile.value.type === 'application/pdf' && 
+                   selectedFile.value.name.toLowerCase().endsWith('.pdf');
+      if (!isPdf) {
+        message.error('请上传PDF格式的文件（.pdf）');
+        return;
+      }
     }
+
+    const formData = new FormData();
+
+    Object.keys(form.value).forEach(key => {
+      if (form.value[key] !== undefined && form.value[key] !== null && form.value[key] !== '') {
+        formData.append(key, form.value[key]);
+      }
+    });
+
+    if (selectedFile.value) {
+      formData.append('pdf_file', selectedFile.value);
+      console.log('文件已添加到FormData：', selectedFile.value.name);
+    }
+
+    await updateResume(resumeId, formData, {
+      headers: { 
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}` 
+      }
+    });
+
+    message.success('简历更新成功！');
+    router.push('/resumes');
+  } catch (error) {
+    const errorMsg = error.response?.data?.message || '更新失败，请检查输入';
+    message.error(errorMsg);
+    console.error('更新错误详情:', error);
+  } finally {
+    submitting.value = false;
+  }
 };
 
 // 页面加载时获取简历数据
@@ -320,22 +360,47 @@ onMounted(fetchResumeDetail);
 <style scoped>
 .resume-edit {
   padding: 24px;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
-.form-container {
-  max-width: 800px;
-  margin-top: 24px;
+.resume-edit h2 {
+  text-align: center;
+  margin-bottom: 32px;
+  color: #333;
+  font-size: 28px;
+  font-weight: 600;
 }
 
-n-form-item {
-  margin-bottom: 16px;
+.section-card {
+  margin-bottom: 24px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-/* PDF操作区域样式 */
-.pdf-operations {
-  width: 100%;
+.section-card :deep(.n-card__header) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 16px;
+  padding: 16px 20px;
 }
 
+.section-card :deep(.n-card__content) {
+  padding: 24px 20px;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 32px;
+  padding: 20px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+/* PDF预览样式 */
 .pdf-preview {
   margin-bottom: 16px;
   padding: 16px;
@@ -372,47 +437,58 @@ n-form-item {
 }
 
 /* 上传区域样式 */
+.upload-section {
+  width: 100%;
+}
+
 .upload-area {
   border: 2px dashed #4096ff;
-  border-radius: 6px;
+  padding: 24px 20px;
+  border-radius: 8px;
   background: #f9f9f9;
-}
-
-.upload-content {
-  padding: 30px;
   text-align: center;
-}
-
-.upload-icon {
-  color: #4096ff;
-  margin-bottom: 8px;
-}
-
-.upload-text {
-  color: #333;
-  font-size: 16px;
-  margin-bottom: 4px;
-}
-
-.upload-hint {
-  color: #666;
-  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .upload-area:hover {
   border-color: #1890ff;
   background: #f0f7ff;
+  transform: translateY(-2px);
 }
 
-/* 模态框样式 */
-.modal-header {
+.upload-text {
+  color: #666;
+  font-size: 14px;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
+  gap: 8px;
 }
 
-.pdf-viewer-container {
-  width: 100%;
-  height: calc(90vh - 120px);
+.upload-hint {
+  color: #999;
+  font-size: 12px;
+  margin-top: 0;
+}
+
+.n-form-item {
+  margin-bottom: 20px;
+}
+
+.n-form-item:last-child {
+  margin-bottom: 0;
+}
+
+:deep(.n-input) {
+  border-radius: 4px;
+}
+
+:deep(.n-input__textarea) {
+  border-radius: 4px;
+}
+
+:deep(.n-select) {
+  border-radius: 4px;
 }
 </style>

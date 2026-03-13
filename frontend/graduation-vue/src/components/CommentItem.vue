@@ -2,9 +2,9 @@
   <div :id="`comment-${comment.id}`" class="comment-container">
     <n-card bordered class="comment-item">
       <div class="comment-header">
-        <n-avatar :src="comment.userAvatar" size="large" round/>
+        <n-avatar :src="comment.userAvatar" size="large" round @click="goToUserProfile" style="cursor: pointer;" />
         <div class="comment-user-info">
-          <div class="comment-username">
+          <div class="comment-username" @click="goToUserProfile" style="cursor: pointer;">
             {{ comment.username }}
             <span v-if="comment.parentUsername" class="reply-info-inline">
               <span class="reply-label">回复</span>
@@ -19,34 +19,38 @@
         <n-button
           v-if="!comment.isLiked"
           ghost
-          size="tiny"
+          size="small"
           class="comment-action-btn"
           @click="likeComment(comment.id)"
         >
-          <Heart size="14" />
-          <span>{{ comment.likeCount }}</span>
+          <n-icon size="16">
+            <Heart />
+          </n-icon>
+          <span>{{ comment.likeCount || 0 }}</span>
         </n-button>
         <n-button
           v-else
           ghost
-          size="tiny"
+          size="small"
           class="comment-action-btn liked"
           @click="likeComment(comment.id)"
         >
-          <Heart size="14" />
-          <span>{{ comment.likeCount }}</span>
+          <n-icon size="16">
+            <Heart />
+          </n-icon>
+          <span>{{ comment.likeCount || 0 }}</span>
         </n-button>
         <n-button
           ghost
-          size="tiny"
+          size="small"
           class="comment-action-btn"
           @click="replyToComment(comment.id)"
         >
           回复
         </n-button>
         <n-dropdown :options="moreOptions" placement="bottom-start" @select="handleMoreAction">
-          <n-button ghost size="tiny" class="comment-action-btn">
-            ···
+          <n-button ghost size="small" class="comment-action-btn">
+            更多
           </n-button>
         </n-dropdown>
       </div>
@@ -88,8 +92,11 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { Heart, ChevronForward, ChevronDown } from '@vicons/ionicons5';
+import { useRouter } from 'vue-router';
+import { Heart, HeartOutline, ChevronForward, ChevronDown } from '@vicons/ionicons5';
 import { NCard, NAvatar, NButton, NIcon, NDropdown } from 'naive-ui';
+
+const router = useRouter();
 
 const props = defineProps({
   comment: {
@@ -255,6 +262,12 @@ const handleMoreAction = (key) => {
   }
 };
 
+const goToUserProfile = () => {
+  if (props.comment.userId) {
+    router.push(`/user/${props.comment.userId}`);
+  }
+};
+
 const getCurrentUserId = () => {
   const token = sessionStorage.getItem('accessToken') || sessionStorage.getItem('enterpriseToken');
   console.log('CommentItem - token:', token);
@@ -287,6 +300,11 @@ const getCurrentUserId = () => {
   margin-bottom: 8px;
 }
 
+.comment-header .n-avatar:hover {
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
 .comment-user-info {
   margin-left: 8px;
 }
@@ -294,6 +312,11 @@ const getCurrentUserId = () => {
 .comment-username {
   font-weight: 500;
   font-size: 14px;
+}
+
+.comment-username:hover {
+  color: #165dff;
+  transition: color 0.2s;
 }
 
 .reply-info-inline {
@@ -323,7 +346,7 @@ const getCurrentUserId = () => {
 
 .comment-actions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   padding-left: 48px;
 }
 
@@ -332,12 +355,34 @@ const getCurrentUserId = () => {
   align-items: center;
   gap: 4px;
   color: #86909c;
-  padding: 0;
-  height: auto;
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
+.comment-action-btn .n-icon {
+  opacity: 0.6;
+}
+
+.comment-action-btn:hover {
+  color: #165dff;
+  background-color: #f0f7ff;
+}
+
+.comment-action-btn:hover .n-icon {
+  opacity: 1;
 }
 
 .comment-action-btn.liked {
   color: #f53f3f;
+}
+
+.comment-action-btn.liked .n-icon {
+  opacity: 1;
+}
+
+.comment-action-btn.liked:hover {
+  color: #d32f2f;
+  background-color: #fff1f0;
 }
 
 .expand-replies-btn,

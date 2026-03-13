@@ -69,38 +69,27 @@ const bulkUpdating = ref(false) // 批量更新中状态
 
 // 批量操作选项
 const bulkActions = ref([
-  { label: '标记为已查看', value: 'VIEWED' },
-  { label: '标记为待面试', value: 'INTERVIEW' },
-  { label: '标记为已拒绝', value: 'REJECTED' },
-  { label: '标记为已录用', value: 'HIRED' },
+  { label: '标记为初筛', value: 'PENDING' },
+  { label: '标记为已归入人才库', value: 'TALENT_POOL' },
   { label: '发送招聘状态', value: 'SEND_STATUS' }
 ])
 
 // 状态选项
 const statusOptions = [
-  { label: '待处理', value: 'PENDING' },
-  { label: '已查看', value: 'VIEWED' },
-  { label: '待面试', value: 'INTERVIEW' },
-  { label: '已拒绝', value: 'REJECTED' },
-  { label: '已录用', value: 'HIRED' }
+  { label: '初筛', value: 'PENDING' },
+  { label: '已归入人才库', value: 'TALENT_POOL' }
 ]
 
 // 状态类型映射
 const statusTypeMap = {
   'PENDING': 'warning',
-  'VIEWED': 'info', 
-  'INTERVIEW': 'primary',
-  'REJECTED': 'error',
-  'HIRED': 'success'
+  'TALENT_POOL': 'success'
 }
 
 // 状态文本映射
 const statusTextMap = {
-  'PENDING': '待处理',
-  'VIEWED': '已查看',
-  'INTERVIEW': '待面试',
-  'REJECTED': '已拒绝',
-  'HIRED': '已录用'
+  'PENDING': '初筛',
+  'TALENT_POOL': '已归入人才库'
 }
 
 // 行属性，支持点击选择
@@ -316,14 +305,10 @@ const columns = [
     key: 'status',
     render: (row) => {
       const statusMap = {
-        'PENDING': { text: '待处理', type: 'warning' },
-        'VIEWED': { text: '已查看', type: 'info' },
-        'INTERVIEW': { text: '待面试', type: 'primary' },
-        'REJECTED': { text: '已拒绝', type: 'error' },
-        'HIRED': { text: '已录用', type: 'success' }
+        'PENDING': { text: '初筛', type: 'warning' },
+        'TALENT_POOL': { text: '已归入人才库', type: 'success' }
       }
       
-      // 兼容不同状态字段名
       const status = row.status || row.application_status || 'PENDING'
       const statusInfo = statusMap[status] || { text: status, type: 'default' }
       
@@ -334,7 +319,6 @@ const columns = [
     title: '申请时间',
     key: 'applied_at',
     render: (row) => {
-      // 兼容不同时间字段名
       const timeStr = row.applied_at || row.created_at || row.apply_time
       if (!timeStr) return '-'
       
@@ -345,82 +329,39 @@ const columns = [
       }
     }
   },
-
-  // 新增：状态操作列
   {
     title: '操作',
     key: 'actions',
     render: (row) => {
-      return h(NSelect, {
-        value: row.status,
-        options: statusOptions,
-        onUpdateValue: (value) => {
-          updateApplicationStatus(row.id, value)
+      const actions = [
+        {
+          label: '加入人才库',
+          key: 'add_to_talent',
+          onClick: () => addToTalentPool(row)
         },
-        size: 'small',
-        style: 'min-width: 120px;'
+        {
+          label: '开始聊天',
+          key: 'start_chat',
+          onClick: () => startChat(row)
+        }
+      ]
+    
+      return h(NSpace, { size: 'small' }, {
+        default: () => [
+          h(NButton, {
+            size: 'small',
+            type: 'primary',
+            onClick: () => addToTalentPool(row),
+            disabled: row.status === 'TALENT_POOL'
+          }, { default: () => '加入人才库' }),
+          h(NButton, {
+            size: 'small',
+            onClick: () => startChat(row)
+          }, { default: () => '开始聊天' })
+        ]
       })
     }
-  },
-  {
-  title: '操作',
-  key: 'actions',
-  render: (row) => {
-    const actions = [
-      {
-        label: '加入人才库',
-        key: 'add_to_talent',
-        onClick: () => addToTalentPool(row)
-      },
-      {
-        label: '开始聊天',
-        key: 'start_chat',
-        onClick: () => startChat(row)
-      }
-    ]
-    
-    return h(NSpace, { size: 'small' }, {
-      default: () => [
-        // h(NSelect, {
-        //   value: row.status,
-        //   options: statusOptions,
-        //   onUpdateValue: (value) => updateApplicationStatus(row.id, value),
-        //   size: 'small',
-        //   style: 'min-width: 120px; margin-right: 8px;'
-        // }),
-        h(NDropdown, {
-          trigger: 'click',
-          options: [
-            {
-              label: '加入人才库',
-              key: 'add_to_talent'
-            },
-            {
-              label: '开始聊天', 
-              key: 'start_chat'
-            },
-            {
-              label: '发送流程通知', 
-              key: 'send_notification'
-            }
-          ],
-          onSelect: (key) => {
-            if (key === 'add_to_talent') {
-              addToTalentPool(row)
-            } else if (key === 'start_chat') {
-              startChat(row)
-            } else if (key === 'send_notification') {
-              sendApplicationNotification(row.id)
-            }
-          },
-          size: 'small'
-        }, {
-          default: () => h(NButton, { size: 'small' }, { default: () => '更多' })
-        })
-      ]
-    })
   }
-}
 ]
 
 // 行键函数
@@ -502,11 +443,14 @@ const addToTalentPool = async (application) => {
   try {
     const response = await axios.post('/talent_pool/add_from_application/', {
       application_id: application.id,
-      tags: '来自申请', // 可以添加默认标签
+      tags: '来自申请',
       notes: `从职位"${application.recruitment_title}"申请中添加`
     })
     
     message.success('已成功加入人才库')
+    
+    // 更新申请状态为"已归入人才库"
+    await updateApplicationStatus(application.id, 'TALENT_POOL')
   } catch (error) {
     console.error('加入人才库失败:', error)
     if (error.response?.status === 400) {
@@ -514,6 +458,27 @@ const addToTalentPool = async (application) => {
     } else {
       message.error('加入人才库失败')
     }
+  }
+}
+
+// 开始聊天
+const startChat = async (application) => {
+  try {
+    const userInfo = JSON.parse(localStorage.getItem('userInfo'))
+    if (!userInfo || !userInfo.id) {
+      message.error('用户信息不完整，请重新登录')
+      return
+    }
+    
+    const response = await axios.post('/chat/chatrooms/start_chat/', {
+      job_seeker_user_id: application.applicant_id,
+      enterprise_user_id: userInfo.id
+    })
+    
+    message.success('聊天室创建成功')
+  } catch (error) {
+    console.error('创建聊天失败:', error)
+    message.error('创建聊天失败: ' + (error.response?.data?.error || error.message))
   }
 }
 

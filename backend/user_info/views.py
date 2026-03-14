@@ -8,6 +8,11 @@ from .models import VerificationApplication
 from .serializers import VerificationApplicationSerializer, VerificationApplicationCreateSerializer
 from django.utils import timezone
 
+class IsEnterpriseUser(permissions.BasePermission):
+    """验证用户是否为企业用户"""
+    def has_permission(self, request, view):
+        return hasattr(request.user, 'enterprise_profile')
+
 class VerificationViewSet(viewsets.ModelViewSet):
     """认证申请视图集"""
     queryset = VerificationApplication.objects.all()
@@ -27,6 +32,16 @@ class VerificationViewSet(viewsets.ModelViewSet):
             return queryset.filter(user=self.request.user)
     
     def perform_create(self, serializer):
+        # 验证用户类型
+        verification_type = serializer.validated_data.get('verification_type')
+        
+        if verification_type == 'ENTERPRISE':
+            if not hasattr(self.request.user, 'enterprise_profile'):
+                raise permissions.PermissionDenied('只有企业用户才能提交企业认证')
+        elif verification_type == 'INDIVIDUAL':
+            if hasattr(self.request.user, 'enterprise_profile'):
+                raise permissions.PermissionDenied('企业用户不能提交个人认证')
+        
         application = serializer.save(user=self.request.user)
         
         from notification.utils import create_notification

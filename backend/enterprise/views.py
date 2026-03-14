@@ -1,9 +1,9 @@
 from rest_framework import viewsets, permissions, status, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Enterprise, Recruitment, JobApplication, TalentPool, TalentPoolTag
+from .models import Enterprise, Recruitment, JobApplication, TalentPool, TalentPoolTag, RecruitmentFavorite
 from resume.models import Resume
-from .serializers import EnterpriseSerializer, RecruitmentSerializer, JobApplicationSerializer, TalentPoolSerializer, TalentPoolTagSerializer
+from .serializers import EnterpriseSerializer, RecruitmentSerializer, JobApplicationSerializer, TalentPoolSerializer, TalentPoolTagSerializer, RecruitmentFavoriteSerializer
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser # 支持文件上传
 from django.db.models import Count, Q
 from django.utils import timezone
@@ -22,13 +22,16 @@ class IsEnterpriseOwner(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         # 对于Enterprise模型：obj.user == 当前用户
         # 对于Recruitment模型：obj.enterprise.user == 当前用户
+        # 对于JobApplication模型：obj.recruitment.enterprise.user == 当前用户
+        # 对于TalentPool模型：obj.enterprise.user == 当前用户
         if isinstance(obj, Enterprise):
             return obj.user == request.user
         elif isinstance(obj, Recruitment):
             return obj.enterprise.user == request.user
         elif isinstance(obj, JobApplication):
-                        # 企业用户只能操作自己企业的申请
             return obj.recruitment.enterprise.user == request.user
+        elif isinstance(obj, TalentPool):
+            return obj.enterprise.user == request.user
         return False
     
 # 新增：混合权限类
@@ -726,3 +729,46 @@ class TalentPoolTagViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         enterprise = self.request.user.enterprise_profile
         serializer.save(enterprise=enterprise)
+
+
+class RecruitmentFavoriteViewSet(viewsets.ModelViewSet):
+    """职位收藏管理"""
+    serializer_class = RecruitmentFavoriteSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return RecruitmentFavorite.objects.filter(user=self.request.user).select_related('recruitment', 'recruitment__enterprise')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=False, methods=['get'])
+    def check_favorite(self, request):
+        """检查是否已收藏某个职位"""
+        recruitment_id = request.query_params.get('recruitment_id')
+        if not recruitment_id:
+            return Response({'error': '缺少recruitment_id参数'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        is_favorited = RecruitmentFavorite.objects.filter(
+            user=request.user,
+            recruitment_id=recruitment_id
+        ).exists()
+        
+        return Response({'is_favorited': is_favorited})
+
+    @action(detail=False, methods=['delete'])
+    def remove_by_recruitment(self, request):
+        """通过职位ID删除收藏"""
+        recruitment_id = request.query_params.get('recruitment_id')
+        if not recruitment_id:
+            return Response({'error': '缺少recruitment_id参数'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            favorite = RecruitmentFavorite.objects.get(
+                user=request.user,
+                recruitment_id=recruitment_id
+            )
+            favorite.delete()
+            return Response({'message': '取消收藏成功'}, status=status.HTTP_200_OK)
+        except RecruitmentFavorite.DoesNotExist:
+            return Response({'error': '收藏记录不存在'}, status=status.HTTP_404_NOT_FOUND)

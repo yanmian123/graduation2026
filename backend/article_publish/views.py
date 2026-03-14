@@ -11,6 +11,9 @@ from .serializers import ArticleSerializer, AttachmentSerializer, ArticleSeriali
 from user_info.serializers import UserSerializer
 from django.db import models
 import logging
+import time
+import os
+from django.conf import settings
 logger = logging.getLogger(__name__)
 from notification.utils import create_notification
 
@@ -693,30 +696,56 @@ class FileUploadView(APIView):
         file=request.FILES.get('file')
         article_id=request.data.get('article_id')
         
-        if not file or not article_id:
+        if not file:
             return Response({
                 "code": 400,
-                "message": "缺少文件或文章ID"
+                "message": "缺少文件"
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        article=get_object_or_404(Article, id=article_id)
-        
-        if article.user != request.user:
+        # 如果提供了 article_id，则作为附件上传到文章
+        if article_id:
+            article=get_object_or_404(Article, id=article_id)
+            
+            if article.user != request.user:
+                return Response({
+                    "code": 403,
+                    "message": "无权限为该文章上传附件"
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            attachment=Attachment(article=article, file=file)
+            attachment.save()
+            
+            serializer=AttachmentSerializer(attachment)
+            logger.info(f"用户 {request.user.username} 上传文件: {file.name}")
             return Response({
-                "code": 403,
-                "message": "无权限为该文章上传附件"
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        attachment=Attachment(article=article, file=file)
-        attachment.save()
-        
-        serializer=AttachmentSerializer(attachment)
-        logger.info(f"用户 {request.user.username} 上传文件: {file.name}")
-        return Response({
-            "code": 201,
-            "message": "附件上传成功",
-            "data": serializer.data
-        }, status=status.HTTP_201_CREATED)
+                "code": 201,
+                "message": "附件上传成功",
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+        else:
+            # 通用文件上传（用于认证、简历等）
+            # 生成文件名
+            file_extension = os.path.splitext(file.name)[1]
+            new_filename = f"{request.user.id}_{int(time.time())}{file_extension}"
+            
+            # 保存文件
+            upload_path = os.path.join(settings.MEDIA_ROOT, 'uploads', 'general')
+            os.makedirs(upload_path, exist_ok=True)
+            
+            file_path = os.path.join(upload_path, new_filename)
+            with open(file_path, 'wb+') as destination:
+                for chunk in file.chunks():
+                    destination.write(chunk)
+            
+            # 返回文件URL
+            file_url = f"/media/uploads/general/{new_filename}"
+            logger.info(f"用户 {request.user.username} 上传通用文件: {file.name}")
+            
+            return Response({
+                "code": 201,
+                "message": "文件上传成功",
+                "url": file_url
+            }, status=status.HTTP_201_CREATED)
         
         
 class PostSearchView(APIView):

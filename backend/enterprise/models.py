@@ -328,11 +328,12 @@ class TalentPool(models.Model):
     status = models.CharField(
         max_length=20,
         choices=[
-            ("ACTIVE", "活跃"),
-            ("ARCHIVED", "已归档"),
-            ("BLACKLIST", "黑名单")
+            ("WRITTEN_TEST", "笔试"),
+            ("INTERVIEW", "面试"),
+            ("HIRED", "已录用"),
+            ("ELIMINATED", "已淘汰")
         ],
-        default="ACTIVE",
+        default="WRITTEN_TEST",
         verbose_name="人才状态"
     )
     rating = models.PositiveSmallIntegerField(
@@ -371,3 +372,29 @@ class TalentPoolTag(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class RecruitmentFavorite(models.Model):
+    """职位收藏表"""
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name="favorite_recruitments",
+        verbose_name="收藏用户"
+    )
+    recruitment = models.ForeignKey(
+        Recruitment, 
+        on_delete=models.CASCADE, 
+        related_name="favorites",
+        verbose_name="收藏的职位"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="收藏时间")
+
+    class Meta:
+        unique_together = ['user', 'recruitment']  # 防止重复收藏
+        verbose_name = "职位收藏"
+        verbose_name_plural = "职位收藏"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.recruitment.title}"

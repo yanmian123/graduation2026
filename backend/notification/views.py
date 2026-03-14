@@ -36,6 +36,61 @@ class NotificationViewSet(viewsets.ModelViewSet):
         # 获取未读通知数量
         count = self.get_queryset().filter(is_read=False).count()
         return Response({'unread_count': count})
+    
+    @action(detail=True, methods=['delete'])
+    def delete_notification(self, request, pk=None):
+        # 删除单个通知
+        notification = self.get_object()
+        notification.delete()
+        return Response({'status': 'Notification deleted'})
+    
+    @action(detail=False, methods=['delete'])
+    def delete_all_read(self, request):
+        # 删除所有已读通知
+        notifications = self.get_queryset().filter(is_read=True)
+        count = notifications.count()
+        notifications.delete()
+        return Response({'status': f'{count} read notifications deleted'})
+    
+    @action(detail=False, methods=['post'], url_path='create')
+    def create_notification(self, request):
+        # 创建通知（用于企业发送通知给求职者）
+        from django.contrib.auth import get_user_model
+        from .utils import create_notification
+        
+        recipient_id = request.data.get('recipient_id')
+        title = request.data.get('title')
+        message = request.data.get('message')
+        related_object_id = request.data.get('related_object_id')
+        related_object_type = request.data.get('related_object_type')
+        
+        if not recipient_id or not title or not message:
+            return Response(
+                {'error': '缺少必要参数'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        User = get_user_model()
+        try:
+            recipient = User.objects.get(id=recipient_id)
+        except User.DoesNotExist:
+            return Response(
+                {'error': '接收者不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # 创建通知
+        notification = create_notification(
+            recipient=recipient,
+            notification_type='application_status',
+            title=title,
+            message=message,
+            related_object_id=related_object_id,
+            related_object_type=related_object_type
+        )
+        
+        serializer = NotificationSerializer(notification)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class AnnouncementViewSet(viewsets.ModelViewSet):

@@ -268,7 +268,59 @@ def upload_file(request, room_id):
         print(f"  - 消息ID: {message.id}")
         print(f"  - 消息类型: {message.message_type}")
         
+        # 手动更新聊天室的 updated_at，确保聊天列表排序正确
+        chat_room.save()
+        
+        # 确定接收者和通知类型
+        sender = request.user
+        recipient = None
+        notification_type = None
+        
+        # 根据发送者确定接收者
+        if chat_room.enterprise_user == sender:
+            # 发送者是enterprise_user，接收者是job_seeker_user
+            recipient = chat_room.job_seeker_user
+            notification_type = 'company_chat' if sender.is_enterprise else 'jobseeker_message'
+        else:
+            # 发送者是job_seeker_user，接收者是enterprise_user
+            recipient = chat_room.enterprise_user
+            notification_type = 'company_chat' if recipient.is_enterprise else 'jobseeker_message'
+        
+        # 创建通知
+        if recipient:
+            title = "新消息"
+            message_content = message.content if len(message.content) <= 50 else f"{message.content[:50]}..."
+            from notification.utils import create_notification
+            create_notification(
+                recipient=recipient,
+                notification_type=notification_type,
+                title=title,
+                message=message_content,
+                related_object_id=chat_room.id,
+                related_object_type='chat_room'
+            )
+            print(f"✅ 通知已创建给用户: {recipient.username}")
+        
+        # 通过WebSocket广播消息
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        
+        channel_layer = get_channel_layer()
+        room_group_name = f'chat_{room_id}'
+        
+        # 序列化消息并传递context
         serializer = MessageSerializer(message, context={'request': request})
+        message_data = serializer.data
+        
+        # 广播消息
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                'type': 'chat_message',
+                'message': message_data
+            }
+        )
+        
         return Response(serializer.data, status=status.HTTP_201_CREATED)
         
     except ChatRoom.DoesNotExist:

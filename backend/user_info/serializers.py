@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import VerificationApplication
 from register.models import User
+import os
 
 class VerificationApplicationSerializer(serializers.ModelSerializer):
     """认证申请序列化器"""
@@ -12,10 +13,13 @@ class VerificationApplicationSerializer(serializers.ModelSerializer):
 
 class VerificationApplicationCreateSerializer(serializers.ModelSerializer):
     """认证申请创建序列化器"""
+    business_license = serializers.CharField(required=True, allow_null=False)
+    other_files = serializers.ListField(child=serializers.CharField(), required=False, allow_null=True)
+    
     class Meta:
         model = VerificationApplication
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at', 'reviewed_at', 'reviewed_by', 'status']
+        read_only_fields = ['created_at', 'updated_at', 'reviewed_at', 'reviewed_by', 'status', 'user']
 
 
 class UserSerializer(serializers.ModelSerializer):

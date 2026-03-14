@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Enterprise, Recruitment, JobApplication, TalentPool, TalentPoolTag
+from .models import Enterprise, Recruitment, JobApplication, TalentPool, TalentPoolTag, RecruitmentFavorite
 from resume.models import Resume 
 class EnterpriseSerializer(serializers.ModelSerializer):
     """企业信息序列化器"""
@@ -75,6 +75,7 @@ class JobApplicationSerializer(serializers.ModelSerializer):
     applicant_name = serializers.CharField(source='applicant.username', read_only=True)
     pdf_file = serializers.FileField(read_only=True)
     # 显式声明字段
+    applicant_id = serializers.SerializerMethodField()
     recruitment = serializers.PrimaryKeyRelatedField(
         queryset=Recruitment.objects.all(),
         write_only=True
@@ -100,7 +101,7 @@ class JobApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = JobApplication
         fields = [
-            "id", "recruitment", "recruitment_title", "applicant", 
+            "id", "recruitment", "recruitment_title", "applicant", "applicant_id",
             "applicant_name", "resume", "resume_name", "status", 
             "applied_at", "enterprise_name", "resume_snapshot", "pdf_file",
             "education", "phone", "email", "recruitment_detail"
@@ -118,6 +119,9 @@ class JobApplicationSerializer(serializers.ModelSerializer):
 
     def get_email(self, obj):
         return obj.resume_snapshot.get('email', '')
+    
+    def get_applicant_id(self, obj):
+        return obj.applicant.id if obj.applicant else None
     
     def validate(self, attrs):
         """自定义验证逻辑"""
@@ -156,7 +160,8 @@ class TalentPoolSerializer(serializers.ModelSerializer):
         if obj.application:
             return {
                 "recruitment_title": obj.application.recruitment.title,
-                "applied_at": obj.application.applied_at
+                "applied_at": obj.application.applied_at,
+                "enterprise_name": obj.application.recruitment.enterprise.name
             }
         return None
 
@@ -171,3 +176,19 @@ class TalentPoolTagSerializer(serializers.ModelSerializer):
         model = TalentPoolTag
         fields = ["id", "enterprise", "name", "color", "created_at"]
         read_only_fields = ["enterprise"]
+
+
+class RecruitmentFavoriteSerializer(serializers.ModelSerializer):
+    """职位收藏序列化器"""
+    recruitment_title = serializers.CharField(source='recruitment.title', read_only=True)
+    recruitment_id = serializers.IntegerField(source='recruitment.id', read_only=True)
+    recruitment_detail = RecruitmentSerializer(source='recruitment', read_only=True)
+    user_name = serializers.CharField(source='user.username', read_only=True)
+    
+    class Meta:
+        model = RecruitmentFavorite
+        fields = [
+            "id", "user", "user_name", "recruitment", "recruitment_id", "recruitment_title",
+            "recruitment_detail", "created_at"
+        ]
+        read_only_fields = ["user", "created_at"]

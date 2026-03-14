@@ -74,16 +74,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
             print(f"保存消息失败: {e}")
 
     async def handle_read_receipt(self, data):
-        """处理已读回执 - 简化版"""
+        """处理已读回执"""
         message_id = data.get('message_id')
         
-        # 广播已读状态（简化）
+        if not self.user.is_authenticated:
+            print("❌ 用户未认证，无法发送已读回执")
+            return
+        
+        # 广播已读状态
         await self.channel_layer.group_send(
             self.room_group_name,
             {
                 'type': 'read_receipt',
                 'message_id': message_id,
-                'reader_id': 1  # 默认用户ID
+                'reader_id': self.user.id
             }
         )
 

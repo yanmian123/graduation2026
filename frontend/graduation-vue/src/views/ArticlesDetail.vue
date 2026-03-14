@@ -135,7 +135,7 @@
           <!-- 评论区 -->
           <n-card bordered class="comments-card">
             <div class="comments-header">
-              <h2>评论 ({{ comments.length }})</h2>
+              <h2>评论区</h2>
             </div>
 
             <!-- 评论输入框 -->
@@ -869,7 +869,7 @@ const deleteComment = async (commentId) => {
         commentsList.splice(index, 1);
         return true;
       }
-      for (let comment of commentsList) {
+      for (const comment of commentsList) {
         if (comment.replies && comment.replies.length > 0) {
           if (removeComment(comment.replies)) {
             return true;

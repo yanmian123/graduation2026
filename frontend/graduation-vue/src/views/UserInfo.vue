@@ -120,7 +120,7 @@
           </div>
         </div>
       </n-tab-pane>
-      <n-tab-pane name="favorites" tab="收藏">
+      <n-tab-pane name="favorites" tab="收藏的文章">
         <div class="tab-content">
           <n-empty v-if="favorites.length === 0" description="暂无收藏" />
           <div v-else class="favorite-list">
@@ -128,6 +128,22 @@
               <h3>{{ item.title }}</h3>
               <p class="article-content">{{ stripHtmlTags(item.description) }}</p>
               <div class="favorite-meta">
+                <span>收藏时间: {{ item.created_at }}</span>
+              </div>
+            </n-card>
+          </div>
+        </div>
+      </n-tab-pane>
+      <n-tab-pane name="favorite_jobs" tab="收藏的职位">
+        <div class="tab-content">
+          <n-empty v-if="favoriteJobs.length === 0" description="暂无收藏的职位" />
+          <div v-else class="favorite-job-list">
+            <n-card v-for="item in favoriteJobs" :key="item.id" class="favorite-job-card" hoverable @click="openJobDetail(item.recruitment_id)">
+              <h3>{{ item.recruitment_title }}</h3>
+              <p>公司: {{ item.recruitment_detail.enterprise_name }}</p>
+              <p>行业: {{ getIndustryText(item.recruitment_detail.enterprise_industry) }}</p>
+              <div class="favorite-job-meta">
+                <span>薪资: {{ item.recruitment_detail.salary }}</span>
                 <span>收藏时间: {{ item.created_at }}</span>
               </div>
             </n-card>
@@ -447,6 +463,7 @@ const publishedArticles = ref([]);
 const comments = ref([]);
 const applications = ref([]);
 const favorites = ref([]);
+const favoriteJobs = ref([]);
 
 const showFollowersModal = ref(false);
 const showFollowingModal = ref(false);
@@ -582,6 +599,8 @@ watch(activeTab, (newTab) => {
     loadApplications();
   } else if (newTab === 'favorites' && favorites.value.length === 0) {
     loadFavorites();
+  } else if (newTab === 'favorite_jobs' && favoriteJobs.value.length === 0) {
+    loadFavoriteJobs();
   }
 });
 
@@ -664,6 +683,15 @@ const loadFavorites = async () => {
     }));
   } catch (error) {
     console.error('加载收藏失败:', error);
+  }
+};
+
+const loadFavoriteJobs = async () => {
+  try {
+    const res = await axios.get('/favorites/');
+    favoriteJobs.value = res.data;
+  } catch (error) {
+    console.error('加载收藏的职位失败:', error);
   }
 };
 
@@ -827,6 +855,10 @@ const stripHtmlTags = (html) => {
 
 const openArticleDetail = (articleId) => {
   window.open(`/community/post/${articleId}`, '_blank');
+};
+
+const openJobDetail = (jobId) => {
+  window.open(`/jobs/${jobId}`, '_blank');
 };
 
 const updateArticle = (articleId) => {
@@ -1061,11 +1093,35 @@ label {
 .article-meta,
 .comment-meta,
 .application-meta,
-.favorite-meta {
+.favorite-meta,
+.favorite-job-meta {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
   color: #999;
+}
+
+.favorite-job-card {
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.favorite-job-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.favorite-job-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.favorite-job-card p {
+  margin: 0 0 10px 0;
+  color: #666;
+  line-height: 1.6;
 }
 
 .user-list {

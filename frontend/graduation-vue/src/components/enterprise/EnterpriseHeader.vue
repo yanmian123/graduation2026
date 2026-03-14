@@ -218,6 +218,7 @@ const initializeEnterpriseUser = async () => {
     
     const enterpriseInfo = {
       id: enterpriseData.id,
+      user_id: enterpriseData.user,
       name: enterpriseData.name,
       logo: enterpriseData.logo,
       avatar: enterpriseData.logo
@@ -265,7 +266,7 @@ const markAllAsRead = () => {
 }
 
 const showAllNotifications = () => {
-  console.log('跳转到通知列表页面')
+  router.push('/notifications')
 }
 </script>
 

@@ -43,61 +43,6 @@
         :row-key="rowKey"
       />
     </n-card>
-
-    <!-- 添加标签模态框 -->
-    <n-modal v-model:show="showTagModal">
-      <n-card
-        style="width: 600px"
-        title="管理标签"
-        :bordered="false"
-        size="huge"
-        role="dialog"
-        aria-modal="true"
-      >
-        <template #header-extra>
-          <n-button quaternary circle @click="showTagModal = false">
-            <template #icon>
-              <n-icon><Close /></n-icon>
-            </template>
-          </n-button>
-        </template>
-        
-        <div class="tag-management">
-          <n-input 
-            v-model:value="newTag" 
-            placeholder="输入新标签，用逗号分隔"
-            @keyup.enter="addTags"
-          >
-            <template #suffix>
-              <n-button text @click="addTags">
-                <template #icon>
-                  <n-icon><Add /></n-icon>
-                </template>
-              </n-button>
-            </template>
-          </n-input>
-          
-          <div class="current-tags">
-            <n-tag
-              v-for="tag in currentEditingTags"
-              :key="tag"
-              closable
-              @close="removeTag(tag)"
-              style="margin: 4px;"
-            >
-              {{ tag }}
-            </n-tag>
-          </div>
-        </div>
-        
-        <template #footer>
-          <n-space justify="end">
-            <n-button @click="showTagModal = false">取消</n-button>
-            <n-button type="primary" @click="saveTags">保存</n-button>
-          </n-space>
-        </template>
-      </n-card>
-    </n-modal>
   </div>
 </template>
 
@@ -106,10 +51,9 @@ import { h, ref, onMounted, computed } from 'vue'
 import { useMessage } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import { 
-  NButton, NCard, NTag, NDataTable, NSpace, NInput, NSelect, NIcon, NModal,
-  NRate, NDropdown
+  NButton, NCard, NTag, NDataTable, NSpace, NInput, NSelect, NIcon, NDropdown
 } from 'naive-ui'
-import { Search, Add, Close } from '@vicons/ionicons5'
+import { Search } from '@vicons/ionicons5'
 import axios from '@/utils/axios'
 
 const message = useMessage()
@@ -119,10 +63,6 @@ const talents = ref([])
 const loading = ref(false)
 const searchKeyword = ref('')
 const filterStatus = ref('')
-const showTagModal = ref(false)
-const newTag = ref('')
-const currentEditingTalent = ref(null)
-const currentEditingTags = ref([])
 
 const currentUser = ref({
   id: null,
@@ -131,29 +71,22 @@ const currentUser = ref({
 
 const loadCurrentUser = () => {
   try {
-    const userInfoStr = localStorage.getItem('userInfo')
-    console.log('🔍 从localStorage获取的userInfo:', userInfoStr)
+    const enterpriseInfoStr = localStorage.getItem('enterpriseInfo')
+    console.log('🔍 从localStorage获取的enterpriseInfo:', enterpriseInfoStr)
     
-    if (userInfoStr) {
-      const userInfo = JSON.parse(userInfoStr)
-      console.log('🔍 解析后的用户信息:', userInfo)
+    if (enterpriseInfoStr) {
+      const enterpriseInfo = JSON.parse(enterpriseInfoStr)
+      console.log('🔍 解析后的企业信息:', enterpriseInfo)
       
       currentUser.value = {
-        id: userInfo.id,
-        username: userInfo.username || '企业用户'
+        id: enterpriseInfo.user_id,
+        username: enterpriseInfo.name || '企业用户'
       }
       
       console.log('✅ 设置当前用户:', currentUser.value)
     } else {
-      console.warn('⚠️ 未找到userInfo，检查localStorage')
-      // 尝试从其他可能的键名获取
-      const userId = localStorage.getItem('user_id')
-      const username = localStorage.getItem('username')
-      if (userId) {
-        currentUser.value.id = parseInt(userId)
-        currentUser.value.username = username || '企业用户'
-        console.log('✅ 从备用键名设置用户:', currentUser.value)
-      }
+      console.warn('⚠️ 未找到enterpriseInfo，检查localStorage')
+      message.error('企业信息不完整，请重新登录')
     }
   } catch (error) {
     console.error('❌ 解析用户信息失败:', error)
@@ -162,9 +95,10 @@ const loadCurrentUser = () => {
 
 // 状态选项
 const statusOptions = [
-  { label: '活跃', value: 'ACTIVE' },
-  { label: '已归档', value: 'ARCHIVED' },
-  { label: '黑名单', value: 'BLACKLIST' }
+  { label: '笔试', value: 'WRITTEN_TEST' },
+  { label: '面试', value: 'INTERVIEW' },
+  { label: '已录用', value: 'HIRED' },
+  { label: '已淘汰', value: 'ELIMINATED' }
 ]
 
 // 分页配置
@@ -220,45 +154,25 @@ const columns = [
     }
   },
   {
-    title: '标签',
-    key: 'tags',
-    render: (row) => {
-      const tags = row.tags_list || []
-      return h('div', { style: 'display: flex; flex-wrap: wrap; gap: 4px;' }, 
-        tags.map(tag => 
-          h(NTag, { 
-            size: 'small', 
-            type: 'info',
-            bordered: false
-          }, { default: () => tag })
-        )
-      )
-    }
-  },
-  {
-    title: '评分',
-    key: 'rating',
-    width: 150,
-    render: (row) => {
-      return h(NRate, {
-        value: row.rating,
-        size: 'small',
-        readonly: true
-      })
-    }
-  },
-  {
     title: '状态',
     key: 'status',
-    width: 100,
+    width: 150,
     render: (row) => {
       const statusMap = {
-        'ACTIVE': { text: '活跃', type: 'success' },
-        'ARCHIVED': { text: '已归档', type: 'warning' },
-        'BLACKLIST': { text: '黑名单', type: 'error' }
+        'WRITTEN_TEST': { text: '笔试', type: 'info' },
+        'INTERVIEW': { text: '面试', type: 'warning' },
+        'HIRED': { text: '已录用', type: 'success' },
+        'ELIMINATED': { text: '已淘汰', type: 'error' }
       }
       const statusInfo = statusMap[row.status] || { text: row.status, type: 'default' }
-      return h(NTag, { type: statusInfo.type }, { default: () => statusInfo.text })
+      
+      return h(NSelect, {
+        value: row.status,
+        options: statusOptions,
+        size: 'small',
+        style: 'width: 120px;',
+        onUpdateValue: (value) => updateTalentStatus(row, value)
+      })
     }
   },
   {
@@ -281,46 +195,29 @@ const columns = [
   render: (row) => {
     const dropdownOptions = [
       {
-        label: '编辑标签',
-        key: 'edit_tags'
-      },
-      {
-        label: row.status === 'ACTIVE' ? '归档' : '激活',
-        key: 'toggle_status'
-      },
-      {
         label: '开始聊天',
         key: 'start_chat'
       },
       {
         label: '查看简历',
         key: 'view_resume'
+      },
+      {
+        label: '删除',
+        key: 'delete'
       }
     ]
 
-    // 处理下拉菜单选择
     const handleSelect = (key) => {
-      console.log('🎯 下拉菜单被点击!', 'key:', key, '行数据:', row)
-      
-      // 添加调试信息
-      message.info(`执行操作: ${key}`)
-      
       switch (key) {
-        case 'edit_tags':
-          console.log('编辑标签:', row)
-          openTagModal(row)
-          break
-        case 'toggle_status':
-          console.log('切换状态:', row)
-          toggleTalentStatus(row)
-          break
         case 'start_chat':
-          console.log('开始聊天:', row)
           startChat(row)
           break
         case 'view_resume':
-          console.log('查看简历:', row)
           viewResume(row)
+          break
+        case 'delete':
+          deleteTalent(row)
           break
         default:
           console.warn('未知的操作:', key)
@@ -348,27 +245,6 @@ const columns = [
 
 const router = useRouter()
 
-// const startChat = (talent) => {
-//   console.log('🔥 按钮被点击了!', talent)
-//   message.success(`开始与 ${talent.job_seeker_name || '求职者'} 聊天`)
-  
-//   // 临时跳转
-//   router.push('/chat')
-// }
-
-// 其他函数的简单定义
-// const openTagModal = (talent) => {
-//   message.info('编辑标签功能开发中')
-// }
-
-// const toggleTalentStatus = (talent) => {
-//   message.info('状态切换功能开发中')
-// }
-
-// const viewResume = (talent) => {
-//   message.info('查看简历功能开发中')
-// }
-
 // 过滤后的人才列表
 const filteredTalents = computed(() => {
   let result = talents.value
@@ -383,20 +259,12 @@ const filteredTalents = computed(() => {
     const keyword = searchKeyword.value.toLowerCase()
     result = result.filter(talent => {
       return (
-        // 按姓名搜索（使用简历中的姓名，而非用户名）
         (talent.resume_snapshot?.name || '').toLowerCase().includes(keyword) ||
-        // 按学历搜索
         (talent.resume_snapshot?.education || '').toLowerCase().includes(keyword) ||
-        // 按联系方式搜索（电话和邮箱）
         (talent.resume_snapshot?.phone || '').toLowerCase().includes(keyword) ||
         (talent.resume_snapshot?.email || '').toLowerCase().includes(keyword) ||
-        // 按添加时间搜索
         (talent.added_at || '').toLowerCase().includes(keyword) ||
-        // 按技能搜索
         (talent.resume_snapshot?.skills || '').toLowerCase().includes(keyword) ||
-        // 按标签搜索
-        (talent.tags || '').toLowerCase().includes(keyword) ||
-        // 按来源职位搜索
         (talent.application_info?.recruitment_title || '').toLowerCase().includes(keyword)
       )
     })
@@ -424,69 +292,48 @@ const fetchTalents = async () => {
   }
 }
 
-// 打开标签编辑模态框
-const openTagModal = (talent) => {
-  currentEditingTalent.value = talent
-  currentEditingTags.value = [...(talent.tags_list || [])]
-  showTagModal.value = true
-}
-
-// 添加标签
-const addTags = () => {
-  if (!newTag.value.trim()) return
-  
-  const tagsToAdd = newTag.value.split(',').map(tag => tag.trim()).filter(tag => tag)
-  tagsToAdd.forEach(tag => {
-    if (tag && !currentEditingTags.value.includes(tag)) {
-      currentEditingTags.value.push(tag)
-    }
-  })
-  newTag.value = ''
-}
-
-// 移除标签
-const removeTag = (tagToRemove) => {
-  currentEditingTags.value = currentEditingTags.value.filter(tag => tag !== tagToRemove)
-}
-
-// 保存标签
-const saveTags = async () => {
-  if (!currentEditingTalent.value) return
-  
+// 更新人才状态并发送通知
+const updateTalentStatus = async (talent, newStatus) => {
   try {
-    const response = await axios.patch(`/talent_pool/${currentEditingTalent.value.id}/`, {
-      tags: currentEditingTags.value.join(',')
-    })
+    const companyName = talent.application_info?.enterprise_name || '公司'
+    const jobTitle = talent.application_info?.recruitment_title || '岗位'
+    const applicantName = talent.resume_snapshot?.name || '求职者'
     
-    message.success('标签更新成功')
+    let messageText = ''
     
-    // 更新本地数据
-    const index = talents.value.findIndex(t => t.id === currentEditingTalent.value.id)
-    if (index !== -1) {
-      talents.value[index].tags = currentEditingTags.value.join(',')
-      talents.value[index].tags_list = [...currentEditingTags.value]
+    switch (newStatus) {
+      case 'INTERVIEW':
+        messageText = `恭喜通过 “${companyName}-${jobTitle}” 的筛选，现在进入面试环节，请留意平台通知和邮箱`
+        break
+      case 'HIRED':
+        messageText = `感谢您参加 “${companyName}-${jobTitle}” 的招聘，恭喜您已被录用，录用通知以及相关注意事项请留意邮箱`
+        break
+      case 'ELIMINATED':
+        messageText = `感谢您参加 “${companyName}-${jobTitle}” 的招聘，很遗憾地通知您未能通过“${jobTitle}”的本轮招聘环节`
+        break
+      case 'WRITTEN_TEST':
+        messageText = null
+        break
+      default:
+        return
     }
     
-    showTagModal.value = false
-  } catch (error) {
-    console.error('保存标签失败:', error)
-    message.error('保存标签失败')
-  }
-}
-
-// 切换人才状态
-const toggleTalentStatus = async (talent) => {
-  const newStatus = talent.status === 'ACTIVE' ? 'ARCHIVED' : 'ACTIVE'
-  const statusText = newStatus === 'ACTIVE' ? '激活' : '归档'
-  
-  try {
-    const response = await axios.post(`/talent_pool/${talent.id}/update_status/`, {
+    await axios.post(`/talent_pool/${talent.id}/update_status/`, {
       status: newStatus
     })
     
-    message.success(`已${statusText}该人才`)
+    if (messageText) {
+      await axios.post('/notifications/create/', {
+        recipient_id: talent.job_seeker,
+        title: '招聘状态更新',
+        message: messageText,
+        related_object_id: talent.id,
+        related_object_type: 'talent_pool'
+      })
+    }
     
-    // 更新本地数据
+    message.success('状态更新成功')
+    
     const index = talents.value.findIndex(t => t.id === talent.id)
     if (index !== -1) {
       talents.value[index].status = newStatus
@@ -585,6 +432,23 @@ const startChat = async (talent) => {
     } else {
       message.error('网络错误: ' + error.message)
     }
+  }
+}
+
+// 删除人才记录
+const deleteTalent = async (talent) => {
+  try {
+    await axios.delete(`/talent_pool/${talent.id}/`)
+    message.success('删除成功')
+    
+    // 从本地数据中移除
+    const index = talents.value.findIndex(t => t.id === talent.id)
+    if (index !== -1) {
+      talents.value.splice(index, 1)
+    }
+  } catch (error) {
+    console.error('删除失败:', error)
+    message.error('删除失败')
   }
 }
 

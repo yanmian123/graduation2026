@@ -34,6 +34,18 @@
             </template>
             全部标记为已读
           </n-button>
+          
+          <n-button
+            type="warning"
+            size="medium"
+            @click="handleDeleteAllRead"
+            :disabled="notificationStore.isLoading || notificationStore.unreadCount === 0"
+          >
+            <template #icon>
+              <n-icon><TrashOutline /></n-icon>
+            </template>
+            删除全部已读
+          </n-button>
         </div>
       </div>
       
@@ -61,7 +73,6 @@
           :key="notification.id"
           class="notification-card"
           :class="{ 'unread': !notification.is_read }"
-          @click="handleNotificationClick(notification)"
         >
           <div class="notification-header">
             <n-tag
@@ -74,6 +85,17 @@
             <span class="notification-time">
               {{ formatNotificationTime(notification.created_at) }}
             </span>
+            <n-button
+              text
+              size="small"
+              type="error"
+              @click.stop="handleDeleteNotification(notification)"
+              class="delete-button"
+            >
+              <template #icon>
+                <n-icon><TrashOutline /></n-icon>
+              </template>
+            </n-button>
           </div>
           
           <div class="notification-title">{{ notification.title }}</div>
@@ -111,7 +133,7 @@ import {
   NPagination,
   useMessage
 } from 'naive-ui'
-import { CheckmarkCircle, NotificationsOff, Chatbubbles } from '@vicons/ionicons5'
+import { CheckmarkCircle, NotificationsOff, Chatbubbles, TrashOutline } from '@vicons/ionicons5'
 import { useNotificationStore } from '@/stores/notificationStore'
 
 const message = useMessage()
@@ -179,6 +201,26 @@ const handleMarkAllAsRead = async () => {
 
 const goToChat = () => {
   router.push('/chat')
+}
+
+const handleDeleteNotification = async (notification) => {
+  try {
+    await notificationStore.deleteNotification(notification.id)
+    message.success('通知已删除')
+  } catch (error) {
+    console.error('删除通知失败:', error)
+    message.error('删除通知失败')
+  }
+}
+
+const handleDeleteAllRead = async () => {
+  try {
+    await notificationStore.deleteAllRead()
+    message.success('已删除全部已读通知')
+  } catch (error) {
+    console.error('删除全部已读通知失败:', error)
+    message.error('删除全部已读通知失败')
+  }
 }
 
 // 方法：点击通知
@@ -322,6 +364,10 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
+}
+
+.delete-button {
+  padding: 4px 8px;
 }
 
 .notification-title {

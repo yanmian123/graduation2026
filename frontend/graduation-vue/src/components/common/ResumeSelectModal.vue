@@ -19,11 +19,6 @@
           </n-icon>
           <span class="header-title">选择投递简历</span>
         </div>
-        <n-button quaternary circle @click="closeModal" class="close-button">
-          <template #icon>
-            <n-icon size="20"><CloseOutline /></n-icon>
-          </template>
-        </n-button>
       </div>
     </template>
 
@@ -40,17 +35,6 @@
 
     <!-- 简历列表 -->
     <div v-else-if="resumes.length > 0" class="resume-content">
-      <div class="selection-info">
-        <n-alert type="info" :bordered="false" class="info-alert">
-          <template #icon>
-            <n-icon><InformationCircleOutline /></n-icon>
-          </template>
-          请选择一份简历进行投递，已选择: 
-          <strong v-if="selectedResume">{{ getSelectedResumeName() }}</strong>
-          <span v-else class="no-selection">暂未选择</span>
-        </n-alert>
-      </div>
-      
       <div class="resume-list">
         <n-radio-group v-model:value="selectedResumeId" class="resume-radio-group">
           <n-space vertical :size="12">
@@ -74,54 +58,33 @@
                 
                 <div class="resume-details">
                   <div class="resume-header">
-                    <h4 class="resume-title">{{ resume.name }}</h4>
-                    <n-tag v-if="resume.is_default" type="primary" size="small" round>
-                      默认简历
-                    </n-tag>
+                    <h4 class="resume-title">{{ resume.name }} - {{ resume.job_objective }}</h4>
                   </div>
-                  
-                  <p class="resume-objective">{{ resume.job_objective }}</p>
                   
                   <div class="resume-meta">
                     <div class="meta-item">
                       <n-icon size="14" color="#8c8c8c"><SchoolOutline /></n-icon>
                       <span>{{ resume.education }}</span>
                     </div>
-                    <div class="meta-item">
+                    <div class="meta-item" v-if="resume.internship_experience">
                       <n-icon size="14" color="#8c8c8c"><BriefcaseOutline /></n-icon>
-                      <span>{{ resume.work_experience }}</span>
+                      <n-tag size="small" type="info" round>实习经历</n-tag>
+                      <span>{{ truncateText(resume.internship_experience, 20) }}</span>
+                    </div>
+                    <div class="meta-item" v-if="resume.project_experience">
+                      <n-icon size="14" color="#8c8c8c"><BriefcaseOutline /></n-icon>
+                      <n-tag size="small" type="success" round>项目经历</n-tag>
+                      <span>{{ truncateText(resume.project_experience, 20) }}</span>
+                    </div>
+                    <div class="meta-item" v-if="resume.pdf_url">
+                      <n-icon size="14" color="#ff4d4f"><DocumentTextOutline /></n-icon>
+                      <span>含PDF</span>
                     </div>
                   </div>
-                    <div class="resume-meta">
-                      <div class="meta-item">
-                        <n-icon size="14" color="#8c8c8c"><SchoolOutline /></n-icon>
-                        <span>{{ resume.education }}</span>
-                      </div>
-                      <div class="meta-item">
-                        <n-icon size="14" color="#8c8c8c"><BriefcaseOutline /></n-icon>
-                        <span>{{ resume.work_experience }}</span>
-                      </div>
-                      <!-- 添加PDF标识 -->
-                      <div class="meta-item" v-if="resume.pdf_url">
-                        <n-icon size="14" color="#ff4d4f"><DocumentTextOutline /></n-icon>
-                        <span>含PDF简历</span>
-                      </div>
-                    </div>
                   <p class="update-time">
                     <n-icon size="12" color="#bfbfbf"><TimeOutline /></n-icon>
-                    最后更新: {{ formatDate(resume.updated_at) }}
+                    {{ formatDate(resume.updated_at) }}
                   </p>
-                </div>
-                
-                <div class="resume-actions">
-                  <n-button 
-                    size="tiny" 
-                    quaternary 
-                    @click.stop="previewResume(resume.id)"
-                    class="preview-btn"
-                  >
-                    预览
-                  </n-button>
                 </div>
               </div>
             </n-card>
@@ -164,9 +127,6 @@
             class="cancel-btn"
             :disabled="submitting"
           >
-            <template #icon>
-              <n-icon><CloseOutline /></n-icon>
-            </template>
             关闭
           </n-button>
           
@@ -186,13 +146,6 @@
             </n-button>
           </div>
         </div>
-        
-        <!-- 选择状态提示 -->
-        <div v-if="selectedResume" class="selection-confirm">
-          <n-text depth="3" class="confirm-text">
-            即将投递简历: <strong>{{ selectedResume.name }}</strong>
-          </n-text>
-        </div>
       </div>
     </template>
   </n-modal>
@@ -208,15 +161,19 @@ import {
   NRadio,
   NRadioGroup,
   NText,
-  // ... 其他组件
+  NTag,
+  NButton,
+  NSpace,
+  NCard,
+  NIcon,
+  NSpin,
+  NResult
 } from 'naive-ui'
 import { 
-  CloseOutline, 
   DocumentTextOutline,
   CheckmarkCircleOutline,
   PaperPlaneOutline,
   SyncOutline,
-  InformationCircleOutline,
   SchoolOutline,
   BriefcaseOutline,
   TimeOutline,
@@ -256,12 +213,6 @@ const fetchResumes = async () => {
   try {
     const response = await axios.get('/resumes/')
     resumes.value = response.data
-    
-    // 如果有默认简历，自动选择
-    const defaultResume = resumes.value.find(r => r.is_default)
-    if (defaultResume) {
-      selectedResumeId.value = defaultResume.id
-    }
   } catch (error) {
     console.error('获取简历列表失败:', error)
     message.error('获取简历列表失败')
@@ -276,15 +227,16 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('zh-CN')
 }
 
+// 截断文本
+const truncateText = (text, maxLength) => {
+  if (!text) return ''
+  if (text.length <= maxLength) return text
+  return text.substring(0, maxLength) + '...'
+}
+
 // 获取选中简历名称
 const getSelectedResumeName = () => {
   return selectedResume.value ? selectedResume.value.name : ''
-}
-
-// 预览简历
-const previewResume = (resumeId) => {
-  // 在新标签页打开简历预览
-  window.open(`/resumes/preview/${resumeId}`, '_blank')
 }
 
 // 跳转到创建简历页面
@@ -420,16 +372,6 @@ watch(showModal, (newVal) => {
   color: #1f2937;
 }
 
-.close-button {
-  color: #6b7280;
-  transition: all 0.3s ease;
-}
-
-.close-button:hover {
-  color: #374151;
-  background-color: #f3f4f6;
-}
-
 .loading-state {
   display: flex;
   justify-content: center;
@@ -443,19 +385,6 @@ watch(showModal, (newVal) => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.selection-info {
-  margin-bottom: 8px;
-}
-
-.info-alert {
-  border-radius: 8px;
-}
-
-.no-selection {
-  color: #f59e0b;
-  font-style: italic;
 }
 
 .resume-list {
@@ -549,9 +478,13 @@ watch(showModal, (newVal) => {
 .meta-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   font-size: 13px;
   color: #6b7280;
+}
+
+.meta-item .n-tag {
+  margin-right: 4px;
 }
 
 .update-time {
@@ -561,15 +494,6 @@ watch(showModal, (newVal) => {
   display: flex;
   align-items: center;
   gap: 4px;
-}
-
-.resume-actions {
-  display: flex;
-  align-items: flex-start;
-}
-
-.preview-btn {
-  font-size: 12px;
 }
 
 .modal-footer {
@@ -607,18 +531,6 @@ watch(showModal, (newVal) => {
 .submit-btn:hover:not(.n-button--disabled) {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-}
-
-.selection-confirm {
-  text-align: center;
-  padding: 8px;
-  background-color: #f8fafc;
-  border-radius: 6px;
-  border-left: 3px solid #3b82f6;
-}
-
-.confirm-text {
-  font-size: 13px;
 }
 
 .no-resume {

@@ -335,6 +335,7 @@ const handleSubmit = async () => {
     // 更新本地存储的企业信息
     const enterpriseInfo = {
       id: formData.value.id,
+      user_id: formData.value.user,
       name: formData.value.name,
       logo: formData.value.logo,
       avatar: formData.value.logo, // 保持兼容性

@@ -184,12 +184,24 @@ const handleSubmit = async () => {
     
     loading.value = true
     
-    await axios.post('/user/verifications/', formData.value)
+    const submitData = {
+      verification_type: formData.value.verification_type,
+      name: formData.value.name,
+      id_number: formData.value.id_number,
+      phone: formData.value.phone,
+      business_license: formData.value.business_license,
+      other_files: formData.value.other_files || []
+    }
+    
+    console.log('提交的数据:', submitData)
+    
+    await axios.post('/user/verifications/', submitData)
     
     message.success('认证申请已提交，请等待管理员审核')
     await fetchApplication()
   } catch (error) {
     console.error('提交认证申请失败:', error)
+    console.error('错误详情:', error.response?.data)
     message.error(error.response?.data?.error || '提交失败，请重试')
   } finally {
     loading.value = false

@@ -133,6 +133,39 @@ export const useNotificationStore = defineStore('notification', () => {
     })
   }
 
+  const deleteNotification = async (notificationId: number) => {
+    try {
+      console.log('🗑️ [NotificationStore] 删除通知', { notificationId })
+      await notificationApi.deleteNotification(notificationId)
+      const index = notifications.value.findIndex(n => n.id === notificationId)
+      if (index > -1) {
+        notifications.value.splice(index, 1)
+        updateUnreadCount()
+      }
+      console.log('✅ [NotificationStore] 通知已删除')
+    } catch (err) {
+      console.error('❌ [NotificationStore] 删除通知失败:', err)
+    }
+  }
+
+  const deleteAllRead = async () => {
+    try {
+      console.log('🗑️ [NotificationStore] 删除所有已读通知')
+      await notificationApi.deleteAllRead()
+      const readNotifications = notifications.value.filter(n => n.is_read)
+      readNotifications.forEach(n => {
+        const index = notifications.value.findIndex(m => m.id === n.id)
+        if (index > -1) {
+          notifications.value.splice(index, 1)
+        }
+      })
+      updateUnreadCount()
+      console.log('✅ [NotificationStore] 所有已读通知已删除')
+    } catch (err) {
+      console.error('❌ [NotificationStore] 删除所有已读通知失败:', err)
+    }
+  }
+
   // WebSocket相关
   const connectWebSocket = () => {
     console.log('🔌 [NotificationStore] 准备连接WebSocket...', {
@@ -235,6 +268,8 @@ export const useNotificationStore = defineStore('notification', () => {
     markAllAsRead,
     addNotification,
     updateUnreadCount,
+    deleteNotification,
+    deleteAllRead,
     init,
     connectWebSocket,
     disconnectWebSocket,

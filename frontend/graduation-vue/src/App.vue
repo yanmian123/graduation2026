@@ -36,6 +36,16 @@ const currentLayout = computed(() => {
     }
   }
   
+  // 对于NotificationCenter页面，根据用户类型动态选择布局
+  if (route.name === 'NotificationCenter') {
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+    if (userInfo.is_enterprise) {
+      return EnterpriseLayout
+    } else {
+      return DefaultLayout
+    }
+  }
+  
   const layoutMap = {
     default: DefaultLayout,
     enterprise: EnterpriseLayout,

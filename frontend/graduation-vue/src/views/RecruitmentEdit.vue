@@ -346,7 +346,7 @@ const handleSubmit = async () => {
     await formRef.value.validate()
     loading.value = true
     
-    let submitData = {
+    const submitData = {
       ...formData.value,
       deadline: formData.value.deadline ? formatDate(formData.value.deadline) : null
     }

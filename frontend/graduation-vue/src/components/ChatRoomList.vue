@@ -241,6 +241,10 @@ onMounted(() => {
   refreshInterval = window.setInterval(() => {
     if (!loading.value) {
       refresh()
+      // 同时刷新当前聊天室的消息列表
+      if (currentRoom.value) {
+        chatStore.fetchMessages(currentRoom.value.id)
+      }
     }
   }, 5000)
 })

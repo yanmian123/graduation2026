@@ -53,6 +53,7 @@
 
 <script setup>
 import { h, ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { NDataTable, NCard, NTag,NButton, NSelect,NSpace ,NDropdown} from 'naive-ui' // 确保导入所有使用的组件
 import axios from '@/utils/axios'
@@ -60,6 +61,7 @@ import axios from '@/utils/axios'
 // 调试模式
 const debug = ref(true)
 const message = useMessage()
+const router = useRouter()
 // 数据状态
 const applications = ref([])
 const loading = ref(false)
@@ -69,27 +71,29 @@ const bulkUpdating = ref(false) // 批量更新中状态
 
 // 批量操作选项
 const bulkActions = ref([
-  { label: '标记为初筛', value: 'PENDING' },
-  { label: '标记为已归入人才库', value: 'TALENT_POOL' },
-  { label: '发送招聘状态', value: 'SEND_STATUS' }
+  { label: '通过并加入人才库', value: 'PASS' },
+  { label: '不通过', value: 'REJECT' }
 ])
 
 // 状态选项
 const statusOptions = [
   { label: '初筛', value: 'PENDING' },
-  { label: '已归入人才库', value: 'TALENT_POOL' }
+  { label: '已归入人才库', value: 'INTERVIEW' },
+  { label: '已拒绝', value: 'REJECTED' }
 ]
 
 // 状态类型映射
 const statusTypeMap = {
   'PENDING': 'warning',
-  'TALENT_POOL': 'success'
+  'INTERVIEW': 'success',
+  'REJECTED': 'error'
 }
 
 // 状态文本映射
 const statusTextMap = {
   'PENDING': '初筛',
-  'TALENT_POOL': '已归入人才库'
+  'INTERVIEW': '已归入人才库',
+  'REJECTED': '已拒绝'
 }
 
 // 行属性，支持点击选择
@@ -132,20 +136,33 @@ const handleBulkAction = async () => {
     // 使用单个更新接口循环处理
     const updatePromises = selectedApplications.value.map(async (appId) => {
       try {
-        if (bulkAction.value === 'SEND_STATUS') {
-          // 发送状态通知
-          await sendApplicationNotification(appId)
-          console.log(`申请 ${appId} 状态通知发送成功`)
-        } else {
-          // 更新申请状态
-          const response = await axios.post(`/applications/${appId}/update_status/`, {
-            status: bulkAction.value
+        const application = applications.value.find(app => app.id === appId)
+        if (bulkAction.value === 'PASS') {
+          // 通过并加入人才库（使用INTERVIEW状态表示通过初筛）
+          await axios.post(`/applications/${appId}/update_status/`, {
+            status: 'INTERVIEW'
           })
-          console.log(`申请 ${appId} 状态更新成功`)
+          // 加入人才库
+          await axios.post('/talent_pool/add_from_application/', {
+            application_id: appId,
+            tags: '通过初筛',
+            notes: `加入人才库`
+          })
+          // 发送通知
+          await sendStatusNotification(application, 'PASS')
+          console.log(`申请 ${appId} 通过并加入人才库成功`)
+        } else if (bulkAction.value === 'REJECT') {
+          // 不通过
+          await axios.post(`/applications/${appId}/update_status/`, {
+            status: 'REJECTED'
+          })
+          // 发送通知
+          await sendStatusNotification(application, 'REJECT')
+          console.log(`申请 ${appId} 拒绝成功`)
         }
         return { success: true, id: appId }
       } catch (error) {
-        console.error(`申请 ${appId} ${bulkAction.value === 'SEND_STATUS' ? '发送通知' : '更新状态'}失败:`, error)
+        console.error(`申请 ${appId} 操作失败:`, error)
         return { success: false, id: appId, error }
       }
     })
@@ -158,19 +175,21 @@ const handleBulkAction = async () => {
     const failedUpdates = results.filter(result => !result.success).length
     
     if (failedUpdates === 0) {
-      message.success(`成功更新 ${successfulUpdates} 条申请记录`)
+      message.success(`成功处理 ${successfulUpdates} 条申请记录`)
     } else {
-      message.warning(`成功更新 ${successfulUpdates} 条，失败 ${failedUpdates} 条`)
+      message.warning(`成功处理 ${successfulUpdates} 条，失败 ${failedUpdates} 条`)
     }
     
-    // 更新本地数据状态（只在非发送通知操作时执行）
-    if (bulkAction.value !== 'SEND_STATUS') {
-      applications.value.forEach(app => {
-        if (selectedApplications.value.includes(app.id)) {
-          app.status = bulkAction.value
+    // 更新本地数据状态
+    applications.value.forEach(app => {
+      if (selectedApplications.value.includes(app.id)) {
+        if (bulkAction.value === 'PASS') {
+          app.status = 'INTERVIEW'
+        } else if (bulkAction.value === 'REJECT') {
+          app.status = 'REJECTED'
         }
-      })
-    }
+      }
+    })
     
     // 清除选择
     clearSelection()
@@ -211,6 +230,35 @@ const sendApplicationNotification = async (applicationId) => {
   } catch (error) {
     console.error('发送状态通知失败:', error)
     message.error('发送状态通知失败: ' + (error.response?.data?.error || error.message))
+    throw error
+  }
+}
+
+// 发送状态通知
+const sendStatusNotification = async (application, action) => {
+  try {
+    console.log('发送通知，申请数据:', application)
+    console.log('申请人ID:', application.applicant_id)
+    
+    const companyName = application.recruitment?.enterprise?.name || '公司'
+    const jobTitle = application.recruitment_title || '岗位'
+    
+    const notificationData = {
+      recipient_id: application.applicant_id,
+      title: '申请状态更新',
+      message: action === 'PASS' 
+        ? `”${companyName}-${jobTitle}”招聘状态已更新为'通过初筛并进入下一阶段'`
+        : `”${companyName}-${jobTitle}”很遗憾，您的投递未能进入下一阶段`,
+      related_object_id: application.id,
+      related_object_type: 'job_application'
+    }
+    
+    console.log('发送通知数据:', notificationData)
+    await axios.post('/notifications/create/', notificationData)
+    console.log(`成功发送申请 ${application.id} 的状态通知`)
+  } catch (error) {
+    console.error('发送状态通知失败:', error)
+    console.error('错误响应:', error.response?.data)
     throw error
   }
 }
@@ -306,7 +354,10 @@ const columns = [
     render: (row) => {
       const statusMap = {
         'PENDING': { text: '初筛', type: 'warning' },
-        'TALENT_POOL': { text: '已归入人才库', type: 'success' }
+        'INTERVIEW': { text: '已归入人才库', type: 'success' },
+        'REJECTED': { text: '已拒绝', type: 'error' },
+        'VIEWED': { text: '已查看', type: 'info' },
+        'HIRED': { text: '已录用', type: 'success' }
       }
       
       const status = row.status || row.application_status || 'PENDING'
@@ -333,32 +384,19 @@ const columns = [
     title: '操作',
     key: 'actions',
     render: (row) => {
-      const actions = [
-        {
-          label: '加入人才库',
-          key: 'add_to_talent',
-          onClick: () => addToTalentPool(row)
-        },
-        {
-          label: '开始聊天',
-          key: 'start_chat',
-          onClick: () => startChat(row)
-        }
+      const actionOptions = [
+        { label: '加入人才库', value: 'PASS' },
+        { label: '不通过', value: 'REJECT' },
+        { label: '发起聊天', value: 'CHAT' },
+        { label: '删除', value: 'DELETE' }
       ]
-    
-      return h(NSpace, { size: 'small' }, {
-        default: () => [
-          h(NButton, {
-            size: 'small',
-            type: 'primary',
-            onClick: () => addToTalentPool(row),
-            disabled: row.status === 'TALENT_POOL'
-          }, { default: () => '加入人才库' }),
-          h(NButton, {
-            size: 'small',
-            onClick: () => startChat(row)
-          }, { default: () => '开始聊天' })
-        ]
+      
+      return h(NSelect, {
+        size: 'small',
+        placeholder: '选择操作',
+        options: actionOptions,
+        style: { width: '140px' },
+        onUpdateValue: (value) => handleAction(row, value)
       })
     }
   }
@@ -412,7 +450,7 @@ const fetchApplications = async () => {
 const getDefaultData = () => {
   return [
     {
-      id: 1,
+      id:1,
       applicant_name: '张三',
       recruitment_title: '前端开发工程师',
       resume_name: '张三的简历',
@@ -436,6 +474,77 @@ const getDefaultData = () => {
       applied_at: '2024-01-13T09:15:00Z'
     }
   ]
+}
+
+// 处理单个申请的操作
+const handleAction = async (application, action) => {
+  try {
+    if (action === 'PASS') {
+      // 通过并加入人才库（使用INTERVIEW状态表示通过初筛）
+      await axios.post(`/applications/${application.id}/update_status/`, {
+        status: 'INTERVIEW'
+      })
+      // 加入人才库
+      await axios.post('/talent_pool/add_from_application/', {
+        application_id: application.id,
+        tags: '通过初筛',
+        notes: `加入人才库`
+      })
+      // 发送通知
+      await sendStatusNotification(application, 'PASS')
+      message.success('已通过并加入人才库')
+      
+      // 更新本地数据
+      const index = applications.value.findIndex(app => app.id === application.id)
+      if (index !== -1) {
+        applications.value[index].status = 'INTERVIEW'
+      }
+    } else if (action === 'REJECT') {
+      // 不通过
+      await axios.post(`/applications/${application.id}/update_status/`, {
+        status: 'REJECTED'
+      })
+      // 发送通知
+      await sendStatusNotification(application, 'REJECT')
+      message.success('已拒绝该申请')
+      
+      // 更新本地数据
+      const index = applications.value.findIndex(app => app.id === application.id)
+      if (index !== -1) {
+        applications.value[index].status = 'REJECTED'
+      }
+    } else if (action === 'CHAT') {
+      // 发起聊天
+      await startChat(application)
+    } else if (action === 'DELETE') {
+      // 删除申请
+      await deleteApplication(application)
+    }
+  } catch (error) {
+    console.error('操作失败:', error)
+    if (error.response?.status === 400) {
+      message.error(error.response.data.error || '操作失败')
+    } else {
+      message.error('操作失败: ' + (error.response?.data?.error || error.message))
+    }
+  }
+}
+
+// 删除申请记录
+const deleteApplication = async (application) => {
+  try {
+    await axios.delete(`/applications/${application.id}/`)
+    message.success('删除成功')
+    
+    // 从本地数据中移除
+    const index = applications.value.findIndex(app => app.id === application.id)
+    if (index !== -1) {
+      applications.value.splice(index, 1)
+    }
+  } catch (error) {
+    console.error('删除失败:', error)
+    message.error('删除失败')
+  }
 }
 
 // 在 script 中添加加入人才库的方法
@@ -464,20 +573,33 @@ const addToTalentPool = async (application) => {
 // 开始聊天
 const startChat = async (application) => {
   try {
-    const userInfo = JSON.parse(localStorage.getItem('userInfo'))
-    if (!userInfo || !userInfo.id) {
-      message.error('用户信息不完整，请重新登录')
+    // 企业用户信息存储在 enterpriseInfo 中
+    const enterpriseInfo = JSON.parse(localStorage.getItem('enterpriseInfo'))
+    if (!enterpriseInfo || !enterpriseInfo.user_id) {
+      message.error('企业信息不完整，请重新登录')
       return
     }
     
+    console.log('发起聊天 - 申请数据:', application)
+    console.log('发起聊天 - 企业信息:', enterpriseInfo)
+    console.log('发起聊天 - 申请人ID:', application.applicant_id)
+    console.log('发起聊天 - 企业用户ID:', enterpriseInfo.user_id)
+    
     const response = await axios.post('/chat/chatrooms/start_chat/', {
       job_seeker_user_id: application.applicant_id,
-      enterprise_user_id: userInfo.id
+      enterprise_user_id: enterpriseInfo.user_id
     })
     
-    message.success('聊天室创建成功')
+    console.log('聊天室创建成功:', response.data)
+    const roomId = response.data.id
+    
+    message.success('聊天室创建成功，正在跳转...')
+    
+    // 跳转到聊天页面，带上roomId参数
+    router.push(`/chat/${roomId}`)
   } catch (error) {
     console.error('创建聊天失败:', error)
+    console.error('错误响应:', error.response?.data)
     message.error('创建聊天失败: ' + (error.response?.data?.error || error.message))
   }
 }

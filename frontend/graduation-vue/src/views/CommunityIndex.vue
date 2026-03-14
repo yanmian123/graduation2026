@@ -72,7 +72,7 @@
                   <n-avatar :src="post.authorAvatar" size="medium" round />
                 </n-dropdown>
                 <span class="author-name">{{ post.authorName }}</span>
-                <n-tag size="small" type="info">{{ post.category }}</n-tag>
+                <n-tag size="small" type="info">{{ getCategoryLabel(post.category) }}</n-tag>
                 <span class="publish-time">{{ post.publishTime }}</span>
               </n-space>
               
@@ -202,31 +202,6 @@
             </n-list>
           </n-card>
 
-          <!-- 活跃用户 -->
-          <n-card title="活跃学长学姐" bordered class="sidebar-card" style="margin-top: 16px;">
-            <n-list>
-              <n-list-item
-                v-for="user in activeUsers"
-                :key="user.id"
-                class="active-user-item"
-              >
-                <n-avatar :src="user.avatar" size="small" />
-                <div class="user-info">
-                  <n-text strong>{{ user.name }}</n-text>
-                  <n-text type="secondary" size="small">{{ user.desc }}</n-text>
-                </div>
-                <n-button
-                  size="small"
-                  type="primary"
-                  ghost
-                  class="follow-btn"
-                >
-                  关注
-                </n-button>
-              </n-list-item>
-            </n-list>
-          </n-card>
-
           <!-- 社区公告 -->
           <n-card title="社区公告" bordered class="sidebar-card" style="margin-top: 16px;">
             <n-space vertical>
@@ -304,7 +279,6 @@ const topicFilter = ref('all');
 const sortType = ref('latest');
 const posts = ref([]);
 const hotPosts = ref([]);
-const activeUsers = ref([]);
 const hasMore = ref(true);
 const loading = ref(false);
 const currentPage = ref(1);
@@ -325,6 +299,18 @@ const sortOptions = [
 ];
 
 
+
+// 分类标签中文映射
+const getCategoryLabel = (category) => {
+  const categoryMap = {
+    'interview': '面试经验',
+    'offer': '求职分享',
+    'skills': '技能提升',
+    'career': '职业规划',
+    'other': '其他'
+  };
+  return categoryMap[category] || category || '其他';
+};
 
 // 格式化日期（多久前）
 const formatTimeAgo = (dateString) => {
@@ -1112,56 +1098,6 @@ const resetSearch = () => {
 
 .hot-post-item:hover .hot-post-meta .n-space {
   transform: scale(1.05);
-}
-
-.active-user-item {
-  cursor: pointer;
-  padding: 12px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-  margin-bottom: 8px;
-}
-
-.active-user-item:hover {
-  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
-  transform: translateX(4px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
-}
-
-.active-user-item .n-avatar {
-  transition: all 0.3s ease;
-  border: 2px solid #e8e8e8;
-}
-
-.active-user-item:hover .n-avatar {
-  transform: scale(1.1);
-  border-color: #10b981;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-}
-
-.user-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.user-info .n-text {
-  display: block;
-  margin-bottom: 4px;
-}
-
-.follow-btn {
-  flex-shrink: 0;
-  transition: all 0.3s ease;
-  border-radius: 8px;
-  font-weight: 500;
-}
-
-.follow-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .pagination-container {

@@ -4,55 +4,27 @@
     <!-- 聊天头部 -->
     <div class="chat-header">
       <n-space align="center" :size="12">
-        <!-- 条件渲染测试 -->
-        <div style="border: 2px solid red; padding: 5px;">
-          
-          <!-- 有头像时只显示图片 -->
-          <n-avatar
-            v-if="displayUser?.avatar"
-            round
-            :size="40"
-            :src="getFullAvatarUrl(displayUser.avatar)"
-            @error="handleAvatarError"
-          />
-          
-          <!-- 无头像时显示文字 -->
-          <n-avatar
-            v-else
-            round
-            :size="40"
-          >
-            {{ displayUser?.nickname?.charAt(0) || 'U' }}
-          </n-avatar>
-        </div>
+        <!-- 有头像时只显示图片 -->
+        <n-avatar
+          v-if="displayUser?.avatar"
+          round
+          :size="40"
+          :src="getFullAvatarUrl(displayUser.avatar)"
+          @error="handleAvatarError"
+        />
+        
+        <!-- 无头像时显示文字 -->
+        <n-avatar
+          v-else
+          round
+          :size="40"
+        >
+          {{ displayUser?.nickname?.charAt(0) || 'U' }}
+        </n-avatar>
 
         <div class="user-info">
           <div class="username">{{ displayUser?.nickname }}</div>
-          <!-- <div class="debug-info" style="font-size: 10px; color: #999;">
-            ID: {{ displayUser?.id }} | 
-            类型: {{ displayUser?.is_enterprise ? '企业' : '个人' }} |
-            头像URL: {{ displayUser?.avatar }}
-          </div> -->
-          
-          <div class="status">
-            <n-tag v-if="displayUser?.id !== undefined && isUserOnline(displayUser.id)" type="success" size="small" round>
-              在线
-            </n-tag>
-            <n-tag v-else type="default" size="small" round>
-              离线
-            </n-tag>
-            <span v-if="displayUser?.id !== undefined && isUserOnline(displayUser.id)" class="online-time">最后在线: 刚刚</span>
-          </div>
         </div>
-      </n-space>
-      
-      <n-space>
-        <n-button quaternary circle @click="toggleEmoji">
-          <n-icon><HappyOutlineIcon /></n-icon>
-        </n-button>
-        <n-button quaternary circle @click="showMoreOptions = !showMoreOptions">
-          <n-icon><MoreIcon /></n-icon>
-        </n-button>
       </n-space>
     </div>
 
@@ -147,14 +119,14 @@
                 <!-- 文件消息 -->
                 <div v-if="message.message_type === 'file'" class="file-message">
                   <n-space align="center" :size="12">
-                    <n-icon size="24" color="#fff">
+                    <n-icon size="24" color="#000">
                       <DocumentIcon />
                     </n-icon>
                     <div class="file-info">
-                      <div class="file-name" style="color: white">{{ message.file_name }}</div>
-                      <div class="file-size" style="color: rgba(255,255,255,0.8)">{{ formatFileSize(message.file_size || 0) }}</div>
+                      <div class="file-name" style="color: #000">{{ message.file_name }}</div>
+                      <div class="file-size" style="color: rgba(0,0,0,0.8)">{{ formatFileSize(message.file_size || 0) }}</div>
                     </div>
-                    <n-button type="primary" text @click="downloadFile(message)" style="color: white">
+                    <n-button type="primary" text @click="downloadFile(message)" style="color: #000">
                       下载
                     </n-button>
                   </n-space>
@@ -167,22 +139,9 @@
                 
                 <div class="message-meta">
                   <span class="time">{{ formatMessageTime(message.created_at) }}</span>
-                  <n-space v-if="isOwnMessage(message)" align="center" :size="4">
-                    <n-icon
-                      v-if="message.is_read"
-                      size="16"
-                      color="#fff"
-                    >
-                      <CheckIcon />
-                    </n-icon>
-                    <n-icon
-                      v-else
-                      size="16"
-                      color="rgba(255,255,255,0.6)"
-                    >
-                      <CheckIcon />
-                    </n-icon>
-                  </n-space>
+                  <span v-if="isLastOwnMessage(message)" :class="['read-status-text', message.is_read ? 'read' : 'unread']" style="margin-left: 8px;">
+                    {{ message.is_read ? '已读' : '未读' }}
+                  </span>
                 </div>
               </div>
               
@@ -220,27 +179,25 @@
     <!-- 输入区域 -->
     <div class="input-area">
       <div class="input-tools">
-        <n-upload
-          :multiple="false"
-          :show-file-list="false"
-          :custom-request="handleImageUpload"
+        <input 
+          ref="imageInputRef"
+          type="file"
           accept="image/*"
-        >
-          <n-button quaternary circle>
-            <n-icon><ImageIcon /></n-icon>
-          </n-button>
-        </n-upload>
-        <n-upload
-          :multiple="false"
-          :show-file-list="false"
-          :custom-request="handleFileUpload"
-        >
-          <n-button quaternary circle>
-            <n-icon><AttachIcon /></n-icon>
-          </n-button>
-        </n-upload>
-        <n-button quaternary circle @click="toggleEmoji">
-          <n-icon><HappyIcon /></n-icon>
+          style="display: none"
+          @change="handleImageFileChange"
+        />
+        <n-button quaternary circle @click="() => imageInputRef?.click()">
+          <n-icon><ImageIcon /></n-icon>
+        </n-button>
+        
+        <input 
+          ref="fileInputRef"
+          type="file"
+          style="display: none"
+          @change="handleFileFileChange"
+        />
+        <n-button quaternary circle @click="() => fileInputRef?.click()">
+          <n-icon><AttachIcon /></n-icon>
         </n-button>
       </div>
       
@@ -263,29 +220,18 @@
         发送
       </n-button>
     </div>
-
-    <!-- 表情选择器 -->
-    <n-dropdown
-      v-if="showEmojiPicker"
-      :options="emojiOptions"
-      placement="top-start"
-      @select="handleEmojiSelect"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { 
-  NAvatar, NButton, NSpace, NIcon, NTag, NText, NScrollbar, 
-  NInput, NUpload, NDropdown, NImage
+  NAvatar, NButton, NSpace, NIcon, NText, NScrollbar, 
+  NInput, NUpload, NImage
 } from 'naive-ui'
 import { 
-  HappyOutline as HappyOutlineIcon,
-  EllipsisHorizontal as MoreIcon,
   Document as DocumentIcon,
   Attach as AttachIcon,
-  Happy as HappyIcon,
   Image as ImageIcon
 } from '@vicons/ionicons5'
 import { useChatStore } from '@/stores/chatStore'
@@ -294,9 +240,9 @@ import type { Message } from '@/types/chat'
 import { CheckmarkOutline as CheckIcon } from '@vicons/ionicons5'
 const chatStore = useChatStore()
 const inputMessage = ref('')
-const showEmojiPicker = ref(false)
-const showMoreOptions = ref(false)
 const messagesContainer = ref<HTMLElement>()
+const imageInputRef = ref<HTMLInputElement>()
+const fileInputRef = ref<HTMLInputElement>()
 
 // 使用 storeToRefs 保持响应式
 import { storeToRefs } from 'pinia'
@@ -307,7 +253,6 @@ const {
 } = storeToRefs(chatStore)
 
 const { 
-  isUserOnline, 
   sendMessage, 
   uploadFile, 
   markAsRead,
@@ -328,6 +273,15 @@ const isOwnMessage = (message: Message) => {
   return message.sender === chatStore.currentUser?.id
 }
 
+const isLastOwnMessage = (message: Message) => {
+  if (!isOwnMessage(message)) return false
+  
+  const ownMessages = messages.value.filter(m => isOwnMessage(m))
+  const lastOwnMessage = ownMessages[ownMessages.length - 1]
+  
+  return lastOwnMessage?.id === message.id
+}
+
 // 发送文本消息
 const sendTextMessage = async () => {
   if (!inputMessage.value.trim() || !currentRoom.value) return
@@ -341,63 +295,45 @@ const sendTextMessage = async () => {
   }
 }
 
-// 处理文件上传
-import type { UploadCustomRequestOptions } from 'naive-ui'
+// 处理图片文件选择
+const handleImageFileChange = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file || !currentRoom.value) return
 
-const handleFileUpload = async (options: UploadCustomRequestOptions) => {
-  if (!currentRoom.value) return
-
-  const rawFile = options.file.file as File
-  console.log('📤 上传文件信息:', {
-    name: rawFile.name,
-    size: rawFile.size,
-    type: rawFile.type,
+  console.log('📤 上传图片信息:', {
+    name: file.name,
+    size: file.size,
+    type: file.type,
     roomId: currentRoom.value.id
   })
 
   try {
-    await uploadFile(currentRoom.value.id, rawFile)
-    options.onFinish?.()
+    await uploadFile(currentRoom.value.id, file)
+    target.value = ''
   } catch (error) {
-    console.error('上传文件失败详情:', error)
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'response' in error &&
-      (error as any).response?.data
-    ) {
-      console.error('服务器错误响应:', (error as any).response.data)
-    }
-    options.onError?.()
+    console.error('上传图片失败详情:', error)
   }
 }
 
-// 处理图片上传
-const handleImageUpload = async (options: UploadCustomRequestOptions) => {
-  if (!currentRoom.value) return
+// 处理文件选择
+const handleFileFileChange = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file || !currentRoom.value) return
 
-  const rawFile = options.file.file as File
-  console.log('� 上传图片信息:', {
-    name: rawFile.name,
-    size: rawFile.size,
-    type: rawFile.type,
+  console.log('📤 上传文件信息:', {
+    name: file.name,
+    size: file.size,
+    type: file.type,
     roomId: currentRoom.value.id
   })
 
   try {
-    await uploadFile(currentRoom.value.id, rawFile)
-    options.onFinish?.()
+    await uploadFile(currentRoom.value.id, file)
+    target.value = ''
   } catch (error) {
-    console.error('上传图片失败详情:', error)
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'response' in error &&
-      (error as any).response?.data
-    ) {
-      console.error('服务器错误响应:', (error as any).response.data)
-    }
-    options.onError?.()
+    console.error('上传文件失败详情:', error)
   }
 }
 
@@ -443,10 +379,23 @@ const scrollToBottom = () => {
 
 // 工具函数
 const formatMessageTime = (time: string) => {
-  return new Date(time).toLocaleTimeString('zh-CN', { 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  })
+  const messageDate = new Date(time)
+  const today = new Date()
+  const isToday = messageDate.toDateString() === today.toDateString()
+  
+  if (isToday) {
+    return messageDate.toLocaleTimeString('zh-CN', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })
+  } else {
+    return messageDate.toLocaleString('zh-CN', { 
+      month: '2-digit', 
+      day: '2-digit',
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })
+  }
 }
 
 const formatFileSize = (bytes: number) => {
@@ -464,16 +413,6 @@ const downloadFile = (message: Message) => {
   if (message.file) {
     window.open(message.file, '_blank')
   }
-}
-
-// 表情选择器
-const toggleEmoji = () => {
-  showEmojiPicker.value = !showEmojiPicker.value
-}
-
-const handleEmojiSelect = (emoji: string) => {
-  inputMessage.value += emoji
-  showEmojiPicker.value = false
 }
 
 // 使用在线默认头像URL，避免依赖本地文件
@@ -585,13 +524,6 @@ const handleAvatarError = (e: Event) => {
   })
 }
 
-const emojiOptions = [
-  { label: '😀😀', key: '😀😀' },
-  { label: '😂', key: '😂' },
-  { label: '❤️', key: '❤️' },
-  { label: '👍', key: '👍' },
-]
-
 // 生命周期
 onMounted(() => {
   if (currentRoom.value) {
@@ -627,13 +559,6 @@ watch(currentRoom, (newRoom) => {
     webSocketService.disconnect()
   }
 })
-
-// 监听消息变化，当消息加载完成后自动滚动到底部
-watch(messages, () => {
-  nextTick(() => {
-    scrollToBottom()
-  })
-})
 </script>
 
 <style scoped>
@@ -665,18 +590,6 @@ watch(messages, () => {
   font-weight: 600;
   font-size: 16px;
   color: #333;
-}
-
-.status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.online-time {
-  font-size: 12px;
-  color: #888;
 }
 
 .messages-container {
@@ -715,13 +628,17 @@ watch(messages, () => {
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
+  width: 100%;
 }
 
 /* 自己消息布局（右侧） */
 .own-message {
   display: flex;
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: flex-end;
   justify-content: flex-end;
+  width: 100%;
+  gap: 8px;
 }
 
 /* 消息头像 */
@@ -736,6 +653,9 @@ watch(messages, () => {
   border-radius: 12px;
   position: relative;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  flex-shrink: 0;
 }
 
 /* 对方消息气泡（左侧，浅色） */
@@ -748,7 +668,7 @@ watch(messages, () => {
 /* 自己消息气泡（右侧，蓝色） */
 .own-bubble {
   background: #75cba3;
-  color: white;
+  color: #000;
   margin-left: 8px;
 }
 
@@ -788,21 +708,28 @@ watch(messages, () => {
 .file-message {
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
 }
 
 .file-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   flex: 1;
   margin-left: 8px;
 }
 
 .file-name {
+  word-break: break-all;
+  overflow-wrap: break-word;
+  max-width: 200px;
   font-weight: 500;
   font-size: 14px;
 }
 
 .file-size {
   font-size: 12px;
-  opacity: 0.8;
+  color: rgba(0, 0, 0, 0.6);
   margin-top: 2px;
 }
 
@@ -816,13 +743,29 @@ watch(messages, () => {
   opacity: 0.8;
 }
 
-.own-bubble .message-meta {
-  color: rgba(255, 255, 255, 0.9);
+.read-status {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 12px;
 }
 
-.own-message {
-  color: white;
-  margin-left: auto;
+.read-status-text {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.read-status-text.read {
+  background: rgba(0, 0, 0, 0.1);
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.read-status-text.unread {
+  background: rgba(0, 0, 0, 0.15);
+  color: rgba(0, 0, 0, 0.8);
 }
 
 .text-message {
@@ -830,27 +773,7 @@ watch(messages, () => {
   word-break: break-word;
 }
 
-.file-message {
-  display: flex;
-  align-items: center;
-}
-
-.file-info {
-  flex: 1;
-  margin-left: 8px;
-}
-
-.file-name {
-  font-weight: 500;
-  font-size: 14px;
-}
-
-.file-size {
-  font-size: 12px;
-  opacity: 0.8;
-  margin-top: 2px;
-}
-
+/* 消息元信息（时间、已读状态） */
 .message-meta {
   display: flex;
   justify-content: flex-end;
@@ -871,7 +794,12 @@ watch(messages, () => {
 
 .input-tools {
   display: flex;
-  gap: 8px;
+  gap: 0;
+  align-items: center;
+}
+
+.input-tools input[type="file"] {
+  display: none;
 }
 
 .message-input {

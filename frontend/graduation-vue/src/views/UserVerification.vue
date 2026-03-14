@@ -141,16 +141,26 @@ const rules = {
 
 const handleUpload = ({ file, onError, onFinish }) => {
   const formData = new FormData()
-  formData.append('file', file.file)
   
-  axios.post('/user/upload/file/', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  })
+  const fileToUpload = file.raw || file.file
+  if (!fileToUpload) {
+    onError(new Error('无效的文件对象'))
+    return
+  }
+  
+  formData.append('file', fileToUpload)
+  
+  console.log('开始上传文件:', fileToUpload.name)
+  
+  axios.post('/user/upload/file/', formData)
     .then(response => {
+      console.log('上传成功，响应数据:', response.data)
       file.url = response.data.url
       onFinish()
     })
     .catch(error => {
+      console.error('上传失败:', error)
+      console.error('错误详情:', error.response?.data)
       onError(error)
       message.error('文件上传失败')
     })

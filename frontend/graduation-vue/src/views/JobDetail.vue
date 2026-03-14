@@ -56,7 +56,7 @@
           </n-avatar>
           <div class="company-info">
             <h3 class="company-name">{{ job.enterprise_name }}</h3>
-            <p class="company-industry">{{ job.enterprise_industry }}</p>
+            <p class="company-industry">{{ getIndustryText(job.enterprise_industry) }}</p>
           </div>
         </div>
       </div>
@@ -76,7 +76,7 @@
             <n-icon class="info-icon"><CashOutline /></n-icon>
             <div class="info-content">
               <div class="info-label">薪资范围</div>
-              <div class="info-value salary">{{ job.salary }}</div>
+              <div class="info-value salary">{{ formatSalary(job.salary) }}</div>
             </div>
           </div>
           <div class="info-item">
@@ -135,6 +135,23 @@
           </template>
           {{ contacting ? '连接中...' : '联系企业' }}
         </n-button>
+        
+        <n-button
+          :type="isFavorited ? 'error' : 'default'"
+          size="large"
+          class="favorite-button"
+          @click="toggleFavorite"
+          :loading="favoriting"
+          round
+        >
+          <template #icon>
+            <n-icon>
+              <HeartOutline v-if="!isFavorited" />
+              <Heart v-else />
+            </n-icon>
+          </template>
+          {{ favoriting ? '处理中...' : (isFavorited ? '已收藏' : '收藏') }}
+        </n-button>
       </div>
 
       <!-- 简历选择模态框 -->
@@ -162,7 +179,9 @@ import {
   BriefcaseOutline,
   SchoolOutline,
   PaperPlaneOutline,
-  ChatbubblesOutline
+  ChatbubblesOutline,
+  HeartOutline,
+  Heart
 } from '@vicons/ionicons5'
 import axios from '@/utils/axios'
 import ResumeSelectModal from '@/components/common/ResumeSelectModal.vue'
@@ -182,6 +201,8 @@ const loading = ref(true)
 const applying = ref(false)
 const contacting = ref(false)
 const showResumeModal = ref(false)
+const isFavorited = ref(false)
+const favoriting = ref(false)
 
 // 默认公司Logo
 const defaultCompanyLogo = ref('/images/default-company-logo.png')
@@ -212,6 +233,17 @@ const educationMap = {
   'DOCTOR': '博士及以上'
 }
 
+// 行业映射
+const industryMap = {
+  'IT': '信息技术',
+  'FINANCE': '金融',
+  'EDUCATION': '教育',
+  'MEDIA': '传媒',
+  'MANUFACTURING': '制造业',
+  'SERVICE': '服务业',
+  'OTHER': '其他'
+}
+
 // 招聘类型映射
 const recruitTypeMap = {
   'CAMPUS': { text: '校招', type: 'success' },
@@ -240,17 +272,87 @@ const getEducationText = (education) => {
   return educationMap[education] || education
 }
 
+const getIndustryText = (industry) => {
+  return industryMap[industry] || industry
+}
+
+// 格式化薪资显示
+const formatSalary = (salary) => {
+  if (!salary) return '面议'
+  if (salary === '面议') return '面议'
+  
+  // 如果是数字范围格式（如 10000-15000），转换为 k 格式
+  if (typeof salary === 'string' && salary.includes('-')) {
+    const [min, max] = salary.split('-').map(s => parseInt(s))
+    if (!isNaN(min) && !isNaN(max)) {
+      const minK = Math.round(min / 1000)
+      const maxK = Math.round(max / 1000)
+      return `${minK}k-${maxK}k`
+    }
+  }
+  
+  return salary
+}
+
 // 获取职位详情
 const fetchJobDetail = async () => {
   try {
     loading.value = true
     const response = await axios.get(`/recruitments/${jobId.value}/`)
     job.value = response.data
+    
+    // 检查是否已收藏
+    await checkFavorite()
   } catch (error) {
     console.error('获取职位详情失败:', error)
     message.error('获取职位详情失败，请稍后重试')
   } finally {
     loading.value = false
+  }
+}
+
+// 检查是否已收藏
+const checkFavorite = async () => {
+  try {
+    const response = await axios.get('/favorites/check_favorite/', {
+      params: { recruitment_id: jobId.value }
+    })
+    isFavorited.value = response.data.is_favorited
+  } catch (error) {
+    console.error('检查收藏状态失败:', error)
+  }
+}
+
+// 收藏/取消收藏职位
+const toggleFavorite = async () => {
+  const isLogin = !!localStorage.getItem('accessToken')
+  if (!isLogin) {
+    message.warning('请先登录后再收藏职位')
+    router.push('/login')
+    return
+  }
+
+  favoriting.value = true
+
+  try {
+    if (isFavorited.value) {
+      // 取消收藏
+      await axios.delete('/favorites/remove_by_recruitment/', {
+        params: { recruitment_id: jobId.value }
+      })
+      isFavorited.value = false
+      message.success('已取消收藏')
+    } else {
+      // 添加收藏
+      await axios.post('/favorites/', { recruitment: jobId.value })
+      isFavorited.value = true
+      message.success('收藏成功')
+    }
+  } catch (error) {
+    console.error('收藏操作失败:', error)
+    message.error('操作失败，请稍后重试')
+  } finally {
+    favoriting.value = false
   }
 }
 
@@ -478,6 +580,13 @@ onMounted(() => {
   white-space: pre-wrap;
 }
 
+.job-requirement {
+  font-size: 16px;
+  line-height: 1.8;
+  color: #4b5563;
+  white-space: pre-wrap;
+}
+
 .apply-section {
   display: flex;
   gap: 16px;
@@ -487,11 +596,15 @@ onMounted(() => {
   border-top: 2px solid #e5e7eb;
 }
 
-.apply-button, .contact-button {
+.apply-button, .contact-button, .favorite-button {
   min-width: 200px;
   font-weight: 500;
   height: 48px;
   font-size: 16px;
+}
+
+.favorite-button {
+  min-width: 120px;
 }
 
 @media (max-width: 768px) {

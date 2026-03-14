@@ -87,7 +87,9 @@ export const notificationApi = {
   getNotifications: () => api.get('api/notifications/'),
   getUnreadCount: () => api.get('api/notifications/unread_count/'),
   markAsRead: (notificationId: number) => api.patch(`api/notifications/${notificationId}/mark_as_read/`),
-  markAllAsRead: () => api.patch('api/notifications/mark_all_as_read/')
+  markAllAsRead: () => api.patch('api/notifications/mark_all_as_read/'),
+  deleteNotification: (notificationId: number) => api.delete(`api/notifications/${notificationId}/delete_notification/`),
+  deleteAllRead: () => api.delete('api/notifications/delete_all_read/')
 }
 
 // 文章相关API

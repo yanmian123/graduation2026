@@ -300,6 +300,20 @@ const filteredJobs = computed(() => {
     const [min, max] = filterSalary.value.split('-').map(Number)
     result = result.filter(job => {
       const salary = parseSalary(job.salary)
+      
+      // 如果是"面议"，保留显示
+      if (job.salary === '面议') {
+        console.log(`薪资面议，保留: ${job.title}`)
+        return true
+      }
+      
+      // 如果是自定义薪资（不是范围格式），保留显示
+      if (!job.salary.includes('-') && job.salary !== '面议') {
+        console.log(`自定义薪资，保留: ${job.salary}`)
+        return true
+      }
+      
+      // 只有范围格式的薪资才进行筛选
       const inRange = salary >= min && salary <= max
       console.log(`薪资筛选: ${job.salary} -> ${salary}, 范围: ${min}-${max}, 符合: ${inRange}`)
       return inRange

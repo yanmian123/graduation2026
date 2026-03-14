@@ -97,30 +97,6 @@
             </div>
           </n-form-item>
 
-          <!-- 附件上传 -->
-          <n-form-item label="附件（可选）">
-            <n-upload
-              action="/api/upload/file"  
-              accept=".pdf,.doc,.docx,.zip"
-              :max-size="10 * 1024 * 1024" 
-              :on-success="handleFileSuccess"
-              :on-error="handleFileError"
-              :file-list="fileList"
-              @remove="handleFileRemove"
-              multiple
-            >
-              <n-button>
-                <template #icon>
-                  <n-icon><Document /></n-icon>
-                </template>
-                选择文件上传
-              </n-button>
-            </n-upload>
-            <n-text type="secondary" depth="3" size="small" style="margin-top: 8px;">
-              支持上传面经文档、笔试题库等（最大10MB）
-            </n-text>
-          </n-form-item>
-
           <!-- 操作按钮 -->
           <n-form-item :show-label="false">
             <n-space size="large">
@@ -173,7 +149,6 @@ import {
   NFormItem,
   NInput,
   NSelect,
-  NUpload,
   NButton,
   NText,
   NDynamicInput,
@@ -181,7 +156,7 @@ import {
   NIcon,
   NEmpty
 } from 'naive-ui';
-import { Document, Eye, Send, Save } from '@vicons/ionicons5';
+import { Eye, Send, Save } from '@vicons/ionicons5';
 // 接口请求
 import axios from '@/utils/axios';
 import { useRoute } from 'vue-router';
@@ -202,8 +177,7 @@ const formData = reactive({
   title: '',
   category: '',
   tags: [],
-  content: '',  // 富文本内容（HTML格式）
-  attachments: []  // 附件ID列表（后端返回）
+  content: ''  // 富文本内容（HTML格式）
 });
 
 // 分类选项
@@ -288,22 +262,6 @@ const handleTagSearch = async (keyword) => {
   }
 };
 
-// 附件上传
-const fileList = ref([]);
-const handleFileSuccess = (response, file) => {
-  formData.attachments.push(response.data.fileId);
-  message.success('文件上传成功');
-};
-const handleFileError = (error) => {
-  message.error('文件上传失败：' + error.message);
-};
-const handleFileRemove = (file) => {
-  const index = formData.attachments.findIndex(id => id === file.response?.data?.fileId);
-  if (index > -1) {
-    formData.attachments.splice(index, 1);
-  }
-};
-
 // 内容变化监听
 const handleContentChange = () => {
   // 自动调整图片大小，防止溢出
@@ -350,7 +308,6 @@ const handleSaveDraft = async () => {
       category: formData.category,
       tags: formData.tags,
       content: contentHTML,
-      attachments: formData.attachments,
       isDraft: true
     };
 
@@ -377,7 +334,6 @@ const loadDraft = () => {
       formData.title = draft.title || '';
       formData.category = draft.category || '';
       formData.tags = draft.tags || [];
-      formData.attachments = draft.attachments || [];
       
       // 延迟加载富文本内容，确保编辑器已初始化
       setTimeout(() => {
@@ -484,8 +440,7 @@ const submitForm = async () => {
         title: formData.title,
         category: formData.category,
         tags: formData.tags.join(','),
-        content: htmlContent,
-        attachmentIds: formData.attachments
+        content: htmlContent
       });
       message.success('更新成功！');
       
@@ -497,8 +452,7 @@ const submitForm = async () => {
         title: formData.title,
         category: formData.category,
         tags: formData.tags.join(','),
-        content: htmlContent,
-        attachmentIds: formData.attachments
+        content: htmlContent
       });
       message.success('发布成功！');
       
@@ -595,7 +549,6 @@ const resetForm = () => {
   formData.category = '';
   formData.tags = [];
   formData.content = '';
-  formData.attachments = [];
   isEditMode.value = false;
   editingArticleId.value = null;
 };

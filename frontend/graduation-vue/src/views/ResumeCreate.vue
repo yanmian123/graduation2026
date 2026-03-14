@@ -30,6 +30,11 @@
           <n-select v-model:value="form.education" :options="educationOptions" placeholder="请选择学历" />
         </n-form-item>
 
+        <!-- 毕业院校 -->
+        <n-form-item label="毕业院校" path="school">
+          <n-input v-model:value="form.school" placeholder="请输入毕业院校" />
+        </n-form-item>
+
         <!-- 求职意向 -->
         <n-form-item label="求职意向" path="job_objective">
           <n-input v-model:value="form.job_objective" placeholder="请输入求职意向（如前端工程师）" />
@@ -168,6 +173,7 @@ const form = ref({
   email: '',
   phone: '',
   education: '',
+  school: '',
   internship_experience: '',
   work_experience: '',
   project_experience: '',

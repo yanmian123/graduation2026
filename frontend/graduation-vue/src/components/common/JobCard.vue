@@ -53,7 +53,7 @@
         </n-avatar>
         <div class="company-details">
           <h4 class="company-name">{{ job.enterprise_name }}</h4>
-          <p class="company-industry">{{ job.enterprise_industry }}</p>
+          <p class="company-industry">{{ getIndustryText(job.enterprise_industry) }}</p>
         </div>
       </div>
     </div>
@@ -65,7 +65,7 @@
       </div>
       <div class="meta-item">
         <n-icon class="meta-icon"><CashOutline /></n-icon>
-        <span class="salary">{{ job.salary }}</span>
+        <span class="salary">{{ formatSalary(job.salary) }}</span>
       </div>
       <div class="meta-item">
         <n-icon class="meta-icon"><BriefcaseOutline /></n-icon>
@@ -203,6 +203,17 @@ const educationMap = {
   'DOCTOR': '博士及以上'
 }
 
+// 行业映射
+const industryMap = {
+  'IT': '信息技术',
+  'FINANCE': '金融',
+  'EDUCATION': '教育',
+  'MEDIA': '传媒',
+  'MANUFACTURING': '制造业',
+  'SERVICE': '服务业',
+  'OTHER': '其他'
+}
+
 // 计算属性
 const isLogin = computed(() => {
   return !!localStorage.getItem('accessToken')
@@ -236,6 +247,28 @@ const getExperienceText = (experience) => {
 
 const getEducationText = (education) => {
   return educationMap[education] || education
+}
+
+const getIndustryText = (industry) => {
+  return industryMap[industry] || industry
+}
+
+// 格式化薪资显示
+const formatSalary = (salary) => {
+  if (!salary) return '面议'
+  if (salary === '面议') return '面议'
+  
+  // 如果是数字范围格式（如 10000-15000），转换为 k 格式
+  if (typeof salary === 'string' && salary.includes('-')) {
+    const [min, max] = salary.split('-').map(s => parseInt(s))
+    if (!isNaN(min) && !isNaN(max)) {
+      const minK = Math.round(min / 1000)
+      const maxK = Math.round(max / 1000)
+      return `${minK}k-${maxK}k`
+    }
+  }
+  
+  return salary
 }
 
 const formatPublishTime = (time) => {

@@ -227,6 +227,21 @@ const fetchApplication = async () => {
     const response = await axios.get('/user/verifications/my_application/')
     if (response.data) {
       application.value = response.data
+      
+      // 如果认证已通过，立即更新localStorage中的认证状态
+      if (response.data.status === 'APPROVED') {
+        const enterpriseInfo = JSON.parse(localStorage.getItem('enterpriseInfo') || '{}')
+        enterpriseInfo.is_verified = true
+        enterpriseInfo.verification_type = 'ENTERPRISE'
+        localStorage.setItem('enterpriseInfo', JSON.stringify(enterpriseInfo))
+        
+        // 同时更新userInfo中的认证状态
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+        userInfo.is_verified = true
+        localStorage.setItem('userInfo', JSON.stringify(userInfo))
+        
+        message.success('实名认证已通过，现在可以发布招聘信息了')
+      }
     }
   } catch (error) {
     console.error('获取认证申请失败:', error)

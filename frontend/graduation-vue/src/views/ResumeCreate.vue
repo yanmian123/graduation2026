@@ -35,6 +35,11 @@
           <n-input v-model:value="form.school" placeholder="请输入毕业院校" />
         </n-form-item>
 
+        <!-- 专业 -->
+        <n-form-item label="专业" path="major">
+          <n-input v-model:value="form.major" placeholder="请输入专业（如计算机科学与技术）" />
+        </n-form-item>
+
         <!-- 求职意向 -->
         <n-form-item label="求职意向" path="job_objective">
           <n-input v-model:value="form.job_objective" placeholder="请输入求职意向（如前端工程师）" />
@@ -174,6 +179,7 @@ const form = ref({
   phone: '',
   education: '',
   school: '',
+  major: '',
   internship_experience: '',
   work_experience: '',
   project_experience: '',

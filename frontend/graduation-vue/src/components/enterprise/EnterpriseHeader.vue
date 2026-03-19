@@ -142,7 +142,7 @@ const enterpriseMenuOptions = ref([
   { key: 'recruitments', label: '招聘管理' },
   { key: 'applications', label: '简历库', },
   {key:'talent-pool', label:'人才库'},
-  { key: 'analytics', label: '数据统计', },
+  { key: 'chat', label: '聊天列表', },
   { key: 'verification', label: '实名认证', }
 ])
 
@@ -155,7 +155,11 @@ const userDropdownOptions = ref([
 ])
 
 const handleMenuSelect = (key) => {
-  router.push(`/enterprise/${key}`)
+  if (key === 'chat') {
+    router.push('/chat')
+  } else {
+    router.push(`/enterprise/${key}`)
+  }
 }
 
 const handlePublishJob = () => {

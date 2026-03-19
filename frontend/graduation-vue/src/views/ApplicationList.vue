@@ -38,6 +38,24 @@
         <pre>{{ JSON.stringify(applications, null, 2) }}</pre>
       </div>
       
+      <!-- 筛选工具栏 -->
+      <div class="filter-toolbar">
+        <n-space>
+          <n-select 
+            v-model:value="filterEducation" 
+            :options="educationFilterOptions" 
+            placeholder="筛选学历"
+            clearable
+            style="width: 150px;"
+            size="small"
+            @update:value="handleFilter"
+          />
+          <n-button size="small" @click="handleResetFilter">
+            重置
+          </n-button>
+        </n-space>
+      </div>
+      
       <n-data-table
         :columns="columns"
         :data="applications"
@@ -64,10 +82,23 @@ const message = useMessage()
 const router = useRouter()
 // 数据状态
 const applications = ref([])
+const allApplications = ref([])
 const loading = ref(false)
-const selectedApplications = ref([]) // 选中的申请ID
-const bulkAction = ref(null) // 批量操作类型
-const bulkUpdating = ref(false) // 批量更新中状态
+const selectedApplications = ref([])
+const filterEducation = ref('')
+const bulkAction = ref(null)
+const bulkUpdating = ref(false)
+
+// 学历筛选选项
+const educationFilterOptions = [
+  { label: '博士', value: '博士' },
+  { label: '硕士', value: '硕士' },
+  { label: '本科', value: '本科' },
+  { label: '专科', value: '专科' },
+  { label: '高中', value: '高中' },
+  { label: '中专/中技', value: '中专/中技' },
+  { label: '初中及以下', value: '初中及以下' }
+]
 
 // 批量操作选项
 const bulkActions = ref([
@@ -307,10 +338,18 @@ const columns = [
     title: '学历',
     key: 'education',
     render: (row) => {
-      // 直接使用后端返回的education字段
       const education = row.education
-      // 映射为中文显示
+      console.log('学历字段值:', education, '类型:', typeof education)
       return educationMap[education] || education || '未填写'
+    }
+  },
+  {
+    title: '毕业院校',
+    key: 'school',
+    render: (row) => {
+      const school = row.school || '未填写'
+      console.log('毕业院校:', school, '来源:', row.school ? 'API字段' : '未填写')
+      return school
     }
   },
   {
@@ -428,10 +467,12 @@ const fetchApplications = async () => {
     }
     
     if (Array.isArray(data)) {
+      allApplications.value = data
       applications.value = data
       console.log('成功设置申请数据:', applications.value)
     } else {
       console.warn('数据不是数组格式:', data)
+      allApplications.value = []
       applications.value = []
     }
   } catch (error) {
@@ -439,7 +480,9 @@ const fetchApplications = async () => {
     message.error('获取申请记录失败')
     
     // 设置默认数据用于测试
-    applications.value = getDefaultData()
+    const defaultData = getDefaultData()
+    allApplications.value = defaultData
+    applications.value = defaultData
   } finally {
     loading.value = false
     debug.value = false // 调试完成后关闭
@@ -604,6 +647,43 @@ const startChat = async (application) => {
   }
 }
 
+// 筛选申请记录
+const handleFilter = () => {
+  loading.value = true
+  try {
+    if (!filterEducation.value) {
+      applications.value = [...allApplications.value]
+      message.success('已显示所有数据')
+      return
+    }
+    
+    console.log('筛选条件:', filterEducation.value)
+    console.log('所有数据:', allApplications.value)
+    
+    const filteredData = allApplications.value.filter(app => {
+      const appEducation = app.education
+      console.log('申请学历:', appEducation, '筛选条件:', filterEducation.value, '是否匹配:', appEducation === filterEducation.value)
+      
+      return appEducation === filterEducation.value
+    })
+    
+    applications.value = filteredData
+    message.success(`筛选完成，共 ${filteredData.length} 条记录`)
+  } catch (error) {
+    console.error('筛选失败:', error)
+    message.error('筛选失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 重置筛选
+const handleResetFilter = () => {
+  filterEducation.value = ''
+  applications.value = [...allApplications.value]
+  message.success('已重置筛选')
+}
+
 onMounted(() => {
   fetchApplications()
 })
@@ -624,6 +704,14 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.filter-toolbar {
+  margin-bottom: 16px;
+  padding: 12px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
 }
 
 .selected-count {

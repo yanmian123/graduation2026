@@ -127,6 +127,24 @@ const handleLogin = async () => {
     const userInfo = userInfoResponse.data
     localStorage.setItem('userInfo', JSON.stringify(userInfo))
     
+    // 如果是企业用户，获取并保存企业信息
+    if (userInfo.is_enterprise) {
+      try {
+        const enterpriseResponse = await axios.get('/enterprise/user/')
+        const enterpriseInfo = enterpriseResponse.data
+        // 合并用户信息和企业信息
+        const fullEnterpriseInfo = {
+          ...userInfo,
+          ...enterpriseInfo,
+          user_id: userInfo.id,
+          is_verified: enterpriseInfo.is_verified || false
+        }
+        localStorage.setItem('enterpriseInfo', JSON.stringify(fullEnterpriseInfo))
+      } catch (error) {
+        console.error('获取企业信息失败:', error)
+      }
+    }
+    
     // 跳转到首页
     router.push('/enterprise/home') // 或 '/home'
   } catch (error) {

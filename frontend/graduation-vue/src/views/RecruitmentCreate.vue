@@ -157,10 +157,42 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { NForm, NFormItem, NInput, NButton, NCard, NCheckbox, NSelect, NInputNumber, NDatePicker, NCascader, NRadio, NRadioGroup } from 'naive-ui'
+import { useMessage, NForm, NFormItem, NInput, NButton, NCard, NCheckbox, NSelect, NInputNumber, NDatePicker, NCascader, NRadio, NRadioGroup } from 'naive-ui'
 import axios from '@/utils/axios'
+
+const message = useMessage()
+const router = useRouter()
+
+// 页面加载时刷新企业认证状态
+onMounted(async () => {
+  try {
+    const userInfoResponse = await axios.get('/user/info/')
+    const userInfo = userInfoResponse.data
+    localStorage.setItem('userInfo', JSON.stringify(userInfo))
+    sessionStorage.setItem('userInfo', JSON.stringify(userInfo))
+    
+    // 如果是企业用户，刷新企业信息
+    if (userInfo.is_enterprise) {
+      try {
+        const enterpriseResponse = await axios.get('/enterprise/user/')
+        const enterpriseInfo = enterpriseResponse.data
+        const fullEnterpriseInfo = {
+          ...userInfo,
+          ...enterpriseInfo,
+          user_id: userInfo.id,
+          is_verified: enterpriseInfo.is_verified || false
+        }
+        localStorage.setItem('enterpriseInfo', JSON.stringify(fullEnterpriseInfo))
+      } catch (error) {
+        console.error('获取企业信息失败:', error)
+      }
+    }
+  } catch (error) {
+    console.error('获取用户信息失败:', error)
+  }
+})
 
 console.log('Naive UI检查:', {
   naive: window.naive,
@@ -248,7 +280,7 @@ const formData = ref({
 
 const formRef = ref(null)
 const loading = ref(false)
-const router = useRouter()
+
 
 const rules = {
   title: [
@@ -302,6 +334,53 @@ const handleSubmit = async () => {
   
   try {
     await formRef.value.validate()
+    
+    // 先刷新企业认证状态，确保获取最新状态
+    try {
+      const enterpriseResponse = await axios.get('/enterprise/user/')
+      const enterpriseInfo = enterpriseResponse.data
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const fullEnterpriseInfo = {
+        ...userInfo,
+        ...enterpriseInfo,
+        user_id: userInfo.id,
+        is_verified: enterpriseInfo.is_verified || false
+      }
+      localStorage.setItem('enterpriseInfo', JSON.stringify(fullEnterpriseInfo))
+    } catch (error) {
+      console.error('刷新企业信息失败:', error)
+    }
+    
+    // 检查企业实名认证状态
+    const enterpriseInfo = JSON.parse(localStorage.getItem('enterpriseInfo'))
+    if (!enterpriseInfo || !enterpriseInfo.is_verified) {
+      message.warning('请先完成企业实名认证后再发布招聘信息')
+      router.push('/enterprise/verification')
+      return
+    }
+    
+    // 检查敏感词
+    const contentToCheck = [
+      formData.value.title,
+      formData.value.job_desc,
+      formData.value.job_require
+    ].filter(Boolean).join(' ')
+    
+    if (contentToCheck.trim()) {
+      try {
+        const checkResponse = await axios.get('/user/sensitive_words/check_content/', {
+          params: { content: contentToCheck }
+        })
+        
+        if (checkResponse.data.has_sensitive) {
+          message.error(`内容包含敏感词：${checkResponse.data.sensitive_words.join('、')}，请修改后重新发布`)
+          return
+        }
+      } catch (error) {
+        console.error('敏感词检测失败:', error)
+      }
+    }
+    
     loading.value = true
     
     const submitData = {

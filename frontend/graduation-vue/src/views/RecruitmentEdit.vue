@@ -344,6 +344,29 @@ const handleSubmit = async () => {
   
   try {
     await formRef.value.validate()
+    
+    // 检查敏感词
+    const contentToCheck = [
+      formData.value.title,
+      formData.value.job_desc,
+      formData.value.job_require
+    ].filter(Boolean).join(' ')
+    
+    if (contentToCheck.trim()) {
+      try {
+        const checkResponse = await axios.get('/user/sensitive_words/check_content/', {
+          params: { content: contentToCheck }
+        })
+        
+        if (checkResponse.data.has_sensitive) {
+          message.error(`内容包含敏感词：${checkResponse.data.sensitive_words.join('、')}，请修改后重新发布`)
+          return
+        }
+      } catch (error) {
+        console.error('敏感词检测失败:', error)
+      }
+    }
+    
     loading.value = true
     
     const submitData = {

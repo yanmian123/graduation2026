@@ -276,6 +276,13 @@ const handleSubmit = async () => {
     return
   }
 
+  // 检查用户实名认证状态
+  const userInfo = JSON.parse(localStorage.getItem('userInfo'))
+  if (!userInfo || !userInfo.is_verified) {
+    message.warning('请先完成个人实名认证后再投递简历')
+    return
+  }
+
   submitting.value = true
   try {
     console.log('发送请求数据:', {

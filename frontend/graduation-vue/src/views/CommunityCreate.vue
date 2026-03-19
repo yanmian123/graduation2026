@@ -394,8 +394,27 @@ const getFieldLabel = (field) => {
 };
 
 // 提交发布
-const handleSubmit = () => {
+const handleSubmit = async () => {
   console.log('开始提交');
+  
+  // 先刷新用户认证状态，确保获取最新状态
+  try {
+    const userInfoResponse = await axios.get('/user/info/')
+    const userInfo = userInfoResponse.data
+    localStorage.setItem('userInfo', JSON.stringify(userInfo))
+    sessionStorage.setItem('userInfo', JSON.stringify(userInfo))
+  } catch (error) {
+    console.error('刷新用户信息失败:', error)
+  }
+  
+  // 检查用户实名认证状态
+  const userInfo = JSON.parse(localStorage.getItem('userInfo'))
+  if (!userInfo || !userInfo.is_verified) {
+    message.warning('请先完成个人实名认证后再发布文章')
+    router.push('/user/verification')
+    return
+  }
+  
   formRef.value.validate((errors) => {
     if (errors) {
       // 显示所有验证错误
@@ -432,6 +451,23 @@ const submitForm = async () => {
     
     // 使用处理后的HTML
     htmlContent = tempDiv.innerHTML;
+    
+    // 检查敏感词
+    const contentToCheck = [formData.title, formData.content].filter(Boolean).join(' ')
+    if (contentToCheck.trim()) {
+      try {
+        const checkResponse = await axios.get('/user/sensitive_words/check_content/', {
+          params: { content: contentToCheck }
+        })
+        
+        if (checkResponse.data.has_sensitive) {
+          message.error(`内容包含敏感词：${checkResponse.data.sensitive_words.join('、')}，请修改后重新发布`)
+          return
+        }
+      } catch (error) {
+        console.error('敏感词检测失败:', error)
+      }
+    }
     
     let res;
     if (isEditMode.value && editingArticleId.value) {
@@ -571,7 +607,17 @@ const stripHtmlTags = (html) => {
 };
 
 // 页面加载时
-onMounted(() => {
+onMounted(async () => {
+  // 刷新用户信息以获取最新的认证状态
+  try {
+    const userInfoResponse = await axios.get('/user/info/')
+    const userInfo = userInfoResponse.data
+    localStorage.setItem('userInfo', JSON.stringify(userInfo))
+    sessionStorage.setItem('userInfo', JSON.stringify(userInfo))
+  } catch (error) {
+    console.error('获取用户信息失败:', error)
+  }
+  
   // 检查是否是编辑模式
   const articleId = route.query.articleId;
   if (articleId) {

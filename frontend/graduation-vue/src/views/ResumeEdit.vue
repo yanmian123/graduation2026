@@ -35,6 +35,11 @@
           <n-input v-model:value="form.school" placeholder="请输入毕业院校" />
         </n-form-item>
 
+        <!-- 专业 -->
+        <n-form-item label="专业" path="major">
+          <n-input v-model:value="form.major" placeholder="请输入专业（如计算机科学与技术）" />
+        </n-form-item>
+
         <!-- 求职意向 -->
         <n-form-item label="求职意向" path="job_objective">
           <n-input v-model:value="form.job_objective" placeholder="请输入求职意向（如前端工程师）" />
@@ -197,6 +202,7 @@ const form = ref({
   phone: '',
   education: '',
   school: '',
+  major: '',
   internship_experience: '',
   work_experience: '',
   project_experience: '',
@@ -249,8 +255,13 @@ const message = useMessage();
 const fetchResumeDetail = async () => {
   try {
     const response = await getResumeDetail(resumeId);
+    console.log('后端返回的简历数据:', response.data);
+    
     form.value = response.data;
-    console.log('PDF URL:', form.value.pdf_url);
+    
+    console.log('表单数据:', form.value);
+    console.log('毕业院校:', form.value.school);
+    console.log('专业:', form.value.major);
   } catch (error) {
     message.error('获取简历详情失败');
     console.error(error);

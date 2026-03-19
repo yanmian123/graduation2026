@@ -24,9 +24,7 @@
             style="width: 150px;"
           />
           
-          <n-button type="primary" @click="handleSearch">
-            搜索
-          </n-button>
+
           
           <n-button @click="handleReset">
             重置
@@ -144,6 +142,14 @@ const columns = [
       }
       const education = row.resume_snapshot?.education
       return educationMap[education] || education || '未填写'
+    }
+  },
+  {
+    title: '毕业院校',
+    key: 'school',
+    render: (row) => {
+      const school = row.resume_snapshot?.school || '未填写'
+      return school
     }
   },
   {

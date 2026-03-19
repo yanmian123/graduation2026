@@ -767,13 +767,13 @@ const handleUserLogin = async () => {
     
     if (errorData) {
       if (errorData.username) {
-        errorMessage = errorData.username[0]
+        errorMessage = Array.isArray(errorData.username) ? errorData.username[0] : errorData.username
       } else if (errorData.password) {
-        errorMessage = errorData.password[0]
+        errorMessage = Array.isArray(errorData.password) ? errorData.password[0] : errorData.password
       } else if (errorData.detail) {
-        errorMessage = errorData.detail
+        errorMessage = Array.isArray(errorData.detail) ? errorData.detail[0] : errorData.detail
       } else if (errorData.error) {
-        errorMessage = errorData.error
+        errorMessage = Array.isArray(errorData.error) ? errorData.error[0] : errorData.error
       }
     }
     
@@ -817,13 +817,13 @@ const handleEnterpriseLogin = async () => {
     
     if (errorData) {
       if (errorData.username) {
-        errorMessage = errorData.username[0]
+        errorMessage = Array.isArray(errorData.username) ? errorData.username[0] : errorData.username
       } else if (errorData.password) {
-        errorMessage = errorData.password[0]
+        errorMessage = Array.isArray(errorData.password) ? errorData.password[0] : errorData.password
       } else if (errorData.detail) {
-        errorMessage = errorData.detail
+        errorMessage = Array.isArray(errorData.detail) ? errorData.detail[0] : errorData.detail
       } else if (errorData.error) {
-        errorMessage = errorData.error
+        errorMessage = Array.isArray(errorData.error) ? errorData.error[0] : errorData.error
       }
     }
     

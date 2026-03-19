@@ -34,7 +34,7 @@ import EnterpriseList from '@/views/EnterpriseList.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    { path: '/register', name: 'Register', component: Register,meta: { requiresAuth: false, layout:'empty'} },
+    { path: '/register', name: 'Register', component: Login,meta: { requiresAuth: false, layout:'empty'} },
     { path: '/login', name: 'Login', component: Login,meta: { requiresAuth: false, layout:'empty' } },
     {path:'/userinfo',name:'UserInfo',component: UserInfo,meta: { requiresAuth: true,layout:'default' }},
     {path:'/user/:id',name:'OtherUserProfile',component: OtherUserProfile,meta: { requiresAuth: true,layout:'default' }},

@@ -8,4 +8,5 @@ urlpatterns = [
     path('send-reset-code/', views.send_reset_code, name='send_reset_code'),
     path('reset-password/', views.reset_password, name='reset_password'),
     path('login/', CustomTokenObtainPairView.as_view(), name='custom_token_obtain_pair'),
+    path('user/info/', views.user_info, name='user_info'),
 ]

@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from .serializers import RegisterSerializer
 from .models import User
@@ -142,4 +142,34 @@ def reset_password(request):
             {"error": "用户不存在"},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_info(request):
+    """获取当前用户信息"""
+    try:
+        user = request.user
+        
+        # 检查用户是否通过实名认证
+        from user_info.models import VerificationApplication
+        verification = VerificationApplication.objects.filter(
+            user=user,
+            status='APPROVED'
+        ).first()
+        
+        is_verified = verification is not None
+        
+        return Response({
+            'id': user.id,
+            'username': user.username,
+            'nickname': user.nickname,
+            'avatar': user.avatar.url if user.avatar else None,
+            'email': user.email,
+            'phone_number': user.phone_number,
+            'is_enterprise': user.is_enterprise,
+            'is_verified': is_verified,
+            'verification_type': verification.verification_type if verification else None
+        })
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

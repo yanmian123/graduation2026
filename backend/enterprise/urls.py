@@ -13,5 +13,6 @@ router.register(r'favorites', RecruitmentFavoriteViewSet, basename='recruitment_
 # 应用内路由
 urlpatterns = [
     path('', include(router.urls)),
-    
+    # 单独的企业用户信息路由，用于兼容前端调用
+    path('user/', EnterpriseViewSet.as_view({'get': 'user'}), name='enterprise-user'),
 ]

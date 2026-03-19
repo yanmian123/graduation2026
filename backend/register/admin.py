@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import User
+from django.utils.html import format_html, mark_safe
+from django.utils import timezone
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
@@ -10,6 +12,40 @@ class CustomUserAdmin(UserAdmin):
     search_fields = ('username', 'email', 'nickname')
     ordering = ('-date_joined',)
     actions = ['freeze_users', 'unfreeze_users']
+    change_list_template = 'admin/register/user/change_list.html'
+    
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        
+        # 统计信息
+        from enterprise.models import Enterprise, Recruitment
+        from article_publish.models import Article
+        from enterprise.models import JobApplication
+        
+        # 统计用户数据
+        total_users = User.objects.count()
+        active_users = User.objects.filter(last_login__gte=timezone.now() - timezone.timedelta(days=7)).count()
+        enterprise_users = User.objects.filter(is_enterprise=True).count()
+        regular_users = User.objects.filter(is_enterprise=False).count()
+        total_recruitments = Recruitment.objects.count()
+        published_recruitments = Recruitment.objects.filter(status='PUBLISHED').count()
+        total_articles = Article.objects.count()
+        published_articles = Article.objects.filter(is_draft=False).count()
+        total_applications = JobApplication.objects.count()
+        
+        extra_context['stats'] = {
+            'total_users': total_users,
+            'active_users': active_users,
+            'enterprise_users': enterprise_users,
+            'regular_users': regular_users,
+            'total_recruitments': total_recruitments,
+            'published_recruitments': published_recruitments,
+            'total_articles': total_articles,
+            'published_articles': published_articles,
+            'total_applications': total_applications,
+        }
+        
+        return super().changelist_view(request, extra_context)
     
     # 在用户编辑页面显示自定义字段
     fieldsets = UserAdmin.fieldsets + (

@@ -50,6 +50,38 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     default_error_messages = {
         'no_active_account': '用户名或密码错误'
     }
+    
+    def validate(self, attrs):
+        username = attrs.get('username')
+        password = attrs.get('password')
+        
+        # 先检查用户是否存在
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            # 用户不存在，返回默认错误
+            raise serializers.ValidationError({
+                'detail': '用户名或密码错误'
+            })
+        
+        # 检查用户是否被冻结
+        if not user.is_active:
+            raise serializers.ValidationError({
+                'detail': '该账户已被冻结，请联系管理员解冻'
+            })
+        
+        # 调用父类验证方法（验证密码）
+        try:
+            data = super().validate(attrs)
+            return data
+        except Exception as e:
+            # 密码错误或其他错误
+            raise serializers.ValidationError({
+                'detail': '用户名或密码错误'
+            })
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer

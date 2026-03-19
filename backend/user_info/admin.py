@@ -3,7 +3,14 @@ from django.utils.html import format_html, mark_safe
 from django.utils import timezone
 from django.urls import reverse
 from django.conf import settings
-from .models import VerificationApplication
+from .models import VerificationApplication, SensitiveWord
+
+@admin.register(SensitiveWord)
+class SensitiveWordAdmin(admin.ModelAdmin):
+    """敏感词管理"""
+    list_display = ('word', 'created_at')
+    search_fields = ('word',)
+    list_filter = ('created_at',)
 
 @admin.register(VerificationApplication)
 class VerificationApplicationAdmin(admin.ModelAdmin):

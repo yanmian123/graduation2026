@@ -72,7 +72,32 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # 创建时自动绑定当前登录用户
         serializer.save(user=self.request.user)
-        
+    
+    @action(detail=False, methods=['get'])
+    def user(self, request):
+        """获取当前登录用户的企业信息（包括认证状态）"""
+        try:
+            enterprise = Enterprise.objects.get(user=request.user)
+            
+            # 检查企业是否通过实名认证（包括企业认证和个人认证）
+            from user_info.models import VerificationApplication
+            verification = VerificationApplication.objects.filter(
+                user=request.user,
+                status='APPROVED'
+            ).first()
+            
+            is_verified = verification is not None
+            
+            serializer_data = EnterpriseSerializer(enterprise).data
+            serializer_data['is_verified'] = is_verified
+            serializer_data['user_id'] = request.user.id
+            
+            return Response(serializer_data)
+        except Enterprise.DoesNotExist:
+            return Response({'error': '企业信息不存在'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
     @action(detail=False, methods=['get'], url_path='list_public')
     def list_public(self, request):
         """公开的企业列表接口（供所有用户查看）"""
@@ -407,6 +432,8 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
             'email': resume.email,
             'phone': resume.phone,
             'education': resume.education,
+            'school': resume.school,
+            'major': resume.major,
             'job_objective': resume.job_objective,
             'internship_experience': resume.internship_experience,
             'work_experience': resume.work_experience,

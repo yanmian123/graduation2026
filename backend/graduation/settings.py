@@ -84,15 +84,15 @@ INSTALLED_APPS = [
     "admin_interface",  # Django Admin Interface主题
     "rest_framework", #DRF
     "corsheaders", #CORS
-    "register", #注册功能
+    "register.apps.RegisterConfig", #注册功能
     'rest_framework_simplejwt',  # JWT认证
-    "user_info", #用户信息
-    "resume", #简历
-    "article_publish", #文章发布
-    "enterprise", #企业模块
-    "chat", #聊天模块
+    "user_info.apps.UserInfoConfig", #用户信息
+    "resume.apps.ResumeConfig", #简历
+    "article_publish.apps.ArticlePublishConfig", #文章发布
+    "enterprise.apps.EnterpriseConfig", #企业模块
+    "chat.apps.ChatConfig", #聊天模块
     "channels", #Django Channels
-    "notification", #通知模块
+    "notification.apps.NotificationConfig", #通知模块
 ]
 
 ASGI_APPLICATION = "graduation.asgi.application"
@@ -163,6 +163,11 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 ROOT_URLCONF = "graduation.urls"
+
+# Django Admin 站点配置
+ADMIN_SITE_TITLE = "大学生就业信息共享平台后台系统"
+ADMIN_SITE_HEADER = "大学生就业信息共享平台后台系统"
+ADMIN_INDEX_TITLE = "欢迎来到大学生就业信息共享平台后台系统"
 
 TEMPLATES = [
     {

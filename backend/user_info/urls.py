@@ -1,10 +1,11 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from article_publish.views import UserViewSet, FileUploadView
-from .views import VerificationViewSet
+from .views import VerificationViewSet, SensitiveWordViewSet
 
 router = DefaultRouter()
 router.register(r'verifications', VerificationViewSet, basename='verification')
+router.register(r'sensitive_words', SensitiveWordViewSet, basename='sensitive_word')
 router.register(r'users', UserViewSet, basename='user')
 
 urlpatterns = [

@@ -96,6 +96,8 @@ class JobApplicationSerializer(serializers.ModelSerializer):
     # 快照字段
     resume_name = serializers.SerializerMethodField()
     education = serializers.SerializerMethodField()
+    school = serializers.SerializerMethodField()
+    major = serializers.SerializerMethodField()
     phone = serializers.SerializerMethodField()
     email = serializers.SerializerMethodField()
     class Meta:
@@ -104,7 +106,7 @@ class JobApplicationSerializer(serializers.ModelSerializer):
             "id", "recruitment", "recruitment_title", "applicant", "applicant_id",
             "applicant_name", "resume", "resume_name", "status", 
             "applied_at", "enterprise_name", "resume_snapshot", "pdf_file",
-            "education", "phone", "email", "recruitment_detail"
+            "education", "school", "major", "phone", "email", "recruitment_detail"
         ]
         read_only_fields = ["applicant", "applied_at", "resume_snapshot", "pdf_file", "status"]
         
@@ -113,6 +115,12 @@ class JobApplicationSerializer(serializers.ModelSerializer):
 
     def get_education(self, obj):
         return obj.resume_snapshot.get('education', '未填写')
+
+    def get_school(self, obj):
+        return obj.resume_snapshot.get('school', '未填写')
+
+    def get_major(self, obj):
+        return obj.resume_snapshot.get('major', '未填写')
 
     def get_phone(self, obj):
         return obj.resume_snapshot.get('phone', '')

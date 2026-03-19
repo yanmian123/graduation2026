@@ -9,6 +9,7 @@ from .models import Article, Attachment, Comment, Like, Collection, Follow, Repo
 from register.models import User
 from .serializers import ArticleSerializer, AttachmentSerializer, ArticleSerializer2,CommentSerializer,LikeStatusSerializer, CollectStatusSerializer, CollectionStatusSerializer,FollowStatusSerializer,ReportSerializer,ReportCreateSerializer
 from user_info.serializers import UserSerializer
+from user_info.models import VerificationApplication
 from django.db import models
 import logging
 import time
@@ -476,6 +477,20 @@ class UserViewSet(viewsets.GenericViewSet):
                     return Response(serializer.data)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             else:
+                # 检查用户是否已通过实名认证
+                is_verified = False
+                verification_type = None
+                try:
+                    verification = VerificationApplication.objects.filter(
+                        user=user,
+                        status='APPROVED'
+                    ).first()
+                    if verification:
+                        is_verified = True
+                        verification_type = verification.verification_type
+                except Exception:
+                    pass
+                
                 return Response({
                     'id': user.id,
                     'username': user.username,
@@ -498,6 +513,8 @@ class UserViewSet(viewsets.GenericViewSet):
                     'is_staff': user.is_staff,
                     'is_superuser': user.is_superuser,
                     'email': user.email,
+                    'is_verified': is_verified,
+                    'verification_type': verification_type,
                     'follower_count': Follow.objects.filter(followed=user).count(),
                     'following_count': Follow.objects.filter(follower=user, follow_type='user').count(),
                     'following_enterprise_count': Follow.objects.filter(

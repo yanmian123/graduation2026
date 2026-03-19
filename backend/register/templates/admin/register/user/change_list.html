@@ -1,0 +1,50 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block object-tools %}
+    {{ block.super }}
+    
+    <div style="margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #ffffff;">
+        <h3 style="margin: 0 0 15px 0; color: #333; font-size: 16px; font-weight: 600;">
+            平台数据统计
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div style="padding: 12px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="color: #666; font-size: 12px; margin-bottom: 5px;">用户总数</div>
+                <div style="color: #1890ff; font-size: 24px; font-weight: bold;">{{ stats.total_users }}</div>
+            </div>
+            <div style="padding: 12px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="color: #666; font-size: 12px; margin-bottom: 5px;">活跃用户</div>
+                <div style="color: #52c41a; font-size: 24px; font-weight: bold;">{{ stats.active_users }}</div>
+            </div>
+            <div style="padding: 12px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="color: #666; font-size: 12px; margin-bottom: 5px;">企业用户</div>
+                <div style="color: #722ed1; font-size: 24px; font-weight: bold;">{{ stats.enterprise_users }}</div>
+            </div>
+            <div style="padding: 12px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="color: #666; font-size: 12px; margin-bottom: 5px;">普通用户</div>
+                <div style="color: #13c2c2; font-size: 24px; font-weight: bold;">{{ stats.regular_users }}</div>
+            </div>
+            <div style="padding: 12px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="color: #666; font-size: 12px; margin-bottom: 5px;">职位总数</div>
+                <div style="color: #fa8c16; font-size: 24px; font-weight: bold;">{{ stats.total_recruitments }}</div>
+            </div>
+            <div style="padding: 12px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="color: #666; font-size: 12px; margin-bottom: 5px;">已发布职位</div>
+                <div style="color: #faad14; font-size: 24px; font-weight: bold;">{{ stats.published_recruitments }}</div>
+            </div>
+            <div style="padding: 12px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="color: #666; font-size: 12px; margin-bottom: 5px;">文章总数</div>
+                <div style="color: #eb2f96; font-size: 24px; font-weight: bold;">{{ stats.total_articles }}</div>
+            </div>
+            <div style="padding: 12px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="color: #666; font-size: 12px; margin-bottom: 5px;">已发布文章</div>
+                <div style="color: #a0d911; font-size: 24px; font-weight: bold;">{{ stats.published_articles }}</div>
+            </div>
+            <div style="padding: 12px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="color: #666; font-size: 12px; margin-bottom: 5px;">简历投递数</div>
+                <div style="color: #9333ea; font-size: 24px; font-weight: bold;">{{ stats.total_applications }}</div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -13,12 +13,14 @@ class Resume(models.Model):
         ('F', '女'),
     ]
     
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,  on_delete=models.CASCADE,related_name="resumes")  # 关联用户
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,related_name="resumes")  # 关联用户
     name = models.CharField(max_length=50,blank=True,verbose_name="姓名")  # 姓名
     sex = models.CharField(max_length=10,blank=True,choices=STATUS_CHOICES2,verbose_name="性别")  # 性别
     email = models.EmailField(blank=True,verbose_name="邮箱")  # 邮箱
     phone = models.CharField(max_length=20,blank=True)  # 电话
     education = models.CharField(max_length=50, blank=True,verbose_name='学历')
+    school = models.CharField(max_length=100, blank=True, verbose_name='毕业院校')
+    major = models.CharField(max_length=100, blank=True, verbose_name='专业')
     internship_experience= models.TextField(blank=True, verbose_name='实习经历')
     work_experience = models.TextField(blank=True, verbose_name='工作经历') 
     project_experience = models.TextField(blank=True, verbose_name='项目经历')

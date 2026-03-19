@@ -21,6 +21,16 @@ from django.urls import include
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenRefreshView
+from enterprise.views import EnterpriseViewSet
+
+# 配置 Django Admin 站点信息
+admin.site.site_title = "大学生就业信息共享平台后台系统"
+admin.site.site_header = "大学生就业信息共享平台后台系统"
+admin.site.index_title = "欢迎来到大学生就业信息共享平台后台系统"
+
+# 隐藏不需要的模型
+from django.contrib.auth.models import Group
+admin.site.unregister(Group)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -31,6 +41,8 @@ urlpatterns = [
     path('api/', include('resume.urls')), #简历接口路径：/api/resumes/
     path('api/', include('article_publish.urls')), #文章发布接口路径：/api/posts/
     path('api/', include('enterprise.urls')), #企业模块接口路径：/api/enterprise/
+    # 单独的企业用户信息路由，用于兼容前端调用
+    path('api/enterprise/user/', EnterpriseViewSet.as_view({'get': 'user'}), name='enterprise-user'),
     path('api/chat/', include('chat.urls')),
     path('api/', include('notification.urls')),  # 通知接口路径：/api/notifications/
 ]

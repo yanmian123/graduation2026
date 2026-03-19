@@ -1,10 +1,10 @@
 """
 用户信息视图集
 """
-from rest_framework import viewsets, status, permissions
+from rest_framework import viewsets, status, permissions, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import VerificationApplication
+from .models import VerificationApplication, SensitiveWord
 from .serializers import VerificationApplicationSerializer, VerificationApplicationCreateSerializer
 from django.utils import timezone
 
@@ -12,6 +12,49 @@ class IsEnterpriseUser(permissions.BasePermission):
     """验证用户是否为企业用户"""
     def has_permission(self, request, view):
         return hasattr(request.user, 'enterprise_profile')
+
+class SensitiveWordSerializer(serializers.ModelSerializer):
+    """敏感词序列化器"""
+    class Meta:
+        model = SensitiveWord
+        fields = '__all__'
+        read_only_fields = ['created_at']
+
+class SensitiveWordViewSet(viewsets.ModelViewSet):
+    """敏感词管理视图集"""
+    queryset = SensitiveWord.objects.all()
+    serializer_class = SensitiveWordSerializer
+    permission_classes = [permissions.IsAdminUser]
+    
+    def get_permissions(self):
+        """为不同的 action 设置不同的权限"""
+        if self.action == 'check_content':
+            # 敏感词检测接口允许所有认证用户访问
+            return [permissions.IsAuthenticated()]
+        # 其他操作（CRUD）只允许管理员
+        return [permissions.IsAdminUser()]
+    
+    @action(detail=False, methods=['get'])
+    def check_content(self, request):
+        """检查内容是否包含敏感词"""
+        content = request.query_params.get('content', '')
+        
+        if not content:
+            return Response({'has_sensitive': False, 'sensitive_words': []})
+        
+        # 获取所有敏感词
+        sensitive_words = SensitiveWord.objects.values_list('word', flat=True)
+        
+        # 检查内容中是否包含敏感词
+        found_words = []
+        for word in sensitive_words:
+            if word.lower() in content.lower():
+                found_words.append(word)
+        
+        return Response({
+            'has_sensitive': len(found_words) > 0,
+            'sensitive_words': found_words
+        })
 
 class VerificationViewSet(viewsets.ModelViewSet):
     """认证申请视图集"""

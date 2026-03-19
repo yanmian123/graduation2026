@@ -7,6 +7,19 @@ class VerificationStatus(models.TextChoices):
     APPROVED = 'APPROVED', '已通过'
     REJECTED = 'REJECTED', '已拒绝'
 
+class SensitiveWord(models.Model):
+    """敏感词模型"""
+    word = models.CharField(max_length=100, unique=True, verbose_name='敏感词')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    
+    class Meta:
+        verbose_name = '敏感词'
+        verbose_name_plural = '敏感词'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return self.word
+
 class VerificationApplication(models.Model):
     """实名认证申请"""
     VERIFICATION_TYPES = [

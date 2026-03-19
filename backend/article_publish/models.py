@@ -118,6 +118,7 @@ class Report(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
     
     class Meta:
+        app_label = 'user_info'  # 将举报记录显示在用户信息分组
         verbose_name="举报记录"
         ordering=['-created_at']
         

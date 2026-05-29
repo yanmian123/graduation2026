@@ -117,6 +117,7 @@ class ArticleViewSet(viewsets.ModelViewSet):
         instance=self.get_object()
         serializer=self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
+        
         self.perform_update(serializer)
         
         return Response({
@@ -154,7 +155,7 @@ class ArticleViewSet(viewsets.ModelViewSet):
     def view(self, request, pk=None):
         article = self.get_object()
         article.view_count += 1
-        article.save()
+        article.save()#只更新阅读量字段，不更新其他字段，不用serializer，serializer会更新所有字段，包括create_at
         return Response({'view_count': article.view_count})
 
     # 文章点赞/取消点赞

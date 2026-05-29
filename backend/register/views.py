@@ -159,6 +159,12 @@ def user_info(request):
         
         is_verified = verification is not None
         
+        # 计算关注相关统计数据
+        from article_publish.models import Follow
+        follower_count = Follow.objects.filter(followed=user).count()
+        following_count = Follow.objects.filter(follower=user, follow_type='user').count()
+        following_enterprise_count = Follow.objects.filter(follower=user, follow_type='enterprise').count()
+        
         return Response({
             'id': user.id,
             'username': user.username,
@@ -168,7 +174,10 @@ def user_info(request):
             'phone_number': user.phone_number,
             'is_enterprise': user.is_enterprise,
             'is_verified': is_verified,
-            'verification_type': verification.verification_type if verification else None
+            'verification_type': verification.verification_type if verification else None,
+            'follower_count': follower_count,
+            'following_count': following_count,
+            'following_enterprise_count': following_enterprise_count
         })
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

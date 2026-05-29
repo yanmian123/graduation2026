@@ -15,14 +15,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
         user = self.scope.get('user')
         if user.is_authenticated:
             self.user = user
-            print(f"✅ 用户认证成功: {user.username} (ID: {user.id})")
+            print(f"用户认证成功: {user.username} (ID: {user.id})")
         else:
-            # 临时调试：尝试从查询参数获取用户ID
+            # 调试：尝试从查询参数获取用户ID
             user_id = self.scope.get('query_string', b'').decode().split('user_id=')[-1]
             if user_id:
                 try:
                     self.user = await database_sync_to_async(User.objects.get)(id=int(user_id))
-                    print(f"🔧 调试模式获取用户: {self.user.username} (ID: {self.user.id})")
+                    print(f"调试模式获取用户: {self.user.username} (ID: {self.user.id})")
                 except:
                     self.user = AnonymousUser()
             else:
@@ -52,7 +52,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         user = self.user
         
         if not user.is_authenticated:
-            print("❌ 用户未认证，无法发送消息")
+            print("用户未认证，无法发送消息")
             return
         
         content = data['content']
@@ -78,7 +78,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         message_id = data.get('message_id')
         
         if not self.user.is_authenticated:
-            print("❌ 用户未认证，无法发送已读回执")
+            print("用户未认证，无法发送已读回执")
             return
         
         # 广播已读状态
@@ -109,7 +109,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def save_message(self, user, content, message_type):
-        """保存消息到数据库 - 简化版"""
+        """保存消息到数据库"""
         try:
             from .models import ChatRoom
             room = ChatRoom.objects.get(id=self.room_id)

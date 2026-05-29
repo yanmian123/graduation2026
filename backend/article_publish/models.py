@@ -126,7 +126,7 @@ class Report(models.Model):
         return f"{self.reporter.username} 举报 {self.reported_user.username}: {self.reason}"
 
 
-@receiver(post_save, sender=Report)
+@receiver(post_save, sender=Report)##这个函数可能有性能问题，因为每次举报状态变化时都会调用这个函数，导致数据库操作频繁
 def send_report_notification(sender, instance, created, **kwargs):
     """举报状态变化时发送通知"""
     if not created:

@@ -1,5 +1,7 @@
 from django.contrib import admin
+from django.contrib.auth import get_user_model
 from .models import Notification, Announcement
+from .utils import create_notification
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
@@ -34,3 +36,23 @@ class AnnouncementAdmin(admin.ModelAdmin):
         ('创建信息', {'fields': ('created_by',)}),
         ('时间信息', {'fields': ('created_at', 'updated_at')}),
     )
+
+    def save_model(self, request, obj, form, change):
+        is_new = not change
+        if is_new:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+        if is_new and obj.is_active:
+            User = get_user_model()
+            users = User.objects.filter(is_active=True)
+            type_label = obj.get_announcement_type_display()
+            for user in users:
+                create_notification(
+                    recipient=user,
+                    notification_type='system_notification',
+                    title=f'【{type_label}】{obj.title}',
+                    message=obj.content,
+                    related_object_id=obj.id,
+                    related_object_type='announcement'
+                )

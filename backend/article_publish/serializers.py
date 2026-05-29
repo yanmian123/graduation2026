@@ -13,6 +13,7 @@ class ArticleSerializer(serializers.ModelSerializer):
     '''文章序列化器'''
     attachments=AttachmentSerializer(many=True, read_only=True)  # 嵌套序列化附件列表
         # 新增：添加作者相关字段（从关联的 user 模型中提取）
+
     user_id = serializers.ReadOnlyField(source='user.id')  # 作者 ID（关键）
     username = serializers.ReadOnlyField(source='user.username')  # 作者用户名
     nickname = serializers.SerializerMethodField()  # 作者昵称

@@ -258,20 +258,6 @@ STATICFILES_DIRS = [BASE_DIR / 'graduation' / 'static']
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# 允许所有来源进行跨域请求（开发阶段使用，生产环境请配置具体域名）
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",#这是Vite默认的前端开发服务器地址
-    "http://127.0.0.1:5173",
-]
-
-CORS_ALLOW_METHODS = [
-    "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"  # 允许必要的请求方法
-]
-CORS_ALLOW_CREDENTIALS = True # 允许携带Cookie
-CORS_ALLOW_HEADERS = [
-    "content-type", "authorization"  # 允许表单类型和令牌头
-]
-
 # Django REST Framework 配置
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (

@@ -95,5 +95,5 @@ class ChatRoomSerializer(serializers.ModelSerializer):
             return EnterpriseSimpleSerializer(enterprise, context=self.context).data
         except Exception as e:
             # 捕获所有可能的异常，包括RelatedObjectDoesNotExist
-            print(f"❌ 获取企业信息时发生错误: {e}")
+            print(f"获取企业信息时发生错误: {e}")
             return None

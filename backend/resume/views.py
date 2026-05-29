@@ -16,11 +16,11 @@ class IsResumeOwner(permissions.BasePermission):
         return obj.user == request.user
 
 
-# 自定义权限：仅允许简历所有者操作（查看/编辑/删除）
-class IsResumeOwner(permissions.BasePermission):
-    def has_object_permission(self, request, view, obj):
-        # 验证：当前请求用户 == 简历的 user 字段
-        return obj.user == request.user
+# # 自定义权限：仅允许简历所有者操作（查看/编辑/删除）
+# class IsResumeOwner(permissions.BasePermission):
+#     def has_object_permission(self, request,  view, obj):
+#         # 验证：当前请求用户 == 简历的 user 字段
+#         return obj.user == request.user
 
 class ResumeViewSet(viewsets.ModelViewSet):
     """
@@ -78,7 +78,7 @@ class ResumeViewSet(viewsets.ModelViewSet):
     # 4. 自定义更新成功响应
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
-        instance = self.get_object()
+        instance = self.get_object()# 获取当前操作的简历实例
         # 处理文件上传
         pdf_file = request.FILES.get('pdf_file')
         # 处理文件上传
@@ -122,7 +122,7 @@ class ResumeViewSet(viewsets.ModelViewSet):
             "data": ResumeSerializer(resume).data
         })
     
-class PdfUploadView(APIView):
+class PdfUploadView(APIView):# 上传PDF文件视图,上传到简历模型的pdf_url字段
     permission_classes = [permissions.IsAuthenticated, IsResumeOwner]  # 仅登录用户可上传
 
     def post(self, request):

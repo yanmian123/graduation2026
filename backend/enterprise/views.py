@@ -34,7 +34,7 @@ class IsEnterpriseOwner(permissions.BasePermission):
             return obj.enterprise.user == request.user
         return False
     
-# 新增：混合权限类
+# 混合权限类
 class IsEnterpriseUser(permissions.BasePermission):
     """验证用户是否为企业用户"""
     def has_permission(self, request, view):
@@ -65,12 +65,14 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
         return Enterprise.objects.filter(user=self.request.user)
 
     def get_permissions(self):
+        # 允许匿名用户访问by_user、list_public、retrieve操作
+        # 其他操作需要认证且是企业主
         if self.action == 'by_user' or self.action == 'list_public' or self.action == 'retrieve':
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated(), IsEnterpriseOwner()]
 
     def perform_create(self, serializer):
-        # 创建时自动绑定当前登录用户
+        # 创建时自动绑定当前登录用户,因为序列化器中设置了前端不能传user，因此要在views中绑定
         serializer.save(user=self.request.user)
     
     @action(detail=False, methods=['get'])
@@ -79,7 +81,7 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
         try:
             enterprise = Enterprise.objects.get(user=request.user)
             
-            # 检查企业是否通过实名认证（包括企业认证和个人认证）
+            # 检查企业是否通过实名认证
             from user_info.models import VerificationApplication
             verification = VerificationApplication.objects.filter(
                 user=request.user,
@@ -93,18 +95,19 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
             serializer_data['user_id'] = request.user.id
             
             return Response(serializer_data)
-        except Enterprise.DoesNotExist:
+        except Enterprise.DoesNotExist:## 企业不存在时，返回404错误
             return Response({'error': '企业信息不存在'}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
+        except Exception as e:## 捕获其他异常，返回500错误
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=False, methods=['get'], url_path='list_public')
     def list_public(self, request):
         """公开的企业列表接口（供所有用户查看）"""
         try:
-            queryset = Enterprise.objects.all().select_related('user')
+            queryset = Enterprise.objects.all().select_related('user')## 关联查询用户信息，使用 select_related('user') 方法，预加载用户信息，避免 N+1 查询问题
+
             
-            # 搜索功能
+            # 搜索功能：根据企业名称、描述、行业进行模糊搜索
             search = request.query_params.get('search')
             if search:
                 queryset = queryset.filter(
@@ -133,8 +136,8 @@ class EnterpriseViewSet(viewsets.ModelViewSet):
             )
         
     # 新增：专门处理logo上传的方法
-    @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser])
-    def upload_logo(self, request, pk=None):
+    @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser], permission_classes=[permissions.IsAuthenticated, IsEnterpriseOwner])
+    def upload_logo(self, request, pk=None):##pk为企业主的ID，用于获取当前操作的企业实例
         enterprise = self.get_object()# 获取当前操作的企业实例（通过 pk 主键）
         if 'logo' in request.FILES:# 检查请求中是否包含 'logo' 文件
             enterprise.logo = request.FILES['logo'] # 保存文件到企业的 logo 字段
@@ -244,14 +247,14 @@ class RecruitmentViewSet(viewsets.ModelViewSet):
             status="PUBLISHED" if is_published else "DRAFT"
         )
 
-    @action(detail=True, methods=["get"])
+    @action(detail=True, methods=["get"])##定义一个detail=True的action，用于获取企业联系方式，detail=True表示该action是针对单个对象的，单个对象指的是招聘信息
     def contact(self, request, pk=None):
         """求职者获取企业联系方式（使用序列化器）"""
-        recruitment = self.get_object()
+        recruitment = self.get_object()##根据pk获取具体的招聘信息对象，pk是url中的参数，用于指定要获取的招聘信息
         serializer = EnterpriseContactSerializer(recruitment.enterprise)
-        return Response(serializer.data)
+        return Response(serializer.data)##返回序列化后的企业联系方式数据
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'])##定义一个detail=False的action，用于获取企业招聘统计信息，detail=False表示该action是针对所有对象的
     def stats(self, request):
         """获取企业招聘统计信息"""
         if not hasattr(request.user, "enterprise_profile"):
@@ -268,7 +271,7 @@ class RecruitmentViewSet(viewsets.ModelViewSet):
         
         # 统计收到的申请
         applications_count = JobApplication.objects.filter(
-            recruitment__enterprise=enterprise
+            recruitment__enterprise=enterprise##这里的recruitment__enterprise是指职位申请中的招聘信息所属的企业
         ).count()
         
         # 统计待面试
@@ -283,10 +286,9 @@ class RecruitmentViewSet(viewsets.ModelViewSet):
             'pending_interviews': pending_interviews
         }
         
-        return Response(data)
+        return Response(data)##返回统计信息数据
     
 
-# 在文档4的views.py中添加
 class JobApplicationViewSet(viewsets.ModelViewSet):
     """职位申请管理"""
     serializer_class = JobApplicationSerializer
@@ -294,29 +296,30 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         """根据动作动态设置权限"""
-        if self.action in ["create", "my_applications"]:
+        if self.action in ["create", "my_applications"]:##如果动作是创建申请或查看自己的申请
             # 创建申请和查看自己的申请需要求职者权限
             permission_classes = [permissions.IsAuthenticated, IsJobSeeker]
-        elif self.action in ["list", "retrieve", "update", "partial_update"]:
+        elif self.action in ["list", "retrieve", "update", "partial_update"]:##如果动作是查看申请列表、获取申请详情、更新申请或部分更新申请，动作发起人是求职者
             # 这些动作需要根据对象权限判断
             permission_classes = [permissions.IsAuthenticated]
-        elif self.action in ["update_status", "enterprise_stats", "bulk_update_status","bulk_actions"]:
+        elif self.action in ["update_status", "enterprise_stats", "bulk_update_status","bulk_actions"]: ##如果动作是更新申请状态、查看企业统计、批量更新申请状态或批量操作申请，动作发起人是企业用户
             # 企业更新状态和查看统计需要企业用户权限
             permission_classes = [permissions.IsAuthenticated, IsEnterpriseUser]
-        else:
+        else:##如果动作不是以上任何一种，需要认证权限
             permission_classes = [permissions.IsAuthenticated]
-        return [permission() for permission in permission_classes]
+        return [permission() for permission in permission_classes]#返回一个包含所有权限实例的列表，每个权限实例都是一个权限类的实例，用于在视图中检查用户是否有权限执行当前动作
 
-    def get_queryset(self):
+    def get_queryset(self):#根据用户类型动态返回不同的查询集
+        """根据用户类型动态返回不同的查询集"""
         user = self.request.user
         
         if hasattr(user, 'enterprise_profile'):
             enterprise = user.enterprise_profile
             return JobApplication.objects.filter(
                 recruitment__enterprise=enterprise
-            ).select_related('applicant', 'recruitment','recruitment__enterprise')
+            ).select_related('applicant', 'recruitment','recruitment__enterprise')#返回所有企业用户的职位申请记录，每个记录包含申请者、招聘信息、招聘信息所属的企业
         else:
-            return JobApplication.objects.filter(applicant=user).select_related('recruitment', 'recruitment__enterprise')
+            return JobApplication.objects.filter(applicant=user).select_related('recruitment', 'recruitment__enterprise')#返回所有求职者的职位申请记录，每个记录包含招聘信息、招聘信息所属的企业
 
     def get_serializer_context(self):
         """为序列化器提供额外的上下文"""
@@ -328,18 +331,18 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
     def _copy_pdf_file(self, resume):
         """复制PDF文件到申请记录"""
         try:
-            if resume.pdf_url and hasattr(resume.pdf_url, 'name'):
+            if resume.pdf_url and hasattr(resume.pdf_url, 'name'):#如果简历有PDF文件URL且文件URL有名称属性，这个函数发起人是求职者
                 # 确保文件存在
-                if not resume.pdf_url.storage.exists(resume.pdf_url.name):
-                    print(f"❌ PDF文件不存在: {resume.pdf_url.name}")
+                if not resume.pdf_url.storage.exists(resume.pdf_url.name):#如果文件不存在，
+                    print(f"PDF文件不存在: {resume.pdf_url.name}")
                     return None
                     
                 # 读取文件内容到内存
-                with resume.pdf_url.open('rb') as f:
-                    file_content = f.read()
+                with resume.pdf_url.open('rb') as f:#打开文件，以二进制读取模式打开，f是一个文件对象，用于读取文件内容
+                    file_content = f.read()#读取文件内容，返回一个字节字符串
                 
-                from django.core.files.base import ContentFile
-                from django.utils.timezone import now
+                from django.core.files.base import ContentFile#导入ContentFile类，用于创建内存中的文件对象
+                from django.utils.timezone import now#导入now函数，用于获取当前时间
                 
                 # 生成唯一文件名
                 import os
@@ -347,10 +350,10 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
                 timestamp = now().strftime("%Y%m%d_%H%M%S")
                 new_name = f"{resume.id}_{timestamp}_{original_name}"
                 
-                # 创建一个新的文件对象，使用内存中的内容
+                # 创建一个新的文件对象，使用内存中的内容和新文件名，返回一个ContentFile对象，ContentFile对象是一个内存中的文件对象，用于存储文件内容
                 return ContentFile(file_content, name=new_name)
         except Exception as e:
-            print(f"❌ 复制PDF文件失败: {e}")
+            print(f"复制PDF文件失败: {e}")
             return None
         
         return None
@@ -391,7 +394,7 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         
         try:
             # 保存申请记录
-            application = serializer.save(
+            application = serializer.save(##serializer.save()方法会调用JobApplication.objects.create()方法，创建一个JobApplication对象，返回一个JobApplication对象
                 applicant=self.request.user, 
                 resume=None,
                 resume_snapshot=resume_snapshot,
@@ -462,7 +465,7 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
-    def update_status(self, request, pk=None):
+    def update_status(self, request, pk=None):#pk是申请记录的ID，detail=True表示这个方法是针对单个对象的，这个对象是JobApplication对象，动作发起人是企业用户
         """企业更新申请状态"""
         application = self.get_object()
         new_status = request.data.get('status')
@@ -535,7 +538,7 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
     def bulk_update_status(self, request):
         """批量更新申请状态"""
         
-        application_ids = request.data.get('application_ids', [])
+        application_ids = request.data.get('application_ids', [])#获取申请ID列表，这个函数发起人是企业用户
         new_status = request.data.get('status')
         
         if not application_ids:
@@ -772,7 +775,7 @@ class RecruitmentFavoriteViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def check_favorite(self, request):
         """检查是否已收藏某个职位"""
-        recruitment_id = request.query_params.get('recruitment_id')
+        recruitment_id = request.query_params.get('recruitment_id')# 从查询参数中获取职位ID
         if not recruitment_id:
             return Response({'error': '缺少recruitment_id参数'}, status=status.HTTP_400_BAD_REQUEST)
         

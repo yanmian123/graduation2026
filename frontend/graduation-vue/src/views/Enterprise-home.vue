@@ -7,7 +7,7 @@
         <n-card class="overview-card">
           
           <n-page-header subtitle="企业管理中心" @back="handleBack">
-            <n-grid :cols="5">
+            <n-grid :cols="5" :x-gap="12" :y-gap="12">
               <n-gi>
                 <n-statistic label="正在招聘" :value="activeRecruitments" />
               </n-gi>
@@ -18,10 +18,25 @@
                 <n-statistic label="人才库" :value="talentPoolCount" />
               </n-gi>
               <n-gi>
-                <n-statistic label="待面试" :value="pendingInterviews" />
+                <n-statistic label="已拒绝" :value="rejectedApplications" />
               </n-gi>
               <n-gi>
-                <n-statistic label="总数据" value="" />
+                <n-statistic label="初筛通过率" :value="applicationConversionRate" suffix="%" />
+              </n-gi>
+              <n-gi>
+                <n-statistic label="笔试数" :value="writtenTestCount" />
+              </n-gi>
+              <n-gi>
+                <n-statistic label="面试数" :value="interviewCount" />
+              </n-gi>
+              <n-gi>
+                <n-statistic label="录用数" :value="hiredCount" />
+              </n-gi>
+              <n-gi>
+                <n-statistic label="淘汰数" :value="eliminatedCount" />
+              </n-gi>
+              <n-gi>
+                <n-statistic label="面试通过率" :value="interviewPassRate" suffix="%" />
               </n-gi>
             </n-grid>
             <template #title>
@@ -101,22 +116,6 @@
             <div class="action-info">
               <h3>收到的简历</h3>
               <p>查看应聘者投递的简历</p>
-            </div>
-          </n-card>
-          
-          <n-card 
-            class="action-card" 
-            hoverable
-            @click="$router.push('/enterprise/statistics')"
-          >
-            <div class="action-icon">
-              <n-icon size="32" color="#722ed1">
-                <BarChart />
-              </n-icon>
-            </div>
-            <div class="action-info">
-              <h3>招聘数据</h3>
-              <p>查看招聘效果统计分析</p>
             </div>
           </n-card>
           <n-card 
@@ -296,7 +295,9 @@ const enterpriseDesc = ref('');
 // 统计数据
 const activeRecruitments = ref(0);
 const receivedResumes = ref(0);
-const pendingInterviews = ref(0);
+
+// 新增申请状态统计
+const rejectedApplications = ref(0)
 
 const currentUser = computed(() => chatStore.currentUser)
 
@@ -514,6 +515,45 @@ const handleEditRecent = (id) => {
 // 在 script 中添加
 const talentPoolCount = ref(0)
 
+// 新增统计变量
+const writtenTestCount = ref(0)
+const interviewCount = ref(0)
+const hiredCount = ref(0)
+const eliminatedCount = ref(0)
+const interviewPassRate = ref(0)
+const applicationConversionRate = ref(0)
+
+// 获取人才库详细统计
+const fetchTalentPoolDetailedStats = async () => {
+  try {
+    const response = await axios.get('/talent_pool/')
+    const talents = response.data.results || response.data || []
+    
+    // 统计各状态人数
+    writtenTestCount.value = talents.filter(t => t.status === 'WRITTEN_TEST').length
+    interviewCount.value = talents.filter(t => 
+      t.status === 'INTERVIEW' || t.status === 'HIRED' || t.status === 'ELIMINATED'
+    ).length
+    hiredCount.value = talents.filter(t => t.status === 'HIRED').length
+    eliminatedCount.value = talents.filter(t => t.status === 'ELIMINATED').length
+    
+    // 计算面试通过率：录用数 / 面试数（面试数包括当前面试、已录用、已淘汰）
+    interviewPassRate.value = interviewCount.value > 0 
+      ? ((hiredCount.value / interviewCount.value) * 100).toFixed(1) 
+      : 0
+    
+    // 更新人才库总数
+    talentPoolCount.value = talents.length
+    
+    // 计算初筛通过率：人才库 / 收到简历
+    applicationConversionRate.value = receivedResumes.value > 0
+      ? ((talentPoolCount.value / receivedResumes.value) * 100).toFixed(1)
+      : 0
+  } catch (error) {
+    console.error('获取人才库详细统计失败:', error)
+  }
+}
+
 // 获取人才库统计
 const fetchTalentPoolStats = async () => {
   try {
@@ -554,7 +594,8 @@ onMounted(async () => {
       // 3. 获取真实的申请数据
       await fetchApplications();
       
-      await fetchTalentPoolStats();
+      // 4. 获取人才库详细统计（包含各状态统计和比率计算）
+      await fetchTalentPoolDetailedStats();
     } catch (error) {
       console.error('获取企业数据失败:', error);
     }
@@ -585,8 +626,10 @@ const fetchApplications = async () => {
         
         // 更新统计数据
         receivedResumes.value = applications.value.length;
-        pendingInterviews.value = applications.value.filter(app => 
-          app.status === 'pending' || app.status === 'PENDING'
+        
+        // 统计各状态的申请数量
+        rejectedApplications.value = applications.value.filter(app => 
+          app.status === 'REJECTED' || app.status === 'rejected'
         ).length;
       } else {
         console.warn('申请数据不是数组格式:', data);
@@ -902,7 +945,7 @@ const options = [
 
 .action-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 20px;
 }
 

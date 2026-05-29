@@ -39,7 +39,7 @@
             type="warning"
             size="medium"
             @click="handleDeleteAllRead"
-            :disabled="notificationStore.isLoading || notificationStore.unreadCount === 0"
+            :disabled="notificationStore.isLoading || !notificationStore.sortedNotifications.some(n => n.is_read)"
           >
             <template #icon>
               <n-icon><TrashOutline /></n-icon>

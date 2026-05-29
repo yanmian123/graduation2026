@@ -36,6 +36,7 @@
                 :type="showUserLoginPassword ? 'text' : 'password'"
                 placeholder="请输入密码"
                 autocomplete="current-password"
+                @keyup.enter="handleUserLogin"
               >
                 <template #prefix>
                   <n-icon :component="LockClosed" />
@@ -100,6 +101,7 @@
                 :type="showEnterpriseLoginPassword ? 'text' : 'password'"
                 placeholder="请输入密码"
                 autocomplete="current-password"
+                @keyup.enter="handleEnterpriseLogin"
               >
                 <template #prefix>
                   <n-icon :component="LockClosed" />

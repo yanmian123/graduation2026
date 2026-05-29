@@ -100,12 +100,12 @@
           <!-- 操作按钮 -->
           <n-form-item :show-label="false">
             <n-space size="large">
-              <n-button size="large" @click="handlePreview">
+              <!-- <n-button size="large" @click="handlePreview">
                 <template #icon>
                   <n-icon><Eye /></n-icon>
                 </template>
                 预览
-              </n-button>
+              </n-button> -->
               <n-button type="default" size="large" @click="handleSaveDraft">
                 <template #icon>
                   <n-icon><Save /></n-icon>

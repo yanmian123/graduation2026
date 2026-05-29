@@ -41,7 +41,7 @@
           </n-upload>
         </n-form-item>
 
-        <n-form-item>
+        <!-- <n-form-item>
           <template #label>
             <span>其他证明文件</span>
             <n-tooltip trigger="hover" placement="right">
@@ -66,7 +66,7 @@
               最多上传5个文件，支持jpg、png、pdf格式
             </template>
           </n-upload>
-        </n-form-item>
+        </n-form-item> -->
 
         <n-form-item :show-label="false">
           <n-space>

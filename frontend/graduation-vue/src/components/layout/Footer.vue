@@ -27,16 +27,6 @@
           </div>
           
           <div class="link-group">
-            <h3>关于我们</h3>
-            <ul>
-              <li><a href="#">平台介绍</a></li>
-              <li><a href="#">联系我们</a></li>
-              <li><a href="#">合作招募</a></li>
-              <li><a href="#">隐私政策</a></li>
-            </ul>
-          </div>
-          
-          <div class="link-group">
             <h3>帮助中心</h3>
             <ul>
               <li><a href="#">使用指南</a></li>
@@ -44,35 +34,10 @@
               <li><a href="#">意见反馈</a></li>
             </ul>
           </div>
-          
-          <div class="link-group">
-            <h3>关注我们</h3>
-            <div class="social-links">
-              <a href="#" class="social-link">
-                <n-icon size="24"><LogoGithub /></n-icon>
-              </a>
-              <a href="#" class="social-link">
-                <n-icon size="24"><LogoWechat /></n-icon>
-              </a>
-            </div>
-            <p class="contact-info">企业服务专线：400-xxx-xxxx</p>
-            <p class="contact-info">邮箱：service@careerplatform.com</p>
-          </div>
         </div>
       </div>
       
       <div class="footer-bottom">
-        <div class="copyright">
-          <p>© 2025 lzp 版权所有 | 大学生就业信息资源共享平台</p>
-          <p class="icp">ICP备案号：京ICP备XXXXXXXX号</p>
-        </div>
-        <div class="footer-links-bottom">
-          <a href="#">用户协议</a>
-          <span class="separator">|</span>
-          <a href="#">隐私政策</a>
-          <span class="separator">|</span>
-          <a href="#">免责声明</a>
-        </div>
       </div>
     </div>
   </footer>
@@ -80,7 +45,7 @@
 
 <script setup>
 import { NIcon } from 'naive-ui'
-import { Briefcase, LogoGithub, LogoWechat } from '@vicons/ionicons5'
+import { Briefcase } from '@vicons/ionicons5'
 </script>
 
 <style scoped>
@@ -220,84 +185,9 @@ import { Briefcase, LogoGithub, LogoWechat } from '@vicons/ionicons5'
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
 }
 
-.social-links {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.social-link {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  color: white;
-}
-
-.social-link:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-}
-
-.contact-info {
-  font-size: 13px;
-  opacity: 0.85;
-  margin: 8px 0;
-  line-height: 1.6;
-}
-
 .footer-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   padding-top: 30px;
   border-top: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.copyright {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.copyright p {
-  margin: 0;
-  font-size: 14px;
-  opacity: 0.9;
-}
-
-.icp {
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-.footer-links-bottom {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.footer-links-bottom a {
-  color: rgba(255, 255, 255, 0.85);
-  text-decoration: none;
-  font-size: 13px;
-  transition: all 0.3s ease;
-}
-
-.footer-links-bottom a:hover {
-  color: white;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
-}
-
-.separator {
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 12px;
 }
 
 @media (max-width: 1024px) {
@@ -325,17 +215,6 @@ import { Briefcase, LogoGithub, LogoWechat } from '@vicons/ionicons5'
     padding: 40px 20px 20px;
   }
   
-  .footer-bottom {
-    flex-direction: column;
-    gap: 20px;
-    text-align: center;
-  }
-  
-  .footer-links-bottom {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  
   .link-group {
     flex: 1 1 100%;
   }
@@ -357,15 +236,6 @@ import { Briefcase, LogoGithub, LogoWechat } from '@vicons/ionicons5'
   .footer-links {
     flex-direction: column;
     gap: 30px;
-  }
-  
-  .footer-links-bottom {
-    flex-direction: column;
-    gap: 8px;
-  }
-  
-  .separator {
-    display: none;
   }
 }
 </style>

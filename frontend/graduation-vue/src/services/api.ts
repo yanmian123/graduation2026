@@ -114,4 +114,8 @@ export const applicationApi = {
   getMyApplications: () => api.get('api/applications/')
 }
 
+export const announcementApi = {
+  getAnnouncements: () => api.get('api/announcements/'),
+}
+
 export { api }; 

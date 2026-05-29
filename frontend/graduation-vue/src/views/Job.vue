@@ -148,8 +148,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { 
   NStatistic, 
@@ -164,9 +164,11 @@ import JobCard from '@/components/common/JobCard.vue'
 import Pagination from '@/components/common/Pagination.vue'
 
 const router = useRouter()
+const route = useRoute()
 const message = useMessage()
 
-const allJobs = ref([]) 
+const allJobs = ref([])
+const searchKeyword = ref('') 
 
 const filterRecruitType = ref(null)
 const filterJobType = ref(null)
@@ -263,6 +265,18 @@ const fetchJobs = async () => {
 // 在组件挂载时获取数据
 onMounted(() => {
   fetchJobs()
+  // 读取 URL 查询参数中的搜索关键词
+  if (route.query.search) {
+    searchKeyword.value = route.query.search
+  }
+})
+
+// 监听路由变化
+watch(() => route.query.search, (newKeyword) => {
+  if (newKeyword) {
+    searchKeyword.value = newKeyword
+    currentPage.value = 1
+  }
 })
 
 // 保留原有的filteredJobs和paginatedJobs计算属性
@@ -270,6 +284,19 @@ const filteredJobs = computed(() => {
   let result = allJobs.value
   
   console.log('筛选前职位数量:', result.length)
+  
+  // 按搜索关键词筛选
+  if (searchKeyword.value) {
+    const keyword = searchKeyword.value.toLowerCase().trim()
+    result = result.filter(job => {
+      const titleMatch = job.title?.toLowerCase().includes(keyword)
+      const companyMatch = job.enterprise_name?.toLowerCase().includes(keyword)
+      const descriptionMatch = job.description?.toLowerCase().includes(keyword)
+      const requirementMatch = job.requirement?.toLowerCase().includes(keyword)
+      return titleMatch || companyMatch || descriptionMatch || requirementMatch
+    })
+    console.log('按搜索关键词筛选后:', result.length)
+  }
   
   // 按招聘类型筛选
   if (filterRecruitType.value) {

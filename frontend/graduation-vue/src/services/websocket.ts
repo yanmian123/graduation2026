@@ -47,7 +47,7 @@ export class WebSocketService {
       console.log('✅ WebSocket连接成功', {
         roomId: this.roomId,
         url: this.socket?.url,
-        readyState: this.getReadyStateText(this.socket?.readyState)
+        readyState: this.getReadyStateText(this.socket?.readyState)// 连接状态
       })
       this.isConnected.value = true
       this.reconnectAttempts = 0 // 重置重连计数
@@ -57,21 +57,21 @@ export class WebSocketService {
     this.socket.onmessage = (event) => {
       try {
         const data: WebSocketData = JSON.parse(event.data)
-        console.log('📨 收到WebSocket消息', {
+        console.log('收到WebSocket消息', {
           type: data.type,
           data: data,
           timestamp: new Date().toISOString()
         })
         this.handleIncomingData(data)
       } catch (error) {
-        console.error('❌ 解析消息失败', error, {
+        console.error('解析消息失败', error, {
           rawData: event.data
         })
       }
     }
 
     this.socket.onclose = (event) => {
-      console.log('🔌 WebSocket连接关闭', {
+      console.log(' WebSocket连接关闭', {
         code: event.code,
         reason: event.reason,
         wasClean: event.wasClean,
@@ -87,7 +87,7 @@ export class WebSocketService {
     }
 
     this.socket.onerror = (error) => {
-      console.error('❌ WebSocket错误', {
+      console.error('WebSocket错误', {
         error: error,
         url: this.socket?.url,
         readyState: this.getReadyStateText(this.socket?.readyState)
@@ -151,14 +151,14 @@ export class WebSocketService {
         content,
         message_type: messageType
       }
-      console.log('📤 发送消息', {
+      console.log('发送消息', {
         content: content,
         type: messageType,
         readyState: this.getReadyStateText(this.socket.readyState)
       })
       this.socket.send(JSON.stringify(message))
     } else {
-      console.warn('⚠️ WebSocket未连接，无法发送消息', {
+      console.warn('WebSocket未连接，无法发送消息', {
         isConnected: this.isConnected.value,
         socketExists: !!this.socket
       })
@@ -167,7 +167,7 @@ export class WebSocketService {
 
   sendReadReceipt(messageId: number) {
     if (this.socket && this.isConnected.value) {
-      console.log('📋 发送已读回执', {
+      console.log('发送已读回执', {
         messageId: messageId
       })
       this.socket.send(JSON.stringify({
@@ -175,7 +175,7 @@ export class WebSocketService {
         message_id: messageId
       }))
     } else {
-      console.warn('⚠️ WebSocket未连接，无法发送已读回执')
+      console.warn('WebSocket未连接，无法发送已读回执')
     }
   }
 
@@ -226,7 +226,7 @@ export class WebSocketService {
 
   // 添加检查连接状态的方法
   checkConnectionStatus() {
-    console.log('🔍 WebSocket连接状态检查', {
+    console.log(' WebSocket连接状态检查', {
       isConnected: this.isConnected.value,
       roomId: this.roomId,
       socketExists: !!this.socket,

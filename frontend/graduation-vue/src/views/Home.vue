@@ -140,7 +140,7 @@
             v-for="article in articles" 
             :key="article.id" 
             class="article-item"
-            @click="$router.push(`/community/${article.id}`)"
+            @click="openArticleInNewWindow(article.id)"
           >
             <h3 class="article-title">{{ article.title }}</h3>
             <p class="article-excerpt">{{ article.excerpt }}</p>
@@ -159,21 +159,6 @@
         </div>
       </section>
 
-      <!-- 就业服务工具 -->
-      <section class="tools-section">
-        <h2 class="section-title">就业服务工具</h2>
-        <div class="tools-grid">
-          <div 
-            class="tool-card" 
-            v-for="tool in tools" 
-            :key="tool.id"
-            @click="handleToolClick(tool)"
-          >
-            <n-icon :component="tool.icon" size="32" class="tool-icon" />
-            <p class="tool-name">{{ tool.name }}</p>
-          </div>
-        </div>
-      </section>
       </template>
     </main>
   </div>
@@ -210,11 +195,45 @@ const userAvatar = ref('');
 const searchQuery = ref('');
 const loading = ref(true);
 
+// 中英文映射
+const jobTypeMap = {
+  'FULL_TIME': '全职',
+  'PART_TIME': '兼职',
+  'INTERNSHIP': '实习'
+};
+
+const jobCategoryMap = {
+  'SOFTWARE': '软件开发',
+  'BACKEND': '后端开发',
+  'FRONTEND': '前端开发',
+  'MOBILE': '移动开发',
+  'TEST': '测试',
+  'DEVOPS': '运维',
+  'PRODUCT': '产品',
+  'DESIGN': '设计',
+  'MARKETING': '市场',
+  'SALES': '销售',
+  'HR': '人力资源',
+  'FINANCE': '财务',
+  'OTHER': '其他'
+};
+
+const recruitTypeMap = {
+  'CAMPUS': '校招',
+  'SOCIAL': '社招',
+  'INTERNSHIP': '实习'
+};
+
+// 获取中文值
+const getChineseValue = (value, map) => {
+  return map[value] || value || '未知';
+};
+
 // 模拟数据 - Banner
 const banners = [
   {
     id: 1,
-    title: '2024届秋招专场',
+    title: '2026届秋招专场',
     desc: '名企校招信息实时更新，把握最佳求职时机',
     btnText: '立即查看',
     imgUrl: '/public/images/chinatelecom.jpg',
@@ -251,34 +270,6 @@ const articles = ref([]);
 const resources = ref([]);
 
 
-
-// 工具列表
-const tools = [
-  {
-    id: 1,
-    name: '简历生成器',
-    icon: markRaw(Create),
-    path: '/resumes/create'
-  },
-  {
-    id: 2,
-    name: '简历诊断',
-    icon: markRaw(CheckmarkCircle),
-    path: '/tools/resume-check'
-  },
-  {
-    id: 3,
-    name: '薪资查询',
-    icon: markRaw(BarChart),
-    path: '/tools/salary'
-  },
-  {
-    id: 4,
-    name: '宣讲会日历',
-    icon: markRaw(Calendar),
-    path: '/events'
-  }
-];
 
 // 生命周期
 onMounted(async () => {
@@ -322,8 +313,8 @@ const fetchRecommendedJobs = async () => {
       companyLogo: job.enterprise?.logo || '',
       salary: job.salary,
       location: job.work_location,
-      type: job.job_type,
-      tags: [job.job_category, job.recruit_type]
+      type: getChineseValue(job.job_type, jobTypeMap),
+      tags: [getChineseValue(job.job_category, jobCategoryMap), getChineseValue(job.recruit_type, recruitTypeMap)]
     }));
   } catch (error) {
     console.error('获取推荐岗位失败:', error);
@@ -433,18 +424,35 @@ const fetchArticles = async () => {
     const response = await axios.get('/posts/', { 
       params: { limit: 6, ordering: '-created_at' }
     });
-    articles.value = (response.data.results || response.data).slice(0, 6).map(article => ({
-      id: article.id,
-      title: article.title,
-      excerpt: article.content?.substring(0, 100) + '...' || '暂无简介',
-      author: article.user?.username || '匿名用户',
-      authorAvatar: article.user?.avatar || '',
-      date: formatTime(article.created_at),
-      likes: article.like_count || 0
-    }));
+    articles.value = (response.data.results || response.data).slice(0, 6).map(article => {
+      const avatarUrl = article.user_avatar;
+      const fullAvatarUrl = avatarUrl ? (avatarUrl.startsWith('http') ? avatarUrl : `http://localhost:8000${avatarUrl}`) : '';
+      return {
+        id: article.id,
+        title: article.title,
+        excerpt: article.content ? stripHtml(article.content).substring(0, 100) + '...' : '暂无简介',
+        author: article.nickname || article.username || '匿名用户',
+        authorAvatar: fullAvatarUrl,
+        date: formatTime(article.created_at),
+        likes: article.like_count || 0
+      };
+    });
   } catch (error) {
     console.error('获取社区文章失败:', error);
   }
+};
+
+// 在新窗口中打开文章详情
+const openArticleInNewWindow = (articleId) => {
+  const articleUrl = `/community/post/${articleId}`;
+  window.open(articleUrl, '_blank');
+};
+
+// 去除HTML标签函数
+const stripHtml = (html) => {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || '';
 };
 
 // 获取就业资源
@@ -511,11 +519,7 @@ const handleBannerClick = (banner) => {
 };
 
 const handleResourceClick = (resource) => {
-  router.push(`/resources/${resource.id}`);
-};
-
-const handleToolClick = (tool) => {
-  router.push(tool.path);
+  message.info('更多内容敬请期待');
 };
 
 const seeMore = (type) => {
@@ -886,49 +890,6 @@ const seeMore = (type) => {
   display: flex;
   align-items: center;
   gap: 4px;
-}
-
-/* 工具区域 */
-.tools-section {
-  margin: 40px 0;
-}
-
-.section-title {
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 20px;
-}
-
-.tools-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 20px;
-}
-
-.tool-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tool-card:hover {
-  background-color: #f7f8fa;
-  transform: translateY(-4px);
-}
-
-.tool-icon {
-  color: #2d8cf0;
-  margin-bottom: 12px;
-}
-
-.tool-name {
-  font-size: 14px;
-  text-align: center;
 }
 
 /* 底部 */

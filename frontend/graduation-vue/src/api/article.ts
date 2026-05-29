@@ -1,14 +1,6 @@
 import axios from '@/utils/axios';
 
-// 获取文章列表（首页展示用）
-export const getArticleList = () => {
-  return axios.get('/api/articles/', {
-    params: {
-      ordering: '-created_at', // 最新发布的在前
-      page_size: 4 // 首页显示4篇
-    }
-  });
-};
+
 
 // 获取文章详情
 export const getArticleDetail = (id: number) => {

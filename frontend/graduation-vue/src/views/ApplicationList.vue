@@ -41,6 +41,17 @@
       <!-- 筛选工具栏 -->
       <div class="filter-toolbar">
         <n-space>
+          <n-input 
+            v-model:value="searchKeyword" 
+            placeholder="搜索姓名、职位、学历..." 
+            clearable
+            style="width: 300px;"
+            @keyup.enter="handleSearch"
+          >
+            <template #suffix>
+              <n-icon :component="Search" />
+            </template>
+          </n-input>
           <n-select 
             v-model:value="filterEducation" 
             :options="educationFilterOptions" 
@@ -48,7 +59,7 @@
             clearable
             style="width: 150px;"
             size="small"
-            @update:value="handleFilter"
+            @update:value="handleSearch"
           />
           <n-button size="small" @click="handleResetFilter">
             重置
@@ -73,18 +84,21 @@
 import { h, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
-import { NDataTable, NCard, NTag,NButton, NSelect,NSpace ,NDropdown} from 'naive-ui' // 确保导入所有使用的组件
+import { NDataTable, NCard, NTag,NButton, NSelect,NSpace ,NDropdown, NInput, NIcon} from 'naive-ui'
+import { Search } from '@vicons/ionicons5'
 import axios from '@/utils/axios'
 
 // 调试模式
 const debug = ref(true)
 const message = useMessage()
 const router = useRouter()
+
 // 数据状态
 const applications = ref([])
 const allApplications = ref([])
 const loading = ref(false)
 const selectedApplications = ref([])
+const searchKeyword = ref('')
 const filterEducation = ref('')
 const bulkAction = ref(null)
 const bulkUpdating = ref(false)
@@ -647,31 +661,45 @@ const startChat = async (application) => {
   }
 }
 
-// 筛选申请记录
-const handleFilter = () => {
+// 搜索功能
+const handleSearch = () => {
   loading.value = true
   try {
-    if (!filterEducation.value) {
+    if (!searchKeyword.value && !filterEducation.value) {
       applications.value = [...allApplications.value]
       message.success('已显示所有数据')
       return
     }
     
-    console.log('筛选条件:', filterEducation.value)
-    console.log('所有数据:', allApplications.value)
+    let filteredData = allApplications.value
     
-    const filteredData = allApplications.value.filter(app => {
-      const appEducation = app.education
-      console.log('申请学历:', appEducation, '筛选条件:', filterEducation.value, '是否匹配:', appEducation === filterEducation.value)
-      
-      return appEducation === filterEducation.value
-    })
+    // 按关键词搜索
+    if (searchKeyword.value) {
+      const keyword = searchKeyword.value.toLowerCase()
+      filteredData = filteredData.filter(app => {
+        return (
+          (app.applicant_name || '').toLowerCase().includes(keyword) ||
+          (app.resume_name || '').toLowerCase().includes(keyword) ||
+          (app.recruitment_title || '').toLowerCase().includes(keyword) ||
+          (app.education || '').toLowerCase().includes(keyword) ||
+          (app.school || '').toLowerCase().includes(keyword)
+        )
+      })
+    }
+    
+    // 按学历筛选
+    if (filterEducation.value) {
+      filteredData = filteredData.filter(app => {
+        const appEducation = app.education
+        return appEducation === filterEducation.value
+      })
+    }
     
     applications.value = filteredData
-    message.success(`筛选完成，共 ${filteredData.length} 条记录`)
+    message.success(`搜索完成，共 ${filteredData.length} 条记录`)
   } catch (error) {
-    console.error('筛选失败:', error)
-    message.error('筛选失败')
+    console.error('搜索失败:', error)
+    message.error('搜索失败')
   } finally {
     loading.value = false
   }
@@ -679,6 +707,7 @@ const handleFilter = () => {
 
 // 重置筛选
 const handleResetFilter = () => {
+  searchKeyword.value = ''
   filterEducation.value = ''
   applications.value = [...allApplications.value]
   message.success('已重置筛选')

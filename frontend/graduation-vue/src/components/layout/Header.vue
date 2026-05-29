@@ -266,8 +266,13 @@ const initializeComponent = async () => {
         if (storedUserInfo) {
           const userInfo = JSON.parse(storedUserInfo)
           if (userInfo.avatar) {
-            userAvatar.value = userInfo.avatar
-            console.log('从本地存储获取头像:', userAvatar.value)
+            let avatarUrl = userInfo.avatar
+            if (avatarUrl && !avatarUrl.startsWith('http')) {
+              avatarUrl = `http://localhost:8000${avatarUrl}`
+            }
+            userAvatar.value = avatarUrl
+            userInfo.avatar = avatarUrl
+            localStorage.setItem('userInfo', JSON.stringify(userInfo))
           }
         } else {
           const response = await getUserInfo()
@@ -358,7 +363,11 @@ const handleLogout = () => {
 const handleSearch = () => {
   const keyword = searchQuery.value.trim()
   if (keyword) {
-    message.info(`搜索: ${keyword}`)
+    // 跳转到招聘页面进行搜索
+    router.push({
+      path: '/jobs',
+      query: { search: keyword }
+    })
   }
 }
 

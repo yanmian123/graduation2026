@@ -204,18 +204,39 @@
 
           <!-- 社区公告 -->
           <n-card title="社区公告" bordered class="sidebar-card" style="margin-top: 16px;">
-            <n-space vertical>
-              <n-card title="欢迎新同学" size="small" bordered>
-                <n-text type="secondary" size="small">
-                  欢迎加入职享圈，分享你的职场经验！
-                </n-text>
-              </n-card>
-              <n-card title="内容规范" size="small" bordered>
-                <n-text type="secondary" size="small">
-                  请遵守社区规范，发布有价值的内容
-                </n-text>
-              </n-card>
-            </n-space>
+            <n-spin :show="announcementsLoading" size="small">
+              <n-space vertical v-if="announcements.length > 0">
+                <n-card
+                  v-for="announcement in announcements"
+                  :key="announcement.id"
+                  size="small"
+                  bordered
+                  class="announcement-item"
+                >
+                  <template #header>
+                    <n-space align="center" size="small">
+                      <n-tag
+                        :type="getAnnouncementTagType(announcement.announcement_type)"
+                        size="small"
+                        :bordered="false"
+                      >
+                        {{ getAnnouncementTypeLabel(announcement.announcement_type) }}
+                      </n-tag>
+                      <span class="announcement-title">{{ announcement.title }}</span>
+                    </n-space>
+                  </template>
+                  <n-text type="secondary" size="small">
+                    {{ announcement.content }}
+                  </n-text>
+                  <template #footer>
+                    <n-text depth="3" style="font-size: 12px;">
+                      {{ formatAnnouncementTime(announcement.created_at) }}
+                    </n-text>
+                  </template>
+                </n-card>
+              </n-space>
+              <n-empty v-else description="暂无公告" size="small" />
+            </n-spin>
           </n-card>
         </n-grid-item>
       </n-grid>
@@ -263,7 +284,8 @@ import {
   NAvatar,
   NAvatarGroup,
   NSkeleton,
-  NDropdown
+  NDropdown,
+  NSpin
 } from 'naive-ui';
 
 const router = useRouter();
@@ -298,15 +320,63 @@ const sortOptions = [
   }
 ];
 
+const announcements = ref([]);
+const announcementsLoading = ref(false);
+
+const getAnnouncementTypeLabel = (type) => {
+  const typeMap = {
+    'system': '系统公告',
+    'maintenance': '维护通知',
+    'feature': '功能更新',
+    'emergency': '紧急通知'
+  };
+  return typeMap[type] || '公告';
+};
+
+const getAnnouncementTagType = (type) => {
+  const tagTypeMap = {
+    'system': 'info',
+    'maintenance': 'warning',
+    'feature': 'success',
+    'emergency': 'error'
+  };
+  return tagTypeMap[type] || 'default';
+};
+
+const formatAnnouncementTime = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+};
+
+const fetchAnnouncements = async () => {
+  announcementsLoading.value = true;
+  try {
+    const response = await axios.get('/announcements/');
+    let data = response.data;
+    if (data.results && Array.isArray(data.results)) {
+      data = data.results;
+    }
+    announcements.value = data.slice(0, 5);
+  } catch (error) {
+    console.error('获取公告失败:', error);
+  } finally {
+    announcementsLoading.value = false;
+  }
+};
+
 
 
 // 分类标签中文映射
 const getCategoryLabel = (category) => {
   const categoryMap = {
     'interview': '面试经验',
+    'resume': '简历技巧',
+    'career': '行业选择',
+    'exam': '笔试攻略',
+    'others': '其他',
     'offer': '求职分享',
     'skills': '技能提升',
-    'career': '职业规划',
     'other': '其他'
   };
   return categoryMap[category] || category || '其他';
@@ -341,6 +411,7 @@ const fetchPosts = async (isLoadMore = false) => {
         page_size: pageSize.value,
         ordering: sortType.value === 'latest' ? '-created_at' : 
                   sortType.value === 'mostLiked' ? '-like_count' : '-view_count',
+        is_draft: false, // 只获取已发布的文章，过滤草稿
       };
 
       // 添加分类筛选
@@ -497,13 +568,14 @@ const handlePageSizeChange = (newPageSize) => {
 onMounted(() => {
   fetchPosts();
   fetchHotData();
+  fetchAnnouncements();
 });
 
 onActivated(() => {
   syncFollowStateFromStorage();
-  // 重新获取帖子列表以更新评论数等数据
   fetchPosts();
   fetchHotData();
+  fetchAnnouncements();
 });
 
 
@@ -1098,6 +1170,22 @@ const resetSearch = () => {
 
 .hot-post-item:hover .hot-post-meta .n-space {
   transform: scale(1.05);
+}
+
+.announcement-item {
+  transition: all 0.3s ease;
+  border-radius: 8px;
+}
+
+.announcement-item:hover {
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+  transform: translateX(4px);
+}
+
+.announcement-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1d2129;
 }
 
 .pagination-container {
